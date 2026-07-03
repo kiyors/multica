@@ -807,6 +807,72 @@ func registerNotificationListeners(bus *events.Bus, queries *db.Queries) {
 		}
 	})
 
+	bus.Subscribe(protocol.EventReviewCommentCreated, func(e events.Event) {
+		payload, ok := e.Payload.(map[string]any)
+		if !ok {
+			return
+		}
+
+		commentResp, ok := payload["comment"].(handler.ReviewCommentResponse)
+		if !ok {
+			return
+		}
+
+		issueID, _ := payload["issue_id"].(string)
+		issueTitle, _ := payload["issue_title"].(string)
+		issueStatus, _ := payload["issue_status"].(string)
+		commentContent := commentResp.Content
+
+		commentDetails, _ := json.Marshal(map[string]string{
+			"review_comment_id": commentResp.ID,
+			"asset_id":          commentResp.AssetID,
+		})
+
+		notifySubscribers(ctx, queries, bus, issueID, issueStatus, e.WorkspaceID, e,
+			nil, "new_review_comment", "info",
+			issueTitle, commentContent,
+			commentDetails)
+
+		mentions := parseMentions(commentContent)
+		if len(mentions) > 0 {
+			skip := map[string]bool{e.ActorID: true}
+			notifyMentionedMembers(bus, queries, e, mentions, issueID, issueTitle, issueStatus,
+				issueTitle, skip, commentDetails)
+		}
+	})
+
+	bus.Subscribe(protocol.EventReviewAssetUpdated, func(e events.Event) {
+		payload, ok := e.Payload.(map[string]any)
+		if !ok {
+			return
+		}
+		
+		issueID, _ := payload["issue_id"].(string)
+		issueTitle, _ := payload["issue_title"].(string)
+		issueStatus, _ := payload["issue_status"].(string)
+		
+		var assetID string
+		var assetStatus string
+		
+		assetResp, hasAsset := payload["asset"].(handler.ReviewAssetResponse)
+		if hasAsset {
+			assetID = assetResp.ID
+			assetStatus = assetResp.Status
+		} else {
+			assetStatus = "bulk_approved"
+		}
+
+		details, _ := json.Marshal(map[string]string{
+			"review_asset_id": assetID,
+			"status":          assetStatus,
+		})
+
+		notifySubscribers(ctx, queries, bus, issueID, issueStatus, e.WorkspaceID, e,
+			nil, "review_asset_updated", "info",
+			issueTitle, "Review asset status changed to "+assetStatus,
+			details)
+	})
+
 	// issue_reaction:added — notify the issue creator
 	bus.Subscribe(protocol.EventIssueReactionAdded, func(e events.Event) {
 		payload, ok := e.Payload.(map[string]any)

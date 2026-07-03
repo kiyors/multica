@@ -31,6 +31,7 @@ import {
   onIssueLabelsChanged,
   onIssueMetadataChanged,
 } from "../issues/ws-updaters";
+import { onReviewAssetUpdated, onReviewCommentCreated } from "../reviews/ws-updaters";
 import { onInboxNew, onInboxInvalidate, onInboxIssueStatusChanged, onInboxIssueDeleted, onInboxSummaryInvalidate } from "../inbox/ws-updaters";
 import { inboxKeys } from "../inbox/queries";
 import {
@@ -744,6 +745,16 @@ export function useRealtimeSync(
       if (issue_id) qc.invalidateQueries({ queryKey: issueKeys.subscribers(issue_id) });
     });
 
+    const unsubReviewAsset = ws.on("review_asset:updated", (p) => {
+      const wsId = getCurrentWsId();
+      if (wsId) onReviewAssetUpdated(qc, wsId, p as any);
+    });
+
+    const unsubReviewComment = ws.on("review_comment:created", (p) => {
+      const wsId = getCurrentWsId();
+      if (wsId) onReviewCommentCreated(qc, wsId, p as any);
+    });
+
     // --- Side-effect handlers (toast, navigation) ---
 
     // After the current workspace disappears (deleted or we were kicked out),
@@ -1119,6 +1130,9 @@ export function useRealtimeSync(
       unsubIssueReactionRemoved();
       unsubSubscriberAdded();
       unsubSubscriberRemoved();
+      unsubReviewAsset();
+      unsubReviewComment();
+
       unsubWsUpdated();
       unsubWsDeleted();
       unsubMemberRemoved();
