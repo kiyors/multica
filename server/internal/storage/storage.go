@@ -26,3 +26,7 @@ type Presigner interface {
 type DownloadPresigner interface {
 	PresignGetWithContentDisposition(ctx context.Context, key string, ttl time.Duration, contentDisposition string) (string, error)
 }
+
+type UploadPresigner interface {
+	PresignPut(ctx context.Context, key string, contentType string, ttl time.Duration) (string, error)
+}

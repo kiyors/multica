@@ -237,6 +237,29 @@ func (s *S3Storage) PresignGetWithContentDisposition(ctx context.Context, key st
 	return out.URL, nil
 }
 
+func (s *S3Storage) PresignPut(ctx context.Context, key string, contentType string, ttl time.Duration) (string, error) {
+	if key == "" {
+		return "", fmt.Errorf("s3 PresignPut: empty key")
+	}
+	if ttl <= 0 {
+		ttl = 30 * time.Minute
+	}
+	input := &s3.PutObjectInput{
+		Bucket: aws.String(s.bucket),
+		Key:    aws.String(key),
+	}
+	if contentType != "" {
+		input.ContentType = aws.String(contentType)
+	}
+	out, err := s3.NewPresignClient(s.client).PresignPutObject(ctx, input, func(opts *s3.PresignOptions) {
+		opts.Expires = ttl
+	})
+	if err != nil {
+		return "", fmt.Errorf("s3 PresignPutObject: %w", err)
+	}
+	return out.URL, nil
+}
+
 // Delete removes an object from S3. Errors are logged but not fatal.
 func (s *S3Storage) Delete(ctx context.Context, key string) {
 	if key == "" {

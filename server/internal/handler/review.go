@@ -2,8 +2,13 @@ package handler
 
 import (
 	"encoding/json"
+	"net/http"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/multica-ai/multica/server/internal/storage"
+	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
 
@@ -84,4 +89,89 @@ func float4ToPtr(f pgtype.Float4) *float32 {
 	return &f.Float32
 }
 
-// TODO: Define HTTP endpoints for Create/List/Delete
+type PresignReviewAssetUploadRequest struct {
+	IssueID     string `json:"issue_id"`
+	Filename    string `json:"filename"`
+	ContentType string `json:"content_type"`
+}
+
+type PresignReviewAssetUploadResponse struct {
+	UploadURL string              `json:"upload_url"`
+	Asset     ReviewAssetResponse `json:"asset"`
+}
+
+func (h *Handler) PresignReviewAssetUpload(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	userID, ok := requireUserID(w, r)
+	if !ok {
+		return
+	}
+
+	var req PresignReviewAssetUploadRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+
+	issueUUID, ok := parseUUIDOrBadRequest(w, req.IssueID, "issue_id")
+	if !ok {
+		return
+	}
+
+	// Verify issue exists
+	issue, err := h.Queries.GetIssue(ctx, issueUUID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "issue not found")
+		return
+	}
+
+	assetType := "image"
+	if req.ContentType == "video/mp4" || req.ContentType == "video/webm" || req.ContentType == "video/quicktime" {
+		assetType = "video"
+	}
+
+	// For S3 we can generate a presigned URL. For local, we fallback to a direct upload URL
+	var uploadURL string
+	fileKey := "reviews/" + util.UUIDToString(issueUUID) + "/" + uuid.New().String() + "_" + req.Filename
+
+	if presigner, ok := h.Storage.(storage.UploadPresigner); ok {
+		uploadURL, err = presigner.PresignPut(ctx, fileKey, req.ContentType, 15*time.Minute)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to generate upload url")
+			return
+		}
+	} else {
+		// Fallback for local storage (the client will upload to our direct endpoint)
+		uploadURL = h.cfg.PublicURL + "/api/reviews/assets/direct-upload?key=" + fileKey
+	}
+
+	// Create pending asset
+	asset, err := h.Queries.CreateReviewAsset(ctx, db.CreateReviewAssetParams{
+		IssueID:     issueUUID,
+		WorkspaceID: issue.WorkspaceID,
+		Name:        req.Filename,
+		AssetType:   assetType,
+		FileUrl:     fileKey, // Store key, we can resolve full URL on fetch
+		Version:     1,
+		UploadedBy:  util.MustParseUUID(userID),
+	})
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to create asset record")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, PresignReviewAssetUploadResponse{
+		UploadURL: uploadURL,
+		Asset:     reviewAssetToResponse(asset),
+	})
+}
+
+func (h *Handler) DirectUploadReviewAsset(w http.ResponseWriter, r *http.Request) {
+	// Stub for local storage direct upload fallback
+	writeError(w, http.StatusNotImplemented, "direct upload not implemented yet")
+}
+
+func (h *Handler) CompleteReviewAssetUpload(w http.ResponseWriter, r *http.Request) {
+	// Stub for upload completion (triggers ffprobe metadata extraction in background)
+	writeJSON(w, http.StatusOK, map[string]bool{"success": true})
+}
