@@ -344,3 +344,31 @@ UPDATE issue
 SET first_executed_at = now()
 WHERE id = $1 AND first_executed_at IS NULL
 RETURNING id, workspace_id, creator_type, creator_id, first_executed_at;
+
+-- name: AddIssueAssignee :exec
+INSERT INTO issue_assignees (
+    issue_id, assignee_type, assignee_id, role
+) VALUES (
+    $1, $2, $3, $4
+) ON CONFLICT (issue_id, assignee_type, assignee_id) DO UPDATE
+SET role = EXCLUDED.role;
+
+-- name: ListIssueAssignees :many
+SELECT issue_id, assignee_type, assignee_id, role, assigned_at
+FROM issue_assignees
+WHERE issue_id = $1
+ORDER BY assigned_at ASC;
+
+-- name: RemoveIssueAssignee :exec
+DELETE FROM issue_assignees
+WHERE issue_id = $1 AND assignee_type = $2 AND assignee_id = $3;
+
+-- name: DeleteIssueAssignees :exec
+DELETE FROM issue_assignees
+WHERE issue_id = $1;
+
+-- name: ListAssigneesByIssueIDs :many
+SELECT issue_id, assignee_type, assignee_id, role, assigned_at
+FROM issue_assignees
+WHERE issue_id = ANY(@issue_ids::uuid[])
+ORDER BY assigned_at ASC;

@@ -2,6 +2,12 @@ import type { Issue, IssueMetadata, IssueStatus, IssuePriority, IssueAssigneeTyp
 import type { MemberRole } from "./workspace";
 import type { Project } from "./project";
 
+export interface IssueAssigneeInput {
+  assignee_type: IssueAssigneeType;
+  assignee_id: string;
+  role?: string;
+}
+
 // Issue API
 export interface CreateIssueRequest {
   title: string;
@@ -17,6 +23,7 @@ export interface CreateIssueRequest {
   start_date?: string;
   due_date?: string;
   attachment_ids?: string[];
+  assignees?: IssueAssigneeInput[];
 }
 
 export interface UpdateIssueRequest {
@@ -33,6 +40,7 @@ export interface UpdateIssueRequest {
   project_id?: string | null;
   /** Ordered stage (>= 1); null clears it (unstaged). */
   stage?: number | null;
+  assignees?: IssueAssigneeInput[];
   /** Attachment IDs to bind to this issue alongside the description update.
    *  Used by the description editor to register newly uploaded files so they
    *  surface in `issueAttachments` and keep their preview Eye on refresh. */

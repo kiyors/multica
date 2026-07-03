@@ -1,0 +1,14 @@
+{
+  "name": "@multica/canvas-drawing-editor",
+  "version": "1.0.0",
+  "description": "Zero dependency canvas drawing and annotation web component",
+  "main": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@multica/tsconfig": "workspace:*"
+  }
+}
