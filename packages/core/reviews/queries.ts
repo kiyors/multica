@@ -7,6 +7,16 @@ export const reviewKeys = {
   comments: (wsId: string, assetId: string) => [...reviewKeys.all(wsId), "comments", assetId] as const,
 };
 
+export function listReviewAssetsOptions(workspaceId: string, issueId: string) {
+  return queryOptions({
+    queryKey: reviewKeys.assets(workspaceId, issueId),
+    queryFn: async () => {
+      return await api.listReviewAssets(workspaceId, issueId);
+    },
+    enabled: !!workspaceId && !!issueId,
+  });
+}
+
 export function listReviewCommentsOptions(workspaceId: string, issueId: string, assetId: string) {
   return queryOptions({
     queryKey: reviewKeys.comments(workspaceId, assetId),
