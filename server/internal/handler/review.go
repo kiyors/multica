@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/multica-ai/multica/server/internal/storage"
@@ -13,21 +14,22 @@ import (
 )
 
 type ReviewAssetResponse struct {
-	ID           string  `json:"id"`
-	IssueID      string  `json:"issue_id"`
-	WorkspaceID  string  `json:"workspace_id"`
-	Name         string  `json:"name"`
-	AssetType    string  `json:"asset_type"`
-	FileURL      string  `json:"file_url"`
-	ThumbnailURL *string `json:"thumbnail_url"`
-	Width        *int32  `json:"width"`
-	Height       *int32  `json:"height"`
+	ID           string   `json:"id"`
+	IssueID      string   `json:"issue_id"`
+	WorkspaceID  string   `json:"workspace_id"`
+	AssetGroupID string   `json:"asset_group_id"`
+	Name         string   `json:"name"`
+	AssetType    string   `json:"asset_type"`
+	FileURL      string   `json:"file_url"`
+	ThumbnailURL *string  `json:"thumbnail_url"`
+	Width        *int32   `json:"width"`
+	Height       *int32   `json:"height"`
 	Duration     *float32 `json:"duration"`
-	Version      int32   `json:"version"`
-	Status       string  `json:"status"`
-	UploadedBy   *string `json:"uploaded_by"`
-	CreatedAt    string  `json:"created_at"`
-	UpdatedAt    string  `json:"updated_at"`
+	Version      int32    `json:"version"`
+	Status       string   `json:"status"`
+	UploadedBy   *string  `json:"uploaded_by"`
+	CreatedAt    string   `json:"created_at"`
+	UpdatedAt    string   `json:"updated_at"`
 }
 
 type ReviewCommentResponse struct {
@@ -50,6 +52,7 @@ func reviewAssetToResponse(a db.ReviewAsset) ReviewAssetResponse {
 		ID:           uuidToString(a.ID),
 		IssueID:      uuidToString(a.IssueID),
 		WorkspaceID:  uuidToString(a.WorkspaceID),
+		AssetGroupID: uuidToString(a.AssetGroupID),
 		Name:         a.Name,
 		AssetType:    a.AssetType,
 		FileURL:      a.FileUrl,
@@ -90,9 +93,10 @@ func float4ToPtr(f pgtype.Float4) *float32 {
 }
 
 type PresignReviewAssetUploadRequest struct {
-	IssueID     string `json:"issue_id"`
-	Filename    string `json:"filename"`
-	ContentType string `json:"content_type"`
+	IssueID         string `json:"issue_id"`
+	Filename        string `json:"filename"`
+	ContentType     string `json:"content_type"`
+	PreviousAssetID string `json:"previous_asset_id,omitempty"`
 }
 
 type PresignReviewAssetUploadResponse struct {
@@ -125,6 +129,15 @@ func (h *Handler) PresignReviewAssetUpload(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	var previousAssetUUID pgtype.UUID
+	if req.PreviousAssetID != "" {
+		parsed, ok := parseUUIDOrBadRequest(w, req.PreviousAssetID, "previous_asset_id")
+		if !ok {
+			return
+		}
+		previousAssetUUID = parsed
+	}
+
 	assetType := "image"
 	if req.ContentType == "video/mp4" || req.ContentType == "video/webm" || req.ContentType == "video/quicktime" {
 		assetType = "video"
@@ -145,15 +158,31 @@ func (h *Handler) PresignReviewAssetUpload(w http.ResponseWriter, r *http.Reques
 		uploadURL = h.cfg.PublicURL + "/api/reviews/assets/direct-upload?key=" + fileKey
 	}
 
+	// Determine version and group ID
+	var assetGroupID pgtype.UUID
+	version := int32(1)
+	if previousAssetUUID.Valid {
+		prev, err := h.Queries.GetReviewAsset(ctx, previousAssetUUID)
+		if err == nil {
+			assetGroupID = prev.AssetGroupID
+			version = prev.Version + 1
+		} else {
+			assetGroupID = util.MustParseUUID(uuid.New().String())
+		}
+	} else {
+		assetGroupID = util.MustParseUUID(uuid.New().String())
+	}
+
 	// Create pending asset
 	asset, err := h.Queries.CreateReviewAsset(ctx, db.CreateReviewAssetParams{
-		IssueID:     issueUUID,
-		WorkspaceID: issue.WorkspaceID,
-		Name:        req.Filename,
-		AssetType:   assetType,
-		FileUrl:     fileKey, // Store key, we can resolve full URL on fetch
-		Version:     1,
-		UploadedBy:  util.MustParseUUID(userID),
+		IssueID:      issueUUID,
+		WorkspaceID:  issue.WorkspaceID,
+		Name:         req.Filename,
+		AssetType:    assetType,
+		FileUrl:      fileKey, // Store key, we can resolve full URL on fetch
+		Version:      version,
+		UploadedBy:   util.MustParseUUID(userID),
+		AssetGroupID: assetGroupID,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to create asset record")
@@ -259,4 +288,64 @@ func (h *Handler) CreateReviewComment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, reviewCommentToResponse(comment))
+}
+
+type UpdateReviewAssetStatusRequest struct {
+	Status string `json:"status"` // pending, approved, changes_requested
+}
+
+func (h *Handler) UpdateReviewAssetStatus(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	assetUUID, ok := parseUUIDOrBadRequest(w, chi.URLParam(r, "assetId"), "assetId")
+	if !ok {
+		return
+	}
+
+	var req UpdateReviewAssetStatusRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+
+	if req.Status != "pending" && req.Status != "approved" && req.Status != "changes_requested" {
+		writeError(w, http.StatusBadRequest, "invalid status")
+		return
+	}
+
+	asset, err := h.Queries.UpdateReviewAssetStatus(ctx, db.UpdateReviewAssetStatusParams{
+		ID:     assetUUID,
+		Status: req.Status,
+	})
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to update asset status")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, reviewAssetToResponse(asset))
+}
+
+type BulkApproveReviewAssetsRequest struct {
+	IssueID string `json:"issue_id"`
+}
+
+func (h *Handler) BulkApproveReviewAssets(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	var req BulkApproveReviewAssetsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+
+	issueUUID, ok := parseUUIDOrBadRequest(w, req.IssueID, "issue_id")
+	if !ok {
+		return
+	}
+
+	err := h.Queries.BulkApproveReviewAssets(ctx, issueUUID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to bulk approve assets")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]bool{"success": true})
 }

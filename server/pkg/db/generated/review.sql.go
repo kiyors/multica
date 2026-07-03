@@ -11,12 +11,21 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const bulkApproveReviewAssets = `-- name: BulkApproveReviewAssets :exec
+UPDATE review_assets SET status = 'approved', updated_at = now() WHERE issue_id = $1 AND status = 'pending'
+`
+
+func (q *Queries) BulkApproveReviewAssets(ctx context.Context, issueID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, bulkApproveReviewAssets, issueID)
+	return err
+}
+
 const createReviewAsset = `-- name: CreateReviewAsset :one
 INSERT INTO review_assets (
-  issue_id, workspace_id, name, asset_type, file_url, thumbnail_url, width, height, duration, version, uploaded_by
+  issue_id, workspace_id, name, asset_type, file_url, thumbnail_url, width, height, duration, version, uploaded_by, asset_group_id
 ) VALUES (
-  $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
-) RETURNING id, issue_id, workspace_id, name, asset_type, file_url, thumbnail_url, width, height, duration, version, status, uploaded_by, created_at, updated_at
+  $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+) RETURNING id, issue_id, workspace_id, name, asset_type, file_url, thumbnail_url, width, height, duration, version, status, uploaded_by, created_at, updated_at, asset_group_id
 `
 
 type CreateReviewAssetParams struct {
@@ -31,6 +40,7 @@ type CreateReviewAssetParams struct {
 	Duration     pgtype.Float4 `json:"duration"`
 	Version      int32         `json:"version"`
 	UploadedBy   pgtype.UUID   `json:"uploaded_by"`
+	AssetGroupID pgtype.UUID   `json:"asset_group_id"`
 }
 
 func (q *Queries) CreateReviewAsset(ctx context.Context, arg CreateReviewAssetParams) (ReviewAsset, error) {
@@ -46,6 +56,7 @@ func (q *Queries) CreateReviewAsset(ctx context.Context, arg CreateReviewAssetPa
 		arg.Duration,
 		arg.Version,
 		arg.UploadedBy,
+		arg.AssetGroupID,
 	)
 	var i ReviewAsset
 	err := row.Scan(
@@ -64,6 +75,7 @@ func (q *Queries) CreateReviewAsset(ctx context.Context, arg CreateReviewAssetPa
 		&i.UploadedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.AssetGroupID,
 	)
 	return i, err
 }
@@ -131,7 +143,7 @@ func (q *Queries) DeleteReviewComment(ctx context.Context, id pgtype.UUID) error
 }
 
 const getReviewAsset = `-- name: GetReviewAsset :one
-SELECT id, issue_id, workspace_id, name, asset_type, file_url, thumbnail_url, width, height, duration, version, status, uploaded_by, created_at, updated_at FROM review_assets WHERE id = $1
+SELECT id, issue_id, workspace_id, name, asset_type, file_url, thumbnail_url, width, height, duration, version, status, uploaded_by, created_at, updated_at, asset_group_id FROM review_assets WHERE id = $1
 `
 
 func (q *Queries) GetReviewAsset(ctx context.Context, id pgtype.UUID) (ReviewAsset, error) {
@@ -153,6 +165,7 @@ func (q *Queries) GetReviewAsset(ctx context.Context, id pgtype.UUID) (ReviewAss
 		&i.UploadedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.AssetGroupID,
 	)
 	return i, err
 }
@@ -181,8 +194,49 @@ func (q *Queries) GetReviewComment(ctx context.Context, id pgtype.UUID) (ReviewC
 	return i, err
 }
 
+const listReviewAssetVersions = `-- name: ListReviewAssetVersions :many
+SELECT id, issue_id, workspace_id, name, asset_type, file_url, thumbnail_url, width, height, duration, version, status, uploaded_by, created_at, updated_at, asset_group_id FROM review_assets WHERE asset_group_id = $1 ORDER BY version DESC
+`
+
+func (q *Queries) ListReviewAssetVersions(ctx context.Context, assetGroupID pgtype.UUID) ([]ReviewAsset, error) {
+	rows, err := q.db.Query(ctx, listReviewAssetVersions, assetGroupID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ReviewAsset{}
+	for rows.Next() {
+		var i ReviewAsset
+		if err := rows.Scan(
+			&i.ID,
+			&i.IssueID,
+			&i.WorkspaceID,
+			&i.Name,
+			&i.AssetType,
+			&i.FileUrl,
+			&i.ThumbnailUrl,
+			&i.Width,
+			&i.Height,
+			&i.Duration,
+			&i.Version,
+			&i.Status,
+			&i.UploadedBy,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.AssetGroupID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listReviewAssetsByIssue = `-- name: ListReviewAssetsByIssue :many
-SELECT id, issue_id, workspace_id, name, asset_type, file_url, thumbnail_url, width, height, duration, version, status, uploaded_by, created_at, updated_at FROM review_assets WHERE issue_id = $1 ORDER BY created_at DESC
+SELECT id, issue_id, workspace_id, name, asset_type, file_url, thumbnail_url, width, height, duration, version, status, uploaded_by, created_at, updated_at, asset_group_id FROM review_assets WHERE issue_id = $1 ORDER BY created_at DESC
 `
 
 func (q *Queries) ListReviewAssetsByIssue(ctx context.Context, issueID pgtype.UUID) ([]ReviewAsset, error) {
@@ -210,6 +264,7 @@ func (q *Queries) ListReviewAssetsByIssue(ctx context.Context, issueID pgtype.UU
 			&i.UploadedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.AssetGroupID,
 		); err != nil {
 			return nil, err
 		}
@@ -288,7 +343,7 @@ func (q *Queries) ResolveReviewComment(ctx context.Context, arg ResolveReviewCom
 }
 
 const updateReviewAssetStatus = `-- name: UpdateReviewAssetStatus :one
-UPDATE review_assets SET status = $2, updated_at = now() WHERE id = $1 RETURNING id, issue_id, workspace_id, name, asset_type, file_url, thumbnail_url, width, height, duration, version, status, uploaded_by, created_at, updated_at
+UPDATE review_assets SET status = $2, updated_at = now() WHERE id = $1 RETURNING id, issue_id, workspace_id, name, asset_type, file_url, thumbnail_url, width, height, duration, version, status, uploaded_by, created_at, updated_at, asset_group_id
 `
 
 type UpdateReviewAssetStatusParams struct {
@@ -315,6 +370,7 @@ func (q *Queries) UpdateReviewAssetStatus(ctx context.Context, arg UpdateReviewA
 		&i.UploadedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.AssetGroupID,
 	)
 	return i, err
 }

@@ -991,6 +991,8 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 						r.Post("/assets/presign", h.PresignReviewAssetUpload)
 						r.Put("/assets/direct-upload", h.DirectUploadReviewAsset)
 						r.Post("/assets/complete", h.CompleteReviewAssetUpload)
+						r.Patch("/assets/{assetId}/status", h.UpdateReviewAssetStatus)
+						r.Post("/assets/bulk-approve", h.BulkApproveReviewAssets)
 						
 						r.Get("/comments", h.ListReviewComments)
 						r.Post("/comments", h.CreateReviewComment)

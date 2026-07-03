@@ -727,6 +727,7 @@ type ReviewAsset struct {
 	UploadedBy   pgtype.UUID        `json:"uploaded_by"`
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+	AssetGroupID pgtype.UUID        `json:"asset_group_id"`
 }
 
 type ReviewComment struct {

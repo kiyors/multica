@@ -5,6 +5,7 @@ export interface ReviewAsset {
   id: string;
   issue_id: string;
   workspace_id: string;
+  asset_group_id: string;
   name: string;
   asset_type: ReviewAssetType;
   file_url: string;
