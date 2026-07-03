@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Plus, Video, Image as ImageIcon, Check, Clock, AlertCircle, Loader2 } from "lucide-react";
-import { ReviewAsset } from "@multica/core/types";
+import type { ReviewAsset } from "@multica/core/types";
 import { listReviewAssetsOptions } from "@multica/core/reviews/queries";
 import { useBulkApproveReviewAssets, useReviewAssetUpload } from "@multica/core/reviews/mutations";
 import { Button } from "@multica/ui/components/ui/button";

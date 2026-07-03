@@ -20,8 +20,10 @@ const (
 	EventIssueReactionRemoved = "issue_reaction:removed"
 
 	// Review events
-	EventReviewAssetUpdated   = "review_asset:updated"
-	EventReviewCommentCreated = "review_comment:created"
+	EventReviewAssetUpdated      = "review_asset:updated"
+	EventReviewCommentCreated    = "review_comment:created"
+	EventReviewCommentResolved   = "review_comment:resolved"
+	EventReviewCommentUnresolved = "review_comment:unresolved"
 
 	// Agent events
 	EventAgentStatus   = "agent:status"

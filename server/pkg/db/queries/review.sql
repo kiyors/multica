@@ -11,6 +11,9 @@ SELECT * FROM review_assets WHERE id = $1;
 -- name: ListReviewAssetsByIssue :many
 SELECT * FROM review_assets WHERE issue_id = $1 ORDER BY created_at DESC;
 
+-- name: ListPendingReviewIssueIDs :many
+SELECT DISTINCT issue_id FROM review_assets WHERE workspace_id = $1 AND status != 'approved';
+
 -- name: UpdateReviewAssetStatus :one
 UPDATE review_assets SET status = $2, updated_at = now() WHERE id = $1 RETURNING *;
 
@@ -41,6 +44,9 @@ UPDATE review_comments SET content = $2, shapes = $3, timestamp = $4, updated_at
 
 -- name: ResolveReviewComment :one
 UPDATE review_comments SET resolved = true, resolved_by = $2, resolved_at = now(), updated_at = now() WHERE id = $1 RETURNING *;
+
+-- name: UnresolveReviewComment :one
+UPDATE review_comments SET resolved = false, resolved_by = NULL, resolved_at = NULL, updated_at = now() WHERE id = $1 RETURNING *;
 
 -- name: DeleteReviewComment :exec
 DELETE FROM review_comments WHERE id = $1;

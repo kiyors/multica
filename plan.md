@@ -248,11 +248,10 @@ Multica is a powerful AI-native task management platform where AI agents are fir
 - [x] **Undo/Redo:** Maintain shape history stack (leveraging the component's internal stack)
 - [x] **Serialization:** Export shapes to `AnnotationShape[]` JSON for DB storage (and leverage `video-review` code for drawing stores)
 
-### 1.5 Review Comment Sidebar
-
-- [x] **Views:** Comment sidebar alongside media player
-- [x] **Timestamp binding:** Clicking a comment seeks video to that timestamp (±0.5s matching)
-- [ ] **Timeline markers:** Show comment dots on the video scrubber at their timestamps
+### 1.5 Polish & Edge Cases
+- [x] **Thread support:** Handle nested replies (`parent_id`) for complex review discussions.
+- [x] **Board view integration:** Add a visual indicator (e.g., an "eye" icon or "Pending Review" badge) to issue cards on the Kanban board if they contain unresolved review assets.
+- [x] **Timeline markers:** Overlay review comment timestamps as visual dots on the custom video scrubber. at their timestamps
 - [x] **Comment creation flow:**
   1. Pause video (or viewing image)
   2. Draw annotation shapes on canvas overlay

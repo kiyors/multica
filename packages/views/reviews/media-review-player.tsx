@@ -1,10 +1,11 @@
 import React, { useRef, useEffect, useState, useCallback, useImperativeHandle, forwardRef } from "react";
-import { ReviewAsset } from "@multica/core/types";
+import type { ReviewAsset } from "@multica/core/types";
 import "@multica/canvas-drawing-editor";
 
 export interface MediaReviewPlayerProps {
   asset: ReviewAsset;
   onTimeUpdate?: (currentTime: number) => void;
+  comments?: any[];
 }
 
 export interface MediaReviewPlayerRef {
@@ -15,7 +16,7 @@ export interface MediaReviewPlayerRef {
 }
 
 export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPlayerProps>(
-  ({ asset, onTimeUpdate }, ref) => {
+  ({ asset, onTimeUpdate, comments }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
   const mediaRef = useRef<HTMLVideoElement | HTMLImageElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -178,6 +179,28 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
           backgroundColor: 'transparent'
         }}
       />
+
+      {asset.asset_type === "video" && asset.duration && comments && (
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-600/50 pointer-events-none">
+          {comments.filter(c => c.timestamp !== null && c.timestamp !== undefined && !c.parent_id).map((comment) => (
+            <div 
+              key={comment.id}
+              className="absolute top-0 bottom-0 w-1.5 -ml-0.5 rounded-full pointer-events-auto cursor-pointer hover:scale-150 transition-transform"
+              style={{
+                left: `${(comment.timestamp / asset.duration!) * 100}%`,
+                backgroundColor: comment.resolved ? '#22c55e' : '#3b82f6'
+              }}
+              title={comment.content}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (mediaRef.current) {
+                  (mediaRef.current as HTMLVideoElement).currentTime = comment.timestamp;
+                }
+              }}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 });

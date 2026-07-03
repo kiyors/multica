@@ -1,8 +1,8 @@
 import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ReviewAsset } from "@multica/core/types";
+import type { ReviewAsset } from "@multica/core/types";
 import { useUpdateReviewAssetStatus } from "@multica/core/reviews/mutations";
-import { listReviewAssetsOptions } from "@multica/core/reviews/queries";
+import { listReviewAssetsOptions, listReviewCommentsOptions } from "@multica/core/reviews/queries";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@multica/ui/components/ui/select";
 import { MediaReviewPlayer, type MediaReviewPlayerRef } from "./media-review-player";
 import { ReviewCommentSidebar } from "./review-comment-sidebar";
@@ -18,6 +18,7 @@ export function MediaReviewLayout({ workspaceId, asset, onAssetChange }: MediaRe
   const [currentTime, setCurrentTime] = useState(0);
 
   const { data: allAssets } = useQuery(listReviewAssetsOptions(workspaceId, asset.issue_id));
+  const { data: comments, isLoading: commentsLoading } = useQuery(listReviewCommentsOptions(workspaceId, asset.issue_id, asset.id));
   const updateStatus = useUpdateReviewAssetStatus();
 
   const assetVersions = (allAssets as ReviewAsset[] | undefined)
@@ -102,13 +103,16 @@ export function MediaReviewLayout({ workspaceId, asset, onAssetChange }: MediaRe
             ref={playerRef} 
             asset={asset} 
             onTimeUpdate={setCurrentTime}
+            comments={comments as any[]}
           />
         </div>
         <div className="w-80 h-full border-l border-gray-800 bg-white">
           <ReviewCommentSidebar
             workspaceId={workspaceId}
             asset={asset}
-          currentTime={currentTime}
+            comments={comments as any[]}
+            isLoading={commentsLoading}
+            currentTime={currentTime}
           onSeek={handleSeek}
           onDrawStart={handleDrawStart}
           getCanvasShapes={getCanvasShapes}

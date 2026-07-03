@@ -64,7 +64,7 @@ import { ExecutionLogSection } from "./execution-log-section";
 import { PullRequestList } from "./pull-request-list";
 import { ReviewAssetsList } from "./review-assets-list";
 import { MediaReviewLayout } from "../../reviews/media-review-layout";
-import { ReviewAsset } from "@multica/core/types";
+import type { ReviewAsset } from "@multica/core/types";
 import { useGitHubSettings } from "@multica/core/github";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@multica/core/auth";

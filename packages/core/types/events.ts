@@ -9,6 +9,10 @@ import type { Label } from "./label";
 
 // WebSocket event types (matching Go server protocol/events.go)
 export type WSEventType =
+  | "review_asset:updated"
+  | "review_comment:created"
+  | "review_comment:resolved"
+  | "review_comment:unresolved"
   | "issue:created"
   | "issue:updated"
   | "issue:deleted"

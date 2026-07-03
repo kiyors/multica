@@ -33,6 +33,36 @@ export function useCreateReviewComment() {
   });
 }
 
+export function useResolveReviewComment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: { workspaceId: string; issueId: string; commentId: string; assetId: string }) => {
+      return await api.resolveReviewComment(params.workspaceId, params.issueId, params.commentId);
+    },
+    onSuccess: (_resolvedComment, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: reviewKeys.comments(variables.workspaceId, variables.assetId),
+      });
+    },
+  });
+}
+
+export function useUnresolveReviewComment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: { workspaceId: string; issueId: string; commentId: string; assetId: string }) => {
+      return await api.unresolveReviewComment(params.workspaceId, params.issueId, params.commentId);
+    },
+    onSuccess: (_unresolvedComment, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: reviewKeys.comments(variables.workspaceId, variables.assetId),
+      });
+    },
+  });
+}
+
 export function useUpdateReviewAssetStatus() {
   const queryClient = useQueryClient();
 

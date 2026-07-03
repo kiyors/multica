@@ -194,6 +194,30 @@ func (q *Queries) GetReviewComment(ctx context.Context, id pgtype.UUID) (ReviewC
 	return i, err
 }
 
+const listPendingReviewIssueIDs = `-- name: ListPendingReviewIssueIDs :many
+SELECT DISTINCT issue_id FROM review_assets WHERE workspace_id = $1 AND status != 'approved'
+`
+
+func (q *Queries) ListPendingReviewIssueIDs(ctx context.Context, workspaceID pgtype.UUID) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, listPendingReviewIssueIDs, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []pgtype.UUID{}
+	for rows.Next() {
+		var issue_id pgtype.UUID
+		if err := rows.Scan(&issue_id); err != nil {
+			return nil, err
+		}
+		items = append(items, issue_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listReviewAssetVersions = `-- name: ListReviewAssetVersions :many
 SELECT id, issue_id, workspace_id, name, asset_type, file_url, thumbnail_url, width, height, duration, version, status, uploaded_by, created_at, updated_at, asset_group_id FROM review_assets WHERE asset_group_id = $1 ORDER BY version DESC
 `
@@ -324,6 +348,30 @@ type ResolveReviewCommentParams struct {
 
 func (q *Queries) ResolveReviewComment(ctx context.Context, arg ResolveReviewCommentParams) (ReviewComment, error) {
 	row := q.db.QueryRow(ctx, resolveReviewComment, arg.ID, arg.ResolvedBy)
+	var i ReviewComment
+	err := row.Scan(
+		&i.ID,
+		&i.AssetID,
+		&i.AuthorID,
+		&i.Content,
+		&i.Timestamp,
+		&i.Shapes,
+		&i.Resolved,
+		&i.ResolvedBy,
+		&i.ResolvedAt,
+		&i.ParentID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const unresolveReviewComment = `-- name: UnresolveReviewComment :one
+UPDATE review_comments SET resolved = false, resolved_by = NULL, resolved_at = NULL, updated_at = now() WHERE id = $1 RETURNING id, asset_id, author_id, content, timestamp, shapes, resolved, resolved_by, resolved_at, parent_id, created_at, updated_at
+`
+
+func (q *Queries) UnresolveReviewComment(ctx context.Context, id pgtype.UUID) (ReviewComment, error) {
+	row := q.db.QueryRow(ctx, unresolveReviewComment, id)
 	var i ReviewComment
 	err := row.Scan(
 		&i.ID,

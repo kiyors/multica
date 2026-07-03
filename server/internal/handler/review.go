@@ -423,3 +423,80 @@ func (h *Handler) BulkApproveReviewAssets(w http.ResponseWriter, r *http.Request
 
 	writeJSON(w, http.StatusOK, map[string]bool{"success": true})
 }
+
+func (h *Handler) ResolveReviewComment(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	commentUUID, ok := parseUUIDOrBadRequest(w, chi.URLParam(r, "commentId"), "commentId")
+	if !ok {
+		return
+	}
+	userID, ok := requireUserID(w, r)
+	if !ok {
+		return
+	}
+
+	comment, err := h.Queries.ResolveReviewComment(ctx, db.ResolveReviewCommentParams{
+		ID:         commentUUID,
+		ResolvedBy: util.MustParseUUID(userID),
+	})
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to resolve comment")
+		return
+	}
+
+	resp := reviewCommentToResponse(comment)
+	workspaceID := chi.URLParam(r, "workspaceId")
+	if workspaceID != "" {
+		h.publish(protocol.EventReviewCommentResolved, workspaceID, "member", userID, map[string]any{"comment": resp})
+	}
+
+	writeJSON(w, http.StatusOK, resp)
+}
+
+func (h *Handler) UnresolveReviewComment(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	commentUUID, ok := parseUUIDOrBadRequest(w, chi.URLParam(r, "commentId"), "commentId")
+	if !ok {
+		return
+	}
+	userID, ok := requireUserID(w, r)
+	if !ok {
+		return
+	}
+
+	comment, err := h.Queries.UnresolveReviewComment(ctx, commentUUID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to unresolve comment")
+		return
+	}
+
+	resp := reviewCommentToResponse(comment)
+	workspaceID := chi.URLParam(r, "workspaceId")
+	if workspaceID != "" {
+		h.publish(protocol.EventReviewCommentUnresolved, workspaceID, "member", userID, map[string]any{"comment": resp})
+	}
+
+	writeJSON(w, http.StatusOK, resp)
+}
+
+func (h *Handler) ListPendingReviewIssueIDs(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	workspaceID := chi.URLParam(r, "workspaceId")
+	wsUUID, ok := parseUUIDOrBadRequest(w, workspaceID, "workspace_id")
+	if !ok {
+		return
+	}
+
+	issueUUIDs, err := h.Queries.ListPendingReviewIssueIDs(ctx, wsUUID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to list pending review issue ids")
+		return
+	}
+
+	res := make([]string, len(issueUUIDs))
+	for i, id := range issueUUIDs {
+		res[i] = util.UUIDToString(id)
+	}
+
+	writeJSON(w, http.StatusOK, res)
+}

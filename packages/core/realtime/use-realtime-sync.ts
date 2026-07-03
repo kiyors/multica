@@ -31,7 +31,7 @@ import {
   onIssueLabelsChanged,
   onIssueMetadataChanged,
 } from "../issues/ws-updaters";
-import { onReviewAssetUpdated, onReviewCommentCreated } from "../reviews/ws-updaters";
+import { onReviewAssetUpdated, onReviewCommentCreated, onReviewCommentResolved, onReviewCommentUnresolved } from "../reviews/ws-updaters";
 import { onInboxNew, onInboxInvalidate, onInboxIssueStatusChanged, onInboxIssueDeleted, onInboxSummaryInvalidate } from "../inbox/ws-updaters";
 import { inboxKeys } from "../inbox/queries";
 import {
@@ -755,6 +755,16 @@ export function useRealtimeSync(
       if (wsId) onReviewCommentCreated(qc, wsId, p as any);
     });
 
+    const unsubReviewCommentResolved = ws.on("review_comment:resolved", (p) => {
+      const wsId = getCurrentWsId();
+      if (wsId) onReviewCommentResolved(qc, wsId, p as any);
+    });
+
+    const unsubReviewCommentUnresolved = ws.on("review_comment:unresolved", (p) => {
+      const wsId = getCurrentWsId();
+      if (wsId) onReviewCommentUnresolved(qc, wsId, p as any);
+    });
+
     // --- Side-effect handlers (toast, navigation) ---
 
     // After the current workspace disappears (deleted or we were kicked out),
@@ -1132,6 +1142,8 @@ export function useRealtimeSync(
       unsubSubscriberRemoved();
       unsubReviewAsset();
       unsubReviewComment();
+      unsubReviewCommentResolved();
+      unsubReviewCommentUnresolved();
 
       unsubWsUpdated();
       unsubWsDeleted();

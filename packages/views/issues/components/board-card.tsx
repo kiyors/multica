@@ -23,6 +23,9 @@ import { LabelChip } from "../../labels/label-chip";
 import { IssueAgentActivityIndicator } from "./issue-agent-activity-indicator";
 import { useIssueSurfaceActionsOptional } from "../surface/actions-context";
 import { useT } from "../../i18n";
+import { useQuery } from "@tanstack/react-query";
+import { listPendingReviewIssueIDsOptions } from "@multica/core/reviews/queries";
+import { Eye } from "lucide-react";
 
 function formatDate(date: string): string {
   return formatDateOnly(date, { month: "short", day: "numeric" }, "en-US");
@@ -163,6 +166,9 @@ export const BoardCardContent = memo(function BoardCardContent({
   const showMetaRow = showAssigneeSection || showStartDate || showDueDate || showChildProgress;
   const showRightMeta = !!showStartDate || !!showDueDate || !!showChildProgress || showUpdatedHint;
 
+  const { data: pendingReviewIssueIds } = useQuery(listPendingReviewIssueIDsOptions(issue.workspace_id));
+  const hasPendingReview = pendingReviewIssueIds?.includes(issue.id);
+
   return (
     <div className="rounded-lg border-[0.5px] border-border bg-card py-3 px-2.5 shadow-[0_3px_6px_-2px_rgba(0,0,0,0.02),0_1px_1px_0_rgba(0,0,0,0.04)] transition-colors group-hover/card:border-accent group-hover/card:bg-accent group-data-[popup-open]/card:border-accent group-data-[popup-open]/card:bg-accent">
       {/* Row 1: priority + identifier (left), agent activity + assignee (right) */}
@@ -170,6 +176,11 @@ export const BoardCardContent = memo(function BoardCardContent({
         <div className="flex items-center gap-1.5 min-w-0">
           {priorityIconNode}
           <p className="text-xs text-muted-foreground truncate">{issue.identifier}</p>
+          {hasPendingReview && (
+            <span className="flex items-center gap-1 bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded text-[10px] font-medium ml-1">
+              <Eye className="size-3" /> Review
+            </span>
+          )}
         </div>
         <IssueAgentActivityIndicator issueId={issue.id} />
       </div>
