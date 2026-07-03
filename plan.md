@@ -165,7 +165,7 @@ Multica is a powerful AI-native task management platform where AI agents are fir
 
 ### 1.1 Data Model
 
-- [ ] **DB Migration:** Create review tables
+- [x] **DB Migration:** Create review tables
 
   ```sql
   -- Assets attached to issues for review
@@ -204,7 +204,7 @@ Multica is a powerful AI-native task management platform where AI agents are fir
   );
   ```
 
-- [ ] **AnnotationShape JSONB structure:**
+- [x] **AnnotationShape JSONB structure:**
   ```json
   {
     "type": "rectangle|circle|arrow|freehand",

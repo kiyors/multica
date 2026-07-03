@@ -985,6 +985,13 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					r.Post("/comments/trigger-preview", h.PreviewCommentTriggers)
 					r.Post("/comments", h.CreateComment)
 					r.Get("/comments", h.ListComments)
+					
+					// Reviews
+					r.Route("/reviews", func(r chi.Router) {
+						r.Post("/assets/presign", h.PresignReviewAssetUpload)
+						r.Put("/assets/direct-upload", h.DirectUploadReviewAsset)
+						r.Post("/assets/complete", h.CompleteReviewAssetUpload)
+					})
 					r.Get("/timeline", h.ListTimeline)
 					r.Get("/subscribers", h.ListIssueSubscribers)
 					r.Post("/subscribe", h.SubscribeToIssue)
