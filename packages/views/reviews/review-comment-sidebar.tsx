@@ -22,7 +22,7 @@ export function ReviewCommentSidebar({
   getCanvasShapes,
   clearCanvasShapes,
 }: ReviewCommentSidebarProps) {
-  const { data: comments, isLoading } = useQuery(listReviewCommentsOptions(workspaceId, asset.id));
+  const { data: comments, isLoading } = useQuery(listReviewCommentsOptions(workspaceId, asset.issue_id, asset.id));
   const { mutate: createComment, isPending: isCreating } = useCreateReviewComment();
   const [draftContent, setDraftContent] = useState("");
 
@@ -33,6 +33,7 @@ export function ReviewCommentSidebar({
     createComment(
       {
         workspaceId,
+        issueId: asset.issue_id,
         assetId: asset.id,
         content: draftContent,
         timestamp: asset.asset_type === "video" ? currentTime : undefined,

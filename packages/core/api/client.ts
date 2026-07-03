@@ -114,6 +114,7 @@ import type {
   LarkInstallStatusResponse,
   RedeemLarkBindingTokenResponse,
   ReviewComment,
+  ReviewAsset,
   ComposioToolkit,
   ComposioConnection,
   ComposioConnectInitResponse,
@@ -2370,20 +2371,34 @@ export class ApiClient {
   }
 
   // Reviews
-  async listReviewComments(workspaceId: string, assetId: string): Promise<ReviewComment[]> {
-    return this.fetch(`/api/workspaces/${workspaceId}/reviews/comments?asset_id=${assetId}`);
+  async listReviewComments(workspaceId: string, issueId: string, assetId: string): Promise<ReviewComment[]> {
+    return this.fetch(`/api/workspaces/${workspaceId}/issues/${issueId}/reviews/comments?asset_id=${assetId}`);
   }
 
-  async createReviewComment(workspaceId: string, payload: {
+  async createReviewComment(workspaceId: string, issueId: string, payload: {
     asset_id: string;
     content: string;
     timestamp?: number;
     shapes?: any;
     parent_id?: string;
   }): Promise<ReviewComment> {
-    return this.fetch(`/api/workspaces/${workspaceId}/reviews/comments`, {
+    return this.fetch(`/api/workspaces/${workspaceId}/issues/${issueId}/reviews/comments`, {
       method: "POST",
       body: JSON.stringify(payload),
+    });
+  }
+
+  async updateReviewAssetStatus(workspaceId: string, issueId: string, assetId: string, status: string): Promise<ReviewAsset> {
+    return this.fetch(`/api/workspaces/${workspaceId}/issues/${issueId}/reviews/assets/${assetId}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    });
+  }
+
+  async bulkApproveReviewAssets(workspaceId: string, issueId: string): Promise<void> {
+    await this.fetch(`/api/workspaces/${workspaceId}/issues/${issueId}/reviews/assets/bulk-approve`, {
+      method: "POST",
+      body: JSON.stringify({ issue_id: issueId }),
     });
   }
 }
