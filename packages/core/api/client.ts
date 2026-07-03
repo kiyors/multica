@@ -113,6 +113,7 @@ import type {
   BeginLarkInstallResponse,
   LarkInstallStatusResponse,
   RedeemLarkBindingTokenResponse,
+  ReviewComment,
   ComposioToolkit,
   ComposioConnection,
   ComposioConnectInitResponse,
@@ -2367,4 +2368,23 @@ export class ApiClient {
       body: JSON.stringify({ token }),
     });
   }
+
+  // Reviews
+  async listReviewComments(workspaceId: string, assetId: string): Promise<ReviewComment[]> {
+    return this.fetch(`/api/workspaces/${workspaceId}/reviews/comments?asset_id=${assetId}`);
+  }
+
+  async createReviewComment(workspaceId: string, payload: {
+    asset_id: string;
+    content: string;
+    timestamp?: number;
+    shapes?: any;
+    parent_id?: string;
+  }): Promise<ReviewComment> {
+    return this.fetch(`/api/workspaces/${workspaceId}/reviews/comments`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
 }
+
