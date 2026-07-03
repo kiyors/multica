@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
 import { ReviewAsset } from "@multica/core/types";
+import "@multica/canvas-drawing-editor";
 
 interface MediaReviewPlayerProps {
   asset: ReviewAsset;
@@ -118,20 +119,31 @@ export function MediaReviewPlayer({ asset }: MediaReviewPlayerProps) {
         />
       )}
       
+      
       {/* 
-        The canvas is absolutely positioned exactly over the rendered pixels of the media. 
+        The canvas editor is absolutely positioned exactly over the rendered pixels of the media. 
         pointer-events-auto ensures it catches mouse events for drawing. 
       */}
-      <canvas 
-        ref={canvasRef} 
-        className="absolute pointer-events-auto cursor-crosshair touch-none"
+      <canvas-drawing-editor 
+        ref={canvasRef as any}
+        class="absolute pointer-events-auto touch-none"
         style={{
           left: `${layout.x}px`,
           top: `${layout.y}px`,
           width: `${layout.width}px`,
           height: `${layout.height}px`,
+          backgroundColor: 'transparent'
         }}
       />
     </div>
   );
+}
+
+// Register the custom element type for TypeScript
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      'canvas-drawing-editor': any;
+    }
+  }
 }
