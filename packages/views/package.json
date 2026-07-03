@@ -52,6 +52,7 @@
     "./platform": "./platform/index.ts",
     "./i18n": "./i18n/index.ts",
     "./attachments": "./attachments/index.ts",
+    "./reviews": "./reviews/index.ts",
     "./locales": "./locales/index.ts",
     "./locales/*": "./locales/*"
   },
@@ -61,6 +62,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@floating-ui/dom": "^1.7.6",
+    "@multica/canvas-drawing-editor": "workspace:*",
     "@multica/core": "workspace:*",
     "@multica/ui": "workspace:*",
     "@tanstack/react-virtual": "catalog:",

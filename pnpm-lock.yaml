@@ -975,6 +975,9 @@ importers:
       '@floating-ui/dom':
         specifier: ^1.7.6
         version: 1.7.6
+      '@multica/canvas-drawing-editor':
+        specifier: workspace:*
+        version: link:../canvas-drawing-editor
       '@multica/core':
         specifier: workspace:*
         version: link:../core

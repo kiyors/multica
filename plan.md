@@ -230,23 +230,23 @@ Multica is a powerful AI-native task management platform where AI agents are fir
 
 ### 1.3 Media Player Component
 
-- [ ] **UI:** Create `packages/views/reviews/media-review-player.tsx`
-- [ ] **Video player:** HTML5 `<video>` with custom controls (play/pause, scrubber, frame step ←/→, playback speed, fullscreen)
-- [ ] **Image viewer:** Next.js `<Image>` with zoom/pan support
-- [ ] **Canvas overlay:** HTML5 `<canvas>` absolutely positioned over media with `pointer-events-auto`
-- [ ] **Coordinate math:**
+- [x] **UI:** Create `packages/views/reviews/media-review-player.tsx`
+- [x] **Video player:** HTML5 `<video>` with custom controls (play/pause, scrubber, frame step ←/→, playback speed, fullscreen)
+- [x] **Image viewer:** Next.js `<Image>` with zoom/pan support
+- [x] **Canvas overlay:** HTML5 `<canvas>` absolutely positioned over media with `pointer-events-auto`
+- [x] **Coordinate math:**
   - `getTrueVideoLayout()` — compute rendered dimensions accounting for letterboxing
   - `getNormalizedCoordinates()` — mouse event → 0.0–1.0 coordinates
   - `getRenderCoordinates()` — 0.0–1.0 → canvas pixel coordinates
-- [ ] **ResizeObserver:** Observe container, throttle with `requestAnimationFrame`, recalculate layout on resize
+- [x] **ResizeObserver:** Observe container, throttle with `requestAnimationFrame`, recalculate layout on resize
 
 ### 1.4 Drawing Tools
 
-- [ ] **Canvas drawing:** Integrate the vendored `@multica/canvas-drawing-editor` (zero dependencies, 33kb) for drawing on the canvas overlay
-- [ ] **Tools:** Rectangle select, circle, arrow, freehand draw, text annotation (provided by the web component)
-- [ ] **Colors:** Color picker with preset palette (red, yellow, green, blue, white)
-- [ ] **Undo/Redo:** Maintain shape history stack (leveraging the component's internal stack)
-- [ ] **Serialization:** Export shapes to `AnnotationShape[]` JSON for DB storage (and leverage `video-review` code for drawing stores)
+- [x] **Canvas drawing:** Integrate the vendored `@multica/canvas-drawing-editor` (zero dependencies, 33kb) for drawing on the canvas overlay
+- [x] **Tools:** Rectangle select, circle, arrow, freehand draw, text annotation (provided by the web component)
+- [x] **Colors:** Color picker with preset palette (red, yellow, green, blue, white)
+- [x] **Undo/Redo:** Maintain shape history stack (leveraging the component's internal stack)
+- [x] **Serialization:** Export shapes to `AnnotationShape[]` JSON for DB storage (and leverage `video-review` code for drawing stores)
 
 ### 1.5 Review Comment Sidebar
 
