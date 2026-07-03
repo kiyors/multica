@@ -711,6 +711,39 @@ type ProjectResource struct {
 	CreatedBy    pgtype.UUID        `json:"created_by"`
 }
 
+type ReviewAsset struct {
+	ID           pgtype.UUID        `json:"id"`
+	IssueID      pgtype.UUID        `json:"issue_id"`
+	WorkspaceID  pgtype.UUID        `json:"workspace_id"`
+	Name         string             `json:"name"`
+	AssetType    string             `json:"asset_type"`
+	FileUrl      string             `json:"file_url"`
+	ThumbnailUrl pgtype.Text        `json:"thumbnail_url"`
+	Width        pgtype.Int4        `json:"width"`
+	Height       pgtype.Int4        `json:"height"`
+	Duration     pgtype.Float4      `json:"duration"`
+	Version      int32              `json:"version"`
+	Status       string             `json:"status"`
+	UploadedBy   pgtype.UUID        `json:"uploaded_by"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+}
+
+type ReviewComment struct {
+	ID         pgtype.UUID        `json:"id"`
+	AssetID    pgtype.UUID        `json:"asset_id"`
+	AuthorID   pgtype.UUID        `json:"author_id"`
+	Content    string             `json:"content"`
+	Timestamp  pgtype.Float4      `json:"timestamp"`
+	Shapes     []byte             `json:"shapes"`
+	Resolved   bool               `json:"resolved"`
+	ResolvedBy pgtype.UUID        `json:"resolved_by"`
+	ResolvedAt pgtype.Timestamptz `json:"resolved_at"`
+	ParentID   pgtype.UUID        `json:"parent_id"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
+}
+
 type RuntimeProfile struct {
 	ID             pgtype.UUID        `json:"id"`
 	WorkspaceID    pgtype.UUID        `json:"workspace_id"`

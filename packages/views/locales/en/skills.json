@@ -6,14 +6,26 @@
     "new_skill": "New skill",
     "search_placeholder": "Search skills…",
     "scopes": {
-      "all": { "label": "All", "description": "All skills in this workspace" },
-      "used": { "label": "In use", "description": "Skills assigned to at least one agent" },
-      "unused": { "label": "Unused", "description": "Skills not assigned to any agent" },
-      "mine": { "label": "Created by me", "description": "Skills you created" }
+      "all": {
+        "label": "All",
+        "description": "All skills in this workspace"
+      },
+      "used": {
+        "label": "In use",
+        "description": "Skills assigned to at least one agent"
+      },
+      "unused": {
+        "label": "Unused",
+        "description": "Skills not assigned to any agent"
+      },
+      "mine": {
+        "label": "Created by me",
+        "description": "Skills you created"
+      }
     },
     "empty": {
       "title": "No skills yet",
-      "description": "Create your first skill, import one from a URL, or copy one from a connected runtime — and every agent in the workspace can use it."
+      "description": "Create your first skill, import one from a URL, or copy one from a connected agent environment — and every agent in the workspace can use it."
     },
     "no_matches": {
       "title": "No matches",
@@ -24,15 +36,15 @@
     },
     "intro_banner": {
       "title": "Shared with your workspace.",
-      "body": "Anyone can create a skill, import one from a URL, or copy one from their local runtime — and every agent can use it.",
-      "highlight": "Local runtime skills stay private until you copy one here."
+      "body": "Anyone can create a skill, import one from a URL, or copy one from their local agent environment — and every agent can use it.",
+      "highlight": "Local agent environment skills stay private until you copy one here."
     },
     "list_error": {
       "title": "Couldn't load skills",
       "fallback": "Something went wrong fetching the skill list.",
       "retry": "Try again"
     },
-    "supporting_data_warning": "Some workspace data failed to load. Creator attribution, runtime names, or edit permissions may appear incomplete."
+    "supporting_data_warning": "Some workspace data failed to load. Creator attribution, agent environment names, or edit permissions may appear incomplete."
   },
   "table": {
     "name": "Name",
@@ -46,8 +58,8 @@
     "by_creator": "by {{name}}",
     "source_manual": "Created manually",
     "source_runtime_named": "From {{name}}",
-    "source_runtime_provider": "From {{provider}} runtime",
-    "source_runtime_unknown": "From a runtime",
+    "source_runtime_provider": "From {{provider}} agent environment",
+    "source_runtime_unknown": "From a agent environment",
     "source_clawhub": "From ClawHub",
     "source_skills_sh": "From Skills.sh",
     "source_github": "From GitHub"
@@ -99,7 +111,7 @@
     "read_only": "Read-only",
     "delete_aria": "Delete skill",
     "delete_tooltip": "Delete skill",
-    "supporting_data_warning": "Some workspace data failed to load. Creator attribution, runtime names, or edit permissions may appear incomplete until the next refresh.",
+    "supporting_data_warning": "Some workspace data failed to load. Creator attribution, agent environment names, or edit permissions may appear incomplete until the next refresh.",
     "files_label": "Files · {{count}}",
     "add_file_aria": "Add file",
     "add_file_tooltip": "Add file",
@@ -109,9 +121,9 @@
     "description_label": "Description",
     "description_placeholder": "One sentence describing when an agent should use this skill…",
     "subline": {
-      "origin_runtime_named": "Local runtime · {{name}}",
-      "origin_runtime_provider": "Local runtime · {{provider}}",
-      "origin_runtime_unknown": "Local runtime",
+      "origin_runtime_named": "Local agent environment · {{name}}",
+      "origin_runtime_provider": "Local agent environment · {{provider}}",
+      "origin_runtime_unknown": "Local agent environment",
       "origin_clawhub": "Imported · ClawHub",
       "origin_skills_sh": "Imported · Skills.sh",
       "origin_github": "Imported · GitHub",
@@ -146,7 +158,7 @@
       "used_by_empty": "Not assigned to any agent yet. Open an agent's Skills tab to assign."
     },
     "origin_card": {
-      "imported_runtime": "Imported from local runtime",
+      "imported_runtime": "Imported from local agent environment",
       "imported_clawhub": "Imported from ClawHub",
       "imported_skills_sh": "Imported from Skills.sh",
       "imported_github": "Imported from GitHub",
@@ -203,8 +215,8 @@
         "desc": "Fetch a published skill by URL. Files are pulled server-side."
       },
       "runtime": {
-        "title": "Copy from runtime",
-        "desc": "Scan a local runtime and promote one of its on-disk skills into this workspace."
+        "title": "Copy from agent environment",
+        "desc": "Scan a local agent environment and promote one of its on-disk skills into this workspace."
       }
     },
     "method_card": {
@@ -212,8 +224,8 @@
       "manual_desc": "Start from a blank SKILL.md and write your own instructions.",
       "url_title": "Import from URL",
       "url_desc": "Pull a published skill from ClawHub or Skills.sh.",
-      "runtime_title": "Copy from runtime",
-      "runtime_desc": "Promote a skill already installed on your local runtime."
+      "runtime_title": "Copy from agent environment",
+      "runtime_desc": "Promote a skill already installed on your local agent environment."
     },
     "manual": {
       "name_label": "Name",
@@ -243,16 +255,16 @@
     }
   },
   "runtime_import": {
-    "runtime_label": "Runtime",
-    "runtime_placeholder": "Select a local runtime",
-    "no_local_runtimes_title": "No local runtimes available",
-    "no_local_runtimes_hint": "Connect a local runtime to browse and import its local skills.",
-    "choose_runtime": "Choose a runtime to continue",
-    "must_be_online": "Runtime must be online to browse local skills.",
-    "load_failed": "Failed to load runtime local skills",
-    "not_supported": "This runtime provider does not expose local skill inventory yet.",
+    "runtime_label": "Agent Environment",
+    "runtime_placeholder": "Select a local agent environment",
+    "no_local_runtimes_title": "No local agent environments available",
+    "no_local_runtimes_hint": "Connect a local agent environment to browse and import its local skills.",
+    "choose_runtime": "Choose a agent environment to continue",
+    "must_be_online": "Agent Environment must be online to browse local skills.",
+    "load_failed": "Failed to load agent environment local skills",
+    "not_supported": "This agent environment provider does not expose local skill inventory yet.",
     "no_skills_title": "No local skills found",
-    "no_skills_hint": "This runtime does not have any discoverable local skills yet.",
+    "no_skills_hint": "This agent environment does not have any discoverable local skills yet.",
     "ignored_files_hint": "Symlinks, unreadable files, oversized files, and very large bundles are ignored during import.",
     "ready": "Ready to import",
     "into_workspace": "into this workspace.",

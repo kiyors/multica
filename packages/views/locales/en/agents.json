@@ -40,7 +40,7 @@
   },
   "empty": {
     "title": "No agents yet",
-    "description": "Create an agent and assign it issues, like any teammate. Local agents run on your machine; cloud agents run on Multica's runtime."
+    "description": "Create an agent and assign it issues, like any teammate. Local agents run on your machine; cloud agents run on Multica's agent environment."
   },
   "no_matches": {
     "title": "No matches",
@@ -53,7 +53,7 @@
     "runtime_filtered": "No agents on \"{{machine}}\"."
   },
   "runtime_filter": {
-    "all": "All runtimes",
+    "all": "All agent environments",
     "section_local": "Local",
     "section_remote": "Remote",
     "section_cloud": "Cloud",
@@ -65,7 +65,7 @@
     "agent": "Agent",
     "status": "Status",
     "workload": "Workload",
-    "runtime": "Runtime",
+    "runtime": "Agent Environment",
     "activity_7d": "Activity (7d)",
     "runs": "Runs",
     "last_active": "Last active",
@@ -150,7 +150,7 @@
     "section_details": "Details",
     "section_skills": "Skills",
     "section_integrations": "Integrations",
-    "prop_runtime": "Runtime",
+    "prop_runtime": "Agent Environment",
     "prop_model": "Model",
     "prop_thinking": "Thinking",
     "prop_visibility": "Visibility",
@@ -177,16 +177,16 @@
   "pickers": {
     "concurrency_tooltip": "Concurrency · {{value}} max concurrent tasks",
     "concurrency_range": "Max concurrent tasks ({{min}}–{{max}})",
-    "runtime_none": "No runtime",
-    "runtime_tooltip": "Runtime · {{name}} · {{status}}",
-    "runtime_tooltip_none": "Runtime · none selected",
+    "runtime_none": "No agent environment",
+    "runtime_tooltip": "Agent Environment · {{name}} · {{status}}",
+    "runtime_tooltip_none": "Agent Environment · none selected",
     "runtime_online": "online",
     "runtime_offline": "offline",
     "runtime_owned_by": "owned by {{name}}",
-    "runtime_empty": "No runtimes",
+    "runtime_empty": "No agent environments",
     "model_default": "Default",
     "model_tooltip": "Model · {{value}}",
-    "model_managed_by_runtime": "Managed by runtime",
+    "model_managed_by_runtime": "Managed by agent environment",
     "model_search_placeholder": "Search or type a model ID",
     "model_discovering": "Discovering models…",
     "model_empty": "No models available",
@@ -194,7 +194,7 @@
     "model_custom_tooltip": "Use \"{{value}}\" as a custom model id",
     "model_custom_use": "Use \"{{value}}\"",
     "model_clear": "Clear (use provider default)",
-    "model_clear_title": "Clear and fall back to the runtime's provider default",
+    "model_clear_title": "Clear and fall back to the agent environment's provider default",
     "thinking_default": "Follow CLI config",
     "thinking_tooltip": "Thinking · {{value}}",
     "thinking_clear": "Follow CLI config",
@@ -202,11 +202,11 @@
   },
   "model_dropdown": {
     "label": "Model",
-    "select_runtime_first": "Select a runtime first",
+    "select_runtime_first": "Select a agent environment first",
     "default_provider": "Default (provider)",
-    "runtime_offline_manual": "Runtime offline — enter manually",
-    "managed_by_runtime_title": "Model selection is managed by this runtime.",
-    "managed_by_runtime_hint": "Configure the model on the runtime host (e.g. Hermes reads it from its own config file).",
+    "runtime_offline_manual": "Agent Environment offline — enter manually",
+    "managed_by_runtime_title": "Model selection is managed by this agent environment.",
+    "managed_by_runtime_hint": "Configure the model on the agent environment host (e.g. Hermes reads it from its own config file).",
     "discovery_failed": "discovery failed",
     "clear_full": "Clear selection (use provider default)"
   },
@@ -247,14 +247,14 @@
       "public_members_empty": "No workspace members to choose from",
       "public_targets_empty_hint": "Pick at least one option below — otherwise the agent stays private."
     },
-    "runtime_label": "Runtime",
+    "runtime_label": "Agent Environment",
     "runtime_filter_mine": "Mine",
     "runtime_filter_all": "All",
-    "runtime_loading": "Loading runtimes...",
-    "runtime_none": "No runtime available",
+    "runtime_loading": "Loading agent environments...",
+    "runtime_none": "No agent environment available",
     "runtime_cloud_badge": "Cloud",
     "runtime_private_badge": "Private",
-    "runtime_private_locked_tooltip": "Private runtime — only its owner or a workspace admin can create agents on it. Ask the owner to switch it to Public to share.",
+    "runtime_private_locked_tooltip": "Private agent environment — only its owner or a workspace admin can create agents on it. Ask the owner to switch it to Public to share.",
     "duplicate_copy_suffix": " (Copy)",
     "create": "Create",
     "creating": "Creating...",
@@ -332,7 +332,7 @@
       "save_failed_toast": "Failed to save custom arguments"
     },
     "mcp_config": {
-      "intro": "MCP server configuration forwarded to the runtime CLI (Claude via --mcp-config, Codex via $CODEX_HOME/config.toml, Hermes/Kimi/Kiro via ACP mcpServers, OpenCode via OPENCODE_CONFIG_CONTENT, OpenClaw via the per-task config wrapper). Stored verbatim and may contain secrets — only the agent owner and workspace admins can read it. Leave empty to fall back to the CLI's own default. For OpenClaw HTTP/SSE entries use OpenClaw's own field name (e.g. \"transport\": \"streamable-http\") instead of Claude's \"type\".",
+      "intro": "MCP server configuration forwarded to the agent environment CLI (Claude via --mcp-config, Codex via $CODEX_HOME/config.toml, Hermes/Kimi/Kiro via ACP mcpServers, OpenCode via OPENCODE_CONFIG_CONTENT, OpenClaw via the per-task config wrapper). Stored verbatim and may contain secrets — only the agent owner and workspace admins can read it. Leave empty to fall back to the CLI's own default. For OpenClaw HTTP/SSE entries use OpenClaw's own field name (e.g. \"transport\": \"streamable-http\") instead of Claude's \"type\".",
       "placeholder": "{\n  \"mcpServers\": {\n    \"fetch\": {\n      \"command\": \"uvx\",\n      \"args\": [\"mcp-server-fetch\"]\n    }\n  }\n}",
       "editor_aria": "MCP config JSON editor",
       "clear_action": "Clear",
@@ -360,7 +360,7 @@
       "workspace_warning": "Public to workspace: any workspace member may use these Composio apps through this agent."
     },
     "runtime_config": {
-      "intro": "Choose how the OpenClaw runtime executes this agent's turns. Local mode runs the agent inside the daemon process. Gateway mode forwards each turn to an OpenClaw Gateway — useful when the daemon host is a lightweight coordinator and the agent should run on a more powerful machine.",
+      "intro": "Choose how the OpenClaw agent environment executes this agent's turns. Local mode runs the agent inside the daemon process. Gateway mode forwards each turn to an OpenClaw Gateway — useful when the daemon host is a lightweight coordinator and the agent should run on a more powerful machine.",
       "mode_label": "Routing mode",
       "mode_local": "Local",
       "mode_gateway": "Gateway",
@@ -380,7 +380,7 @@
       "save_failed_toast": "Failed to save routing config"
     },
     "skills": {
-      "intro": "Workspace skills assigned to this agent. Local runtime skills are always available automatically.",
+      "intro": "Workspace skills assigned to this agent. Local agent environment skills are always available automatically.",
       "add_action": "Add skill",
       "empty_title": "No skills assigned",
       "empty_hint": "Add workspace skills to share team knowledge with this agent.",
@@ -485,10 +485,10 @@
   "profile_card": {
     "unavailable": "Agent unavailable",
     "detail_link": "Detail →",
-    "runtime_label": "Runtime",
+    "runtime_label": "Agent Environment",
     "skills_label": "Skills",
     "owner_label": "Owner",
-    "unknown_runtime": "Unknown runtime"
+    "unknown_runtime": "Unknown agent environment"
   },
   "live_peek": {
     "current_issue_label": "Now on",
@@ -542,7 +542,7 @@
     "filter_active_count_other": "{{count}} filters",
     "clear_filters": "Clear filters",
     "section_availability": "Availability",
-    "section_runtime": "Runtime",
+    "section_runtime": "Agent Environment",
     "display": "Display",
     "sort_by": "Sort by",
     "direction_asc": "Ascending",
