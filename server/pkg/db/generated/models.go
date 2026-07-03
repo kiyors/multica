@@ -510,6 +510,14 @@ type Issue struct {
 	Stage              pgtype.Int4        `json:"stage"`
 }
 
+type IssueAssignee struct {
+	IssueID      pgtype.UUID        `json:"issue_id"`
+	AssigneeType string             `json:"assignee_type"`
+	AssigneeID   pgtype.UUID        `json:"assignee_id"`
+	Role         string             `json:"role"`
+	AssignedAt   pgtype.Timestamptz `json:"assigned_at"`
+}
+
 type IssueDependency struct {
 	ID               pgtype.UUID `json:"id"`
 	IssueID          pgtype.UUID `json:"issue_id"`

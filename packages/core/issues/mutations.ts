@@ -225,7 +225,17 @@ export function useUpdateIssue() {
       // columns — they steer enqueue/injection on the server and must never be
       // written into the query cache (MUL-3375). Strip them from the patch; the
       // mutationFn above still sends the full payload to the API.
-      const { suppress_run: _suppressRun, handoff_note: _handoffNote, ...patch } = data;
+      const { suppress_run: _suppressRun, handoff_note: _handoffNote, ...rawPatch } = data;
+      const patch = {
+        ...rawPatch,
+        ...(rawPatch.assignees ? {
+          assignees: rawPatch.assignees.map(a => ({
+            ...a,
+            role: a.role ?? "primary",
+            assigned_at: new Date().toISOString()
+          }))
+        } : {})
+      } as Partial<Issue>;
       // Fire-and-forget cancelQueries — keeps onMutate synchronous so the
       // cache update happens in the same tick as mutate(). Awaiting would
       // yield to the event loop, letting @dnd-kit reset its visual state
@@ -241,7 +251,7 @@ export function useUpdateIssue() {
       // change moves it off a filtered surface, stale-key bookkeeping where
       // the server result may have drifted (invalidated on settle, not here —
       // a mid-flight refetch would stomp the optimistic state).
-      const change = applyIssueChange(qc, wsId, id, patch as Partial<Issue>, {
+      const change = applyIssueChange(qc, wsId, id, patch, {
         changed: issueChangedDims(patch, prevDetail),
         baseIssue: prevDetail,
       });
@@ -461,7 +471,17 @@ export function useBatchUpdateIssues() {
     onMutate: async ({ ids, updates }) => {
       // Control fields steer the server; they are not Issue columns and must
       // not enter the cache (MUL-3375). mutationFn still sends them.
-      const { suppress_run: _suppressRun, handoff_note: _handoffNote, ...patch } = updates;
+      const { suppress_run: _suppressRun, handoff_note: _handoffNote, ...rawPatch } = updates;
+      const patch = {
+        ...rawPatch,
+        ...(rawPatch.assignees ? {
+          assignees: rawPatch.assignees.map(a => ({
+            ...a,
+            role: a.role ?? "primary",
+            assigned_at: new Date().toISOString()
+          }))
+        } : {})
+      } as Partial<Issue>;
       await qc.cancelQueries({ queryKey: issueKeys.list(wsId) });
       await qc.cancelQueries({ queryKey: issueKeys.myAll(wsId) });
       if (patch.status !== undefined) {

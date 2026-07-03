@@ -11,6 +11,32 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const addIssueAssignee = `-- name: AddIssueAssignee :exec
+INSERT INTO issue_assignees (
+    issue_id, assignee_type, assignee_id, role
+) VALUES (
+    $1, $2, $3, $4
+) ON CONFLICT (issue_id, assignee_type, assignee_id) DO UPDATE
+SET role = EXCLUDED.role
+`
+
+type AddIssueAssigneeParams struct {
+	IssueID      pgtype.UUID `json:"issue_id"`
+	AssigneeType string      `json:"assignee_type"`
+	AssigneeID   pgtype.UUID `json:"assignee_id"`
+	Role         string      `json:"role"`
+}
+
+func (q *Queries) AddIssueAssignee(ctx context.Context, arg AddIssueAssigneeParams) error {
+	_, err := q.db.Exec(ctx, addIssueAssignee,
+		arg.IssueID,
+		arg.AssigneeType,
+		arg.AssigneeID,
+		arg.Role,
+	)
+	return err
+}
+
 const childIssueProgress = `-- name: ChildIssueProgress :many
 SELECT parent_issue_id,
        COUNT(*)::bigint AS total,
@@ -352,6 +378,16 @@ type DeleteIssueParams struct {
 // silently catastrophic without this guard. See incident #1661.
 func (q *Queries) DeleteIssue(ctx context.Context, arg DeleteIssueParams) error {
 	_, err := q.db.Exec(ctx, deleteIssue, arg.ID, arg.WorkspaceID)
+	return err
+}
+
+const deleteIssueAssignees = `-- name: DeleteIssueAssignees :exec
+DELETE FROM issue_assignees
+WHERE issue_id = $1
+`
+
+func (q *Queries) DeleteIssueAssignees(ctx context.Context, issueID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteIssueAssignees, issueID)
 	return err
 }
 
@@ -703,6 +739,39 @@ func (q *Queries) GetIssueInWorkspace(ctx context.Context, arg GetIssueInWorkspa
 	return i, err
 }
 
+const listAssigneesByIssueIDs = `-- name: ListAssigneesByIssueIDs :many
+SELECT issue_id, assignee_type, assignee_id, role, assigned_at
+FROM issue_assignees
+WHERE issue_id = ANY($1::uuid[])
+ORDER BY assigned_at ASC
+`
+
+func (q *Queries) ListAssigneesByIssueIDs(ctx context.Context, issueIds []pgtype.UUID) ([]IssueAssignee, error) {
+	rows, err := q.db.Query(ctx, listAssigneesByIssueIDs, issueIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []IssueAssignee{}
+	for rows.Next() {
+		var i IssueAssignee
+		if err := rows.Scan(
+			&i.IssueID,
+			&i.AssigneeType,
+			&i.AssigneeID,
+			&i.Role,
+			&i.AssignedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listChildIssues = `-- name: ListChildIssues :many
 SELECT id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage FROM issue
 WHERE parent_issue_id = $1
@@ -815,6 +884,39 @@ func (q *Queries) ListChildrenByParents(ctx context.Context, arg ListChildrenByP
 			&i.StartDate,
 			&i.Metadata,
 			&i.Stage,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listIssueAssignees = `-- name: ListIssueAssignees :many
+SELECT issue_id, assignee_type, assignee_id, role, assigned_at
+FROM issue_assignees
+WHERE issue_id = $1
+ORDER BY assigned_at ASC
+`
+
+func (q *Queries) ListIssueAssignees(ctx context.Context, issueID pgtype.UUID) ([]IssueAssignee, error) {
+	rows, err := q.db.Query(ctx, listIssueAssignees, issueID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []IssueAssignee{}
+	for rows.Next() {
+		var i IssueAssignee
+		if err := rows.Scan(
+			&i.IssueID,
+			&i.AssigneeType,
+			&i.AssigneeID,
+			&i.Role,
+			&i.AssignedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -1155,6 +1257,22 @@ func (q *Queries) MarkIssueFirstExecuted(ctx context.Context, id pgtype.UUID) (M
 		&i.FirstExecutedAt,
 	)
 	return i, err
+}
+
+const removeIssueAssignee = `-- name: RemoveIssueAssignee :exec
+DELETE FROM issue_assignees
+WHERE issue_id = $1 AND assignee_type = $2 AND assignee_id = $3
+`
+
+type RemoveIssueAssigneeParams struct {
+	IssueID      pgtype.UUID `json:"issue_id"`
+	AssigneeType string      `json:"assignee_type"`
+	AssigneeID   pgtype.UUID `json:"assignee_id"`
+}
+
+func (q *Queries) RemoveIssueAssignee(ctx context.Context, arg RemoveIssueAssigneeParams) error {
+	_, err := q.db.Exec(ctx, removeIssueAssignee, arg.IssueID, arg.AssigneeType, arg.AssigneeID)
+	return err
 }
 
 const setIssueMetadataKey = `-- name: SetIssueMetadataKey :one

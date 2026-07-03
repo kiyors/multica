@@ -32,6 +32,13 @@ export interface IssueReaction {
 export type IssueMetadataValue = string | number | boolean;
 export type IssueMetadata = Record<string, IssueMetadataValue>;
 
+export interface IssueAssignee {
+  assignee_type: IssueAssigneeType;
+  assignee_id: string;
+  role: string;
+  assigned_at: string;
+}
+
 export interface Issue {
   id: string;
   workspace_id: string;
@@ -58,6 +65,7 @@ export interface Issue {
   start_date: string | null;
   due_date: string | null;
   metadata: IssueMetadata;
+  assignees?: IssueAssignee[];
   reactions?: IssueReaction[];
   labels?: Label[];
   created_at: string;

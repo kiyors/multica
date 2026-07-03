@@ -66,10 +66,17 @@ type IssueCreateParams struct {
 	OriginType     pgtype.Text
 	OriginID       pgtype.UUID
 	AttachmentIDs  []pgtype.UUID
+	Assignees      []IssueAssigneeInput
 	AllowDuplicate bool
 	// Stage groups this issue into an ordered barrier group under its parent
 	// (NULL = unstaged). See issue_child_done.go for the staged-barrier wake.
 	Stage pgtype.Int4
+}
+
+type IssueAssigneeInput struct {
+	AssigneeType string
+	AssigneeID   pgtype.UUID
+	Role         string
 }
 
 // IssueCreateOpts groups optional knobs for IssueService.Create. Most
@@ -266,6 +273,40 @@ func (s *IssueService) Create(ctx context.Context, p IssueCreateParams, opts Iss
 	}
 	if err != nil {
 		return IssueCreateResult{}, fmt.Errorf("create issue: %w", err)
+	}
+
+	// Insert primary assignee if set (backward compatibility)
+	if p.AssigneeType.Valid && p.AssigneeID.Valid {
+		err = qtx.AddIssueAssignee(ctx, db.AddIssueAssigneeParams{
+			IssueID:      issue.ID,
+			AssigneeType: p.AssigneeType.String,
+			AssigneeID:   p.AssigneeID,
+			Role:         "assignee",
+		})
+		if err != nil {
+			return IssueCreateResult{}, fmt.Errorf("add primary assignee: %w", err)
+		}
+	}
+
+	// Insert additional assignees
+	for _, a := range p.Assignees {
+		role := a.Role
+		if role == "" {
+			role = "assignee"
+		}
+		// Skip if it exactly matches the primary assignee with same role, handled above
+		if p.AssigneeType.Valid && p.AssigneeID.Valid && a.AssigneeType == p.AssigneeType.String && a.AssigneeID == p.AssigneeID && role == "assignee" {
+			continue
+		}
+		err = qtx.AddIssueAssignee(ctx, db.AddIssueAssigneeParams{
+			IssueID:      issue.ID,
+			AssigneeType: a.AssigneeType,
+			AssigneeID:   a.AssigneeID,
+			Role:         role,
+		})
+		if err != nil {
+			return IssueCreateResult{}, fmt.Errorf("add additional assignee: %w", err)
+		}
 	}
 
 	if err := tx.Commit(ctx); err != nil {

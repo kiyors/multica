@@ -59,6 +59,7 @@ type IssueResponse struct {
 	Metadata    map[string]any          `json:"metadata"`
 	Reactions   []IssueReactionResponse `json:"reactions,omitempty"`
 	Attachments []AttachmentResponse    `json:"attachments,omitempty"`
+	Assignees   []IssueAssigneeResponse `json:"assignees,omitempty"`
 	// Labels are bulk-attached by list/detail endpoints so the client can render
 	// chips without an N+1 round-trip per row. Pointer + omitempty so paths that
 	// don't load labels (e.g. UpdateIssue, batch UpdateIssues, the issue:updated
@@ -72,6 +73,19 @@ type IssueResponse struct {
 // the issue table. Write handlers pre-validate these so callers get a clean
 // 400 with the allowed values instead of a database CHECK violation bubbling
 // up as a 500.
+type IssueAssigneeResponse struct {
+	AssigneeType string `json:"assignee_type"`
+	AssigneeID   string `json:"assignee_id"`
+	Role         string `json:"role"`
+	AssignedAt   string `json:"assigned_at"`
+}
+
+type IssueAssigneeInput struct {
+	AssigneeType string `json:"assignee_type"`
+	AssigneeID   string `json:"assignee_id"`
+	Role         string `json:"role,omitempty"`
+}
+
 var validIssueStatuses = []string{"backlog", "todo", "in_progress", "in_review", "done", "blocked", "cancelled"}
 var validIssuePriorities = []string{"urgent", "high", "medium", "low", "none"}
 
@@ -166,6 +180,29 @@ func (h *Handler) labelsByIssue(ctx context.Context, wsUUID pgtype.UUID, issueID
 			Color:       r.Color,
 			CreatedAt:   timestampToString(r.CreatedAt),
 			UpdatedAt:   timestampToString(r.UpdatedAt),
+		})
+	}
+	return out
+}
+
+// assigneesByIssueIDs bulk-loads assignees for the given issue IDs.
+func (h *Handler) assigneesByIssueIDs(ctx context.Context, issueIDs []pgtype.UUID) map[string][]IssueAssigneeResponse {
+	out := map[string][]IssueAssigneeResponse{}
+	if len(issueIDs) == 0 {
+		return out
+	}
+	rows, err := h.Queries.ListAssigneesByIssueIDs(ctx, issueIDs)
+	if err != nil {
+		slog.Warn("ListAssigneesByIssueIDs failed", "error", err)
+		return out
+	}
+	for _, r := range rows {
+		issueID := uuidToString(r.IssueID)
+		out[issueID] = append(out[issueID], IssueAssigneeResponse{
+			AssigneeType: r.AssigneeType,
+			AssigneeID:   uuidToString(r.AssigneeID),
+			Role:         r.Role,
+			AssignedAt:   timestampToString(r.AssignedAt),
 		})
 	}
 	return out
@@ -845,6 +882,7 @@ func (h *Handler) ListIssues(w http.ResponseWriter, r *http.Request) {
 			ids[i] = issue.ID
 		}
 		labelsMap := h.labelsByIssue(ctx, wsUUID, ids)
+		assigneesMap := h.assigneesByIssueIDs(ctx, ids)
 		resp := make([]IssueResponse, len(issues))
 		for i, issue := range issues {
 			resp[i] = openIssueRowToResponse(issue, prefix)
@@ -853,6 +891,11 @@ func (h *Handler) ListIssues(w http.ResponseWriter, r *http.Request) {
 				labels = []LabelResponse{}
 			}
 			resp[i].Labels = &labels
+			assignees := assigneesMap[resp[i].ID]
+			if assignees == nil {
+				assignees = []IssueAssigneeResponse{}
+			}
+			resp[i].Assignees = assignees
 		}
 
 		writeJSON(w, http.StatusOK, map[string]any{
@@ -1088,6 +1131,7 @@ LIMIT %s OFFSET %s`, whereSql, orderBy, limitRef, offsetRef)
 		ids[i] = issue.ID
 	}
 	labelsMap := h.labelsByIssue(ctx, wsUUID, ids)
+	assigneesMap := h.assigneesByIssueIDs(ctx, ids)
 	resp := make([]IssueResponse, len(issues))
 	for i, issue := range issues {
 		resp[i] = issueListRowToResponse(issue, prefix)
@@ -1096,6 +1140,11 @@ LIMIT %s OFFSET %s`, whereSql, orderBy, limitRef, offsetRef)
 			labels = []LabelResponse{}
 		}
 		resp[i].Labels = &labels
+		assignees := assigneesMap[resp[i].ID]
+		if assignees == nil {
+			assignees = []IssueAssigneeResponse{}
+		}
+		resp[i].Assignees = assignees
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
@@ -1596,6 +1645,7 @@ ORDER BY
 		ids[i] = row.ID
 	}
 	labelsMap := h.labelsByIssue(ctx, wsUUID, ids)
+	assigneesMap := h.assigneesByIssueIDs(ctx, ids)
 	prefix := h.getIssuePrefix(ctx, wsUUID)
 
 	groups := []IssueAssigneeGroupResponse{}
@@ -1621,6 +1671,11 @@ ORDER BY
 			labels = []LabelResponse{}
 		}
 		issue.Labels = &labels
+		assignees := assigneesMap[issue.ID]
+		if assignees == nil {
+			assignees = []IssueAssigneeResponse{}
+		}
+		issue.Assignees = assignees
 		groups[idx].Issues = append(groups[idx].Issues, issue)
 	}
 
@@ -1640,6 +1695,11 @@ func (h *Handler) GetIssue(w http.ResponseWriter, r *http.Request) {
 		detailLabels = []LabelResponse{}
 	}
 	resp.Labels = &detailLabels
+	assignees := h.assigneesByIssueIDs(r.Context(), []pgtype.UUID{issue.ID})[uuidToString(issue.ID)]
+	if assignees == nil {
+		assignees = []IssueAssigneeResponse{}
+	}
+	resp.Assignees = assignees
 
 	// Fetch issue reactions.
 	reactions, err := h.Queries.ListIssueReactions(r.Context(), issue.ID)
@@ -2108,7 +2168,8 @@ type CreateIssueRequest struct {
 	OriginType *string `json:"origin_type,omitempty"`
 	OriginID   *string `json:"origin_id,omitempty"`
 
-	AllowDuplicate bool `json:"allow_duplicate,omitempty"`
+	Assignees      []IssueAssigneeInput `json:"assignees,omitempty"`
+	AllowDuplicate bool                 `json:"allow_duplicate,omitempty"`
 }
 
 func duplicateIssueMessage(issue IssueResponse) string {
@@ -2295,6 +2356,19 @@ func (h *Handler) CreateIssue(w http.ResponseWriter, r *http.Request) {
 		OriginID:       originID,
 		Stage:          ptrToInt4(req.Stage),
 		AttachmentIDs:  attachmentIDs,
+		Assignees: func() []service.IssueAssigneeInput {
+			var out []service.IssueAssigneeInput
+			for _, a := range req.Assignees {
+				if aID, err := util.ParseUUID(a.AssigneeID); err == nil {
+					out = append(out, service.IssueAssigneeInput{
+						AssigneeType: a.AssigneeType,
+						AssigneeID:   aID,
+						Role:         a.Role,
+					})
+				}
+			}
+			return out
+		}(),
 		AllowDuplicate: req.AllowDuplicate,
 	}, service.IssueCreateOpts{
 		ActorID:          actualCreatorID,
@@ -2352,6 +2426,7 @@ type UpdateIssueRequest struct {
 	ParentIssueID *string  `json:"parent_issue_id"`
 	ProjectID     *string  `json:"project_id"`
 	Stage         *int32   `json:"stage"`
+	Assignees     *[]IssueAssigneeInput `json:"assignees,omitempty"`
 	// AttachmentIDs lets the description editor bind newly uploaded files to
 	// this issue so they surface in `GET /api/issues/:id/attachments` and the
 	// editor's preview Eye keeps working past a refresh. Existing bindings
@@ -2552,6 +2627,25 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var parsedAssignees []db.AddIssueAssigneeParams
+	if req.Assignees != nil {
+		for _, a := range *req.Assignees {
+			aID, ok := parseUUIDOrBadRequest(w, a.AssigneeID, "assignee_id")
+			if !ok {
+				return
+			}
+			role := a.Role
+			if role == "" {
+				role = "assignee"
+			}
+			parsedAssignees = append(parsedAssignees, db.AddIssueAssigneeParams{
+				AssigneeType: a.AssigneeType,
+				AssigneeID:   aID,
+				Role:         role,
+			})
+		}
+	}
+
 	issue, err := h.Queries.UpdateIssue(r.Context(), params)
 	if err != nil {
 		slog.Warn("update issue failed", append(logger.RequestAttrs(r), "error", err, "issue_id", id, "workspace_id", workspaceID)...)
@@ -2561,6 +2655,31 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 
 	if len(attachmentIDs) > 0 {
 		h.linkAttachmentsByIssueIDs(r.Context(), issue.ID, issue.WorkspaceID, attachmentIDs)
+	}
+
+	if req.Assignees != nil {
+		if err := h.Queries.DeleteIssueAssignees(r.Context(), issue.ID); err != nil {
+			slog.Warn("failed to delete issue assignees", "error", err, "issue_id", issue.ID)
+		} else {
+			// Always add primary assignee backward compatibility if present in the row
+			if issue.AssigneeType.Valid && issue.AssigneeID.Valid {
+				_ = h.Queries.AddIssueAssignee(r.Context(), db.AddIssueAssigneeParams{
+					IssueID:      issue.ID,
+					AssigneeType: issue.AssigneeType.String,
+					AssigneeID:   issue.AssigneeID,
+					Role:         "assignee",
+				})
+			}
+			for _, pa := range parsedAssignees {
+				if issue.AssigneeType.Valid && issue.AssigneeID.Valid && pa.AssigneeType == issue.AssigneeType.String && pa.AssigneeID == issue.AssigneeID && pa.Role == "assignee" {
+					continue
+				}
+				pa.IssueID = issue.ID
+				if err := h.Queries.AddIssueAssignee(r.Context(), pa); err != nil {
+					slog.Warn("failed to add issue assignee", "error", err, "issue_id", issue.ID)
+				}
+			}
+		}
 	}
 
 	prefix := h.getIssuePrefix(r.Context(), issue.WorkspaceID)
