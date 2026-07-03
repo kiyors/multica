@@ -250,10 +250,10 @@ Multica is a powerful AI-native task management platform where AI agents are fir
 
 ### 1.5 Review Comment Sidebar
 
-- [ ] **Views:** Comment sidebar alongside media player
-- [ ] **Timestamp binding:** Clicking a comment seeks video to that timestamp (±0.5s matching)
+- [x] **Views:** Comment sidebar alongside media player
+- [x] **Timestamp binding:** Clicking a comment seeks video to that timestamp (±0.5s matching)
 - [ ] **Timeline markers:** Show comment dots on the video scrubber at their timestamps
-- [ ] **Comment creation flow:**
+- [x] **Comment creation flow:**
   1. Pause video (or viewing image)
   2. Draw annotation shapes on canvas overlay
   3. Type comment in sidebar

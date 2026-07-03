@@ -1,13 +1,22 @@
-import React, { useRef, useEffect, useState, useCallback } from "react";
+import React, { useRef, useEffect, useState, useCallback, useImperativeHandle, forwardRef } from "react";
 import { ReviewAsset } from "@multica/core/types";
 import "@multica/canvas-drawing-editor";
 
-interface MediaReviewPlayerProps {
+export interface MediaReviewPlayerProps {
   asset: ReviewAsset;
+  onTimeUpdate?: (currentTime: number) => void;
 }
 
-export function MediaReviewPlayer({ asset }: MediaReviewPlayerProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
+export interface MediaReviewPlayerRef {
+  seek: (time: number) => void;
+  pause: () => void;
+  getCanvasShapes: () => any;
+  clearCanvasShapes: () => void;
+}
+
+export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPlayerProps>(
+  ({ asset, onTimeUpdate }, ref) => {
+    const containerRef = useRef<HTMLDivElement>(null);
   const mediaRef = useRef<HTMLVideoElement | HTMLImageElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -99,6 +108,36 @@ export function MediaReviewPlayer({ asset }: MediaReviewPlayerProps) {
     return () => observer.disconnect();
   }, [calculateTrueLayout]);
 
+  useImperativeHandle(ref, () => ({
+    seek: (time: number) => {
+      if (asset.asset_type === "video" && mediaRef.current) {
+        (mediaRef.current as HTMLVideoElement).currentTime = time;
+      }
+    },
+    pause: () => {
+      if (asset.asset_type === "video" && mediaRef.current) {
+        (mediaRef.current as HTMLVideoElement).pause();
+      }
+    },
+    getCanvasShapes: () => {
+      if (canvasRef.current && (canvasRef.current as any).exportJSON) {
+        return (canvasRef.current as any).exportJSON().objects;
+      }
+      return [];
+    },
+    clearCanvasShapes: () => {
+      if (canvasRef.current && (canvasRef.current as any).clear) {
+        (canvasRef.current as any).clear();
+      }
+    }
+  }));
+
+  const handleTimeUpdate = () => {
+    if (asset.asset_type === "video" && mediaRef.current && onTimeUpdate) {
+      onTimeUpdate((mediaRef.current as HTMLVideoElement).currentTime);
+    }
+  };
+
   return (
     <div ref={containerRef} className="relative w-full h-full flex items-center justify-center bg-black overflow-hidden">
       {asset.asset_type === "video" ? (
@@ -108,6 +147,7 @@ export function MediaReviewPlayer({ asset }: MediaReviewPlayerProps) {
           className="max-w-full max-h-full" 
           controls 
           onLoadedMetadata={calculateTrueLayout}
+          onTimeUpdate={handleTimeUpdate}
         />
       ) : (
         <img 
@@ -137,8 +177,7 @@ export function MediaReviewPlayer({ asset }: MediaReviewPlayerProps) {
       />
     </div>
   );
-}
-
+});
 // Register the custom element type for TypeScript
 declare global {
   namespace JSX {
