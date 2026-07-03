@@ -2411,10 +2411,28 @@ export class ApiClient {
     });
   }
 
+  async resolveReviewComment(workspaceId: string, issueId: string, commentId: string): Promise<ReviewComment> {
+    return this.fetch(`/api/workspaces/${workspaceId}/issues/${issueId}/reviews/comments/${commentId}/resolve`, {
+      method: "PATCH",
+    });
+  }
+
+  async unresolveReviewComment(workspaceId: string, issueId: string, commentId: string): Promise<ReviewComment> {
+    return this.fetch(`/api/workspaces/${workspaceId}/issues/${issueId}/reviews/comments/${commentId}/unresolve`, {
+      method: "PATCH",
+    });
+  }
+
   async updateReviewAssetStatus(workspaceId: string, issueId: string, assetId: string, status: string): Promise<ReviewAsset> {
     return this.fetch(`/api/workspaces/${workspaceId}/issues/${issueId}/reviews/assets/${assetId}/status`, {
       method: "PATCH",
       body: JSON.stringify({ status }),
+    });
+  }
+
+  async listPendingReviewIssueIDs(workspaceId: string): Promise<string[]> {
+    return this.fetch(`/api/workspaces/${workspaceId}/issues/default/reviews/pending-issues`, {
+      method: "GET",
     });
   }
 
