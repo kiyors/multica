@@ -11,6 +11,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/storage"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
+	"github.com/multica-ai/multica/server/pkg/protocol"
 )
 
 type ReviewAssetResponse struct {
@@ -287,7 +288,20 @@ func (h *Handler) CreateReviewComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, reviewCommentToResponse(comment))
+	resp := reviewCommentToResponse(comment)
+	workspaceID := chi.URLParam(r, "workspaceId")
+	if workspaceID != "" {
+		asset, _ := h.Queries.GetReviewAsset(ctx, assetUUID)
+		issue, _ := h.Queries.GetIssue(ctx, asset.IssueID)
+		h.publish(protocol.EventReviewCommentCreated, workspaceID, "member", userID, map[string]any{
+			"comment":      resp,
+			"issue_id":     util.UUIDToString(asset.IssueID),
+			"issue_title":  issue.Title,
+			"issue_status": issue.Status,
+		})
+	}
+
+	writeJSON(w, http.StatusOK, resp)
 }
 
 func (h *Handler) ListReviewAssets(w http.ResponseWriter, r *http.Request) {
@@ -345,7 +359,28 @@ func (h *Handler) UpdateReviewAssetStatus(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	writeJSON(w, http.StatusOK, reviewAssetToResponse(asset))
+	// userID, ok := requireUserID(w, r)
+	// We might not have parsed it above if not needed, let's grab it for the event
+	userID := r.Header.Get("X-User-ID") // fallback, but usually we use requireUserID
+	if userID == "" {
+		if u, ok := requireUserID(w, r); ok {
+			userID = u
+		}
+	}
+
+	resp := reviewAssetToResponse(asset)
+	workspaceID := chi.URLParam(r, "workspaceId")
+	if workspaceID != "" {
+		issue, _ := h.Queries.GetIssue(ctx, asset.IssueID)
+		h.publish(protocol.EventReviewAssetUpdated, workspaceID, "member", userID, map[string]any{
+			"asset":        resp,
+			"issue_id":     util.UUIDToString(asset.IssueID),
+			"issue_title":  issue.Title,
+			"issue_status": issue.Status,
+		})
+	}
+
+	writeJSON(w, http.StatusOK, resp)
 }
 
 type BulkApproveReviewAssetsRequest struct {
@@ -369,6 +404,21 @@ func (h *Handler) BulkApproveReviewAssets(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to bulk approve assets")
 		return
+	}
+
+	userID := ""
+	if u, ok := requireUserID(w, r); ok {
+		userID = u
+	}
+	workspaceID := chi.URLParam(r, "workspaceId")
+	if workspaceID != "" {
+		issue, _ := h.Queries.GetIssue(ctx, issueUUID)
+		// Empty payload will force clients to refetch
+		h.publish(protocol.EventReviewAssetUpdated, workspaceID, "member", userID, map[string]any{
+			"issue_id":     util.UUIDToString(issueUUID),
+			"issue_title":  issue.Title,
+			"issue_status": issue.Status,
+		})
 	}
 
 	writeJSON(w, http.StatusOK, map[string]bool{"success": true})
