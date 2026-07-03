@@ -290,6 +290,30 @@ func (h *Handler) CreateReviewComment(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, reviewCommentToResponse(comment))
 }
 
+func (h *Handler) ListReviewAssets(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	issueUUID, ok := parseUUIDOrBadRequest(w, chi.URLParam(r, "id"), "issue_id")
+	if !ok {
+		return
+	}
+
+	assets, err := h.Queries.ListReviewAssetsByIssue(ctx, issueUUID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to list review assets")
+		return
+	}
+
+	var res []ReviewAssetResponse
+	for _, a := range assets {
+		res = append(res, reviewAssetToResponse(a))
+	}
+	if res == nil {
+		res = []ReviewAssetResponse{}
+	}
+
+	writeJSON(w, http.StatusOK, res)
+}
+
 type UpdateReviewAssetStatusRequest struct {
 	Status string `json:"status"` // pending, approved, changes_requested
 }

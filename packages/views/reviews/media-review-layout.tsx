@@ -1,23 +1,34 @@
 import { useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { ReviewAsset } from "@multica/core/types";
+import { useUpdateReviewAssetStatus } from "@multica/core/reviews/mutations";
+import { listReviewAssetsOptions } from "@multica/core/reviews/queries";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@multica/ui/components/ui/select";
 import { MediaReviewPlayer, type MediaReviewPlayerRef } from "./media-review-player";
 import { ReviewCommentSidebar } from "./review-comment-sidebar";
 
 interface MediaReviewLayoutProps {
   workspaceId: string;
   asset: ReviewAsset;
+  onAssetChange?: (asset: ReviewAsset) => void;
 }
 
-export function MediaReviewLayout({ workspaceId, asset }: MediaReviewLayoutProps) {
+export function MediaReviewLayout({ workspaceId, asset, onAssetChange }: MediaReviewLayoutProps) {
   const playerRef = useRef<MediaReviewPlayerRef>(null);
   const [currentTime, setCurrentTime] = useState(0);
+
+  const { data: allAssets } = useQuery(listReviewAssetsOptions(workspaceId, asset.issue_id));
+  const updateStatus = useUpdateReviewAssetStatus();
+
+  const assetVersions = (allAssets as ReviewAsset[] | undefined)
+    ?.filter((a: ReviewAsset) => a.asset_group_id === asset.asset_group_id)
+    ?.sort((a: ReviewAsset, b: ReviewAsset) => b.version - a.version) || [asset];
 
   const handleSeek = (time: number) => {
     playerRef.current?.seek(time);
   };
 
   const handleDrawStart = () => {
-    // When user focuses textarea, pause the video so they can draw
     playerRef.current?.pause();
   };
 
@@ -29,25 +40,81 @@ export function MediaReviewLayout({ workspaceId, asset }: MediaReviewLayoutProps
     playerRef.current?.clearCanvasShapes();
   };
 
+  const handleStatusChange = (status: any) => {
+    updateStatus.mutate({
+      workspaceId,
+      issueId: asset.issue_id,
+      assetId: asset.id,
+      status
+    });
+  };
+
+  const handleVersionChange = (assetId: any) => {
+    const selected = assetVersions.find((a: ReviewAsset) => a.id === assetId);
+    if (selected && onAssetChange) {
+      onAssetChange(selected);
+    }
+  };
+
   return (
-    <div className="flex h-full w-full bg-black">
-      <div className="flex-1 relative">
-        <MediaReviewPlayer 
-          ref={playerRef} 
-          asset={asset} 
-          onTimeUpdate={setCurrentTime}
-        />
+    <div className="flex flex-col h-full w-full bg-black">
+      {/* Review Asset Header */}
+      <div className="h-14 border-b border-gray-800 bg-gray-900 flex items-center justify-between px-4 text-white">
+        <div className="flex items-center gap-4">
+          <div className="font-medium text-sm">{asset.name}</div>
+          
+          <Select value={asset.id} onValueChange={handleVersionChange}>
+            <SelectTrigger className="h-7 border-gray-700 bg-gray-800 text-xs w-28">
+              <SelectValue placeholder="Version" />
+            </SelectTrigger>
+            <SelectContent>
+              {assetVersions.map((v) => (
+                <SelectItem key={v.id} value={v.id}>
+                  Version {v.version}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Select value={asset.status} onValueChange={handleStatusChange}>
+            <SelectTrigger className={`h-8 text-xs font-medium border-0 focus:ring-0 ${
+              asset.status === 'approved' ? 'bg-green-500/20 text-green-400' :
+              asset.status === 'changes_requested' ? 'bg-red-500/20 text-red-400' :
+              'bg-yellow-500/20 text-yellow-400'
+            }`}>
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="changes_requested">Changes Requested</SelectItem>
+              <SelectItem value="approved">Approved</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
-      <div className="w-80 h-full border-l border-gray-800 bg-white">
-        <ReviewCommentSidebar
-          workspaceId={workspaceId}
-          asset={asset}
+
+      {/* Review Content */}
+      <div className="flex flex-1 overflow-hidden">
+        <div className="flex-1 relative">
+          <MediaReviewPlayer 
+            ref={playerRef} 
+            asset={asset} 
+            onTimeUpdate={setCurrentTime}
+          />
+        </div>
+        <div className="w-80 h-full border-l border-gray-800 bg-white">
+          <ReviewCommentSidebar
+            workspaceId={workspaceId}
+            asset={asset}
           currentTime={currentTime}
           onSeek={handleSeek}
           onDrawStart={handleDrawStart}
           getCanvasShapes={getCanvasShapes}
           clearCanvasShapes={clearCanvasShapes}
         />
+        </div>
       </div>
     </div>
   );

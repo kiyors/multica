@@ -2371,6 +2371,10 @@ export class ApiClient {
   }
 
   // Reviews
+  async listReviewAssets(workspaceId: string, issueId: string): Promise<ReviewAsset[]> {
+    return this.fetch(`/api/workspaces/${workspaceId}/issues/${issueId}/reviews/assets`);
+  }
+
   async listReviewComments(workspaceId: string, issueId: string, assetId: string): Promise<ReviewComment[]> {
     return this.fetch(`/api/workspaces/${workspaceId}/issues/${issueId}/reviews/comments?asset_id=${assetId}`);
   }

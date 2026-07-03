@@ -988,6 +988,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					
 					// Reviews
 					r.Route("/reviews", func(r chi.Router) {
+						r.Get("/assets", h.ListReviewAssets)
 						r.Post("/assets/presign", h.PresignReviewAssetUpload)
 						r.Put("/assets/direct-upload", h.DirectUploadReviewAsset)
 						r.Post("/assets/complete", h.CompleteReviewAssetUpload)

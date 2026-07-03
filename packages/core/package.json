@@ -28,6 +28,8 @@
     "./workspace/avatar-url": "./workspace/avatar-url.ts",
     "./issues": "./issues/index.ts",
     "./reviews": "./reviews/index.ts",
+    "./reviews/queries": "./reviews/queries.ts",
+    "./reviews/mutations": "./reviews/mutations.ts",
     "./issues/batch": "./issues/batch.ts",
     "./issues/queries": "./issues/queries.ts",
     "./issues/mutations": "./issues/mutations.ts",
