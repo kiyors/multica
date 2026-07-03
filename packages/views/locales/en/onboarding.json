@@ -8,7 +8,7 @@
     "headline_line2": "in",
     "headline_emphasis": "one workspace.",
     "lede": "Assign them work like you'd assign a colleague — they pick it up, update status, and comment when done.",
-    "lede_web": "Desktop bundles the runtime — nothing to install. Continue on web to connect your own CLI.",
+    "lede_web": "Desktop bundles the agent environment — nothing to install. Continue on web to connect your own CLI.",
     "lede_desktop": "By the end, a real agent will be replying to your first issue.",
     "download_desktop": "Download Desktop",
     "continue_on_web": "Continue on web",
@@ -104,26 +104,26 @@
     "hint_continue": "Looks good. Hit Continue when you're ready."
   },
   "runtime_aside": {
-    "what_eyebrow": "What's an agent runtime?",
+    "what_eyebrow": "What's an agent agent environment?",
     "what_prefix": "The \"computer\" you connect is what we internally call an ",
-    "what_term": "agent runtime",
-    "what_suffix": ": a small background process on the computer paired with one AI coding tool — Claude Code, Codex, and so on. One tool, one agent runtime. The agent runtime is what actually executes the tasks your agent picks up.",
+    "what_term": "agent agent environment",
+    "what_suffix": ": a small background process on the computer paired with one AI coding tool — Claude Code, Codex, and so on. One tool, one agent agent environment. The agent agent environment is what actually executes the tasks your agent picks up.",
     "good_eyebrow": "Good to know",
     "swap_title": "Swap anytime",
-    "swap_body": "Each agent's runtime is just a setting. Change it whenever you want.",
+    "swap_body": "Each agent's agent environment is just a setting. Change it whenever you want.",
     "add_more_title": "Add more later",
     "add_more_body": "You can connect another computer for a teammate, or a dedicated one per agent.",
-    "learn_more": "Learn about agent runtimes →"
+    "learn_more": "Learn about agent agent environments →"
   },
   "cli_install": {
     "copy_aria": "Copy",
-    "intro": "You'll need an agent runtime on this computer (Claude Code, Codex, Cursor, …) for it to run your agent. Also works on servers and remote dev boxes.",
+    "intro": "You'll need an agent agent environment on this computer (Claude Code, Codex, Cursor, …) for it to run your agent. Also works on servers and remote dev boxes.",
     "step1_label": "Install the Multica CLI",
     "step2_label": "Start the daemon"
   },
   "cloud_waitlist": {
-    "intro_main": "Cloud runtimes aren't live yet. Leave your email and we'll reach out when they are.",
-    "intro_warning": "Heads-up: agents can't execute tasks without a runtime — if you hit Skip now, your workspace is read-only until you come back and install one.",
+    "intro_main": "Cloud agent environments aren't live yet. Leave your email and we'll reach out when they are.",
+    "intro_warning": "Heads-up: agents can't execute tasks without a agent environment — if you hit Skip now, your workspace is read-only until you come back and install one.",
     "email_label": "Email",
     "email_placeholder": "you@work.com",
     "reason_label": "Why cloud?",
@@ -131,7 +131,7 @@
     "reason_placeholder": "e.g. we want agents running 24/7, or my team works across different devices.",
     "join": "Join waitlist",
     "on_list": "You're on the list",
-    "success_toast": "You're on the list. We'll email when cloud runtimes are live.",
+    "success_toast": "You're on the list. We'll email when cloud agent environments are live.",
     "failed_toast": "Failed to join waitlist"
   },
   "first_issue": {
@@ -174,7 +174,7 @@
     },
     "about_eyebrow": "What's an agent",
     "about_headline": "An AI teammate that lives in your workspace.",
-    "about_body": "Agents show up in every assignee picker, just like any other colleague — except they can work 24/7 on whatever runtime you give them.",
+    "about_body": "Agents show up in every assignee picker, just like any other colleague — except they can work 24/7 on whatever agent environment you give them.",
     "ways_eyebrow": "Ways to work with an agent",
     "way_assign_title": "Assign it an issue",
     "way_assign_body": "It picks up the task and reports back in the thread.",
@@ -233,12 +233,12 @@
       "status_todo": "Todo",
       "cards": {
         "install_runtime": {
-          "title": "Connect a runtime",
+          "title": "Connect a agent environment",
           "subtitle": "Install Codex or Kimi to bring agents online."
         },
         "create_agent": {
           "title": "Create your first agent",
-          "subtitle": "Once a runtime is online, build your first Multica agent."
+          "subtitle": "Once a agent environment is online, build your first Multica agent."
         }
       }
     }
@@ -285,7 +285,7 @@
     "perk_invite": "Invite teammates — they see only this workspace",
     "perk_switch": "Switch to other workspaces anytime from the top-left",
     "next_runtime": "Connect a computer so your agents have somewhere to run",
-    "next_agent": "Create Multica Helper from your connected runtime",
+    "next_agent": "Create Multica Helper from your connected agent environment",
     "next_starter": "Open one onboarding issue for your next step",
     "preview": {
       "inbox_label": "Inbox",
@@ -298,7 +298,7 @@
       "projects_meta": "group related issues",
       "autopilot_label": "Autopilot",
       "autopilot_meta": "scheduled automation",
-      "runtimes_label": "Runtimes",
+      "runtimes_label": "Agent Environments",
       "runtimes_meta": "where agents run",
       "skills_label": "Skills",
       "skills_meta": "reusable playbooks",
@@ -317,20 +317,20 @@
     "scanning_headline": "Connecting this computer…",
     "scanning_lede_prefix": "Your agent works through an AI coding tool you already have — like ",
     "scanning_lede_suffix": ", and others. We're checking this computer for ones you've installed.",
-    "found_headline": "This computer is connected. Pick an agent runtime.",
-    "found_lede": "These are the agent runtimes we found on this computer. Pick one for your first agent — you can switch or add more later.",
-    "runtime_count_one": "{{count}} agent runtime",
-    "runtime_count_other": "{{count}} agent runtimes",
+    "found_headline": "This computer is connected. Pick an agent agent environment.",
+    "found_lede": "These are the agent agent environments we found on this computer. Pick one for your first agent — you can switch or add more later.",
+    "runtime_count_one": "{{count}} agent agent environment",
+    "runtime_count_other": "{{count}} agent agent environments",
     "status_all_online": "all online",
     "status_none_online": "none online",
     "status_n_online": "{{count}} online",
     "online_label": "online",
     "offline_label": "offline",
-    "empty_headline": "No agent runtime found on this computer yet.",
-    "empty_lede_prefix": "An agent runtime is an AI coding tool we connect to — like ",
+    "empty_headline": "No agent agent environment found on this computer yet.",
+    "empty_lede_prefix": "An agent agent environment is an AI coding tool we connect to — like ",
     "empty_lede_suffix": ". Install one and refresh, or pick a path below.",
     "empty_skip_title": "Skip for now",
-    "empty_skip_subtitle": "Enter your workspace in read-only mode. Your agent can't run tasks until an agent runtime is connected on this computer — but you can still browse, plan, and invite teammates.",
+    "empty_skip_subtitle": "Enter your workspace in read-only mode. Your agent can't run tasks until an agent agent environment is connected on this computer — but you can still browse, plan, and invite teammates.",
     "empty_skip_action": "Skip",
     "empty_waitlist_title": "Use a cloud computer",
     "empty_waitlist_subtitle": "We'll run a computer for you in the cloud. Not live yet.",
@@ -339,7 +339,7 @@
     "refresh": "Refresh",
     "refreshing": "Refreshing…",
     "hint_selected": "Selected: {{name}}",
-    "hint_pick": "Pick an agent runtime above to continue.",
+    "hint_pick": "Pick an agent agent environment above to continue.",
     "hint_waiting": "Waiting for the first result…",
     "hint_skip_or_refresh": "Refresh after installing one, or skip to enter your workspace.",
     "start_exploring": "Start exploring"
