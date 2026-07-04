@@ -43,6 +43,7 @@ import { Checkbox } from "@multica/ui/components/ui/checkbox";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@multica/ui/components/ui/command";
 import { AvatarGroup, AvatarGroupCount } from "@multica/ui/components/ui/avatar";
 import { ActorAvatar } from "../../common/actor-avatar";
+import { ActorAvatarStack } from "../../common/actor-avatar-stack";
 import { PropRow } from "../../common/prop-row";
 import type { Attachment, Issue, IssueStatus, IssuePriority, TimelineEntry, UpdateIssueRequest } from "@multica/core/types";
 import { contentReferencesAttachment } from "@multica/core/types";
@@ -658,10 +659,17 @@ function SubIssueRow({ child }: { child: Issue }) {
       <AssigneePicker
         assigneeType={child.assignee_type}
         assigneeId={child.assignee_id}
+        assignees={child.assignees?.map((a) => ({ type: a.assignee_type, id: a.assignee_id }))}
         onUpdate={handleUpdate}
         align="end"
         trigger={
-          child.assignee_type && child.assignee_id ? (
+          child.assignees && child.assignees.length > 0 ? (
+            <ActorAvatarStack
+              actors={child.assignees.map((a) => ({ type: a.assignee_type, id: a.assignee_id }))}
+              size={20}
+              className="shrink-0"
+            />
+          ) : child.assignee_type && child.assignee_id ? (
             <ActorAvatar
               actorType={child.assignee_type}
               actorId={child.assignee_id}
@@ -1452,7 +1460,13 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
             <IssueTypePicker issueTypeId={issue.issue_type_id} onUpdate={handleUpdateField} align="start" />
           </PropRow>
           <PropRow label={t(($) => $.detail.prop_assignee)}>
-            <AssigneePicker assigneeType={issue.assignee_type} assigneeId={issue.assignee_id} onUpdate={handleUpdateField} align="start" />
+            <AssigneePicker 
+              assigneeType={issue.assignee_type} 
+              assigneeId={issue.assignee_id} 
+              assignees={issue.assignees?.map((a) => ({ type: a.assignee_type, id: a.assignee_id }))}
+              onUpdate={handleUpdateField} 
+              align="start" 
+            />
           </PropRow>
           <PropRow label={t(($) => $.detail.prop_project)}>
             <ProjectPicker
