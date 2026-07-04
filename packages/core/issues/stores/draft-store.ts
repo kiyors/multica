@@ -11,6 +11,7 @@ interface IssueDraft {
   priority: IssuePriority;
   assigneeType?: IssueAssigneeType;
   assigneeId?: string;
+  assignees?: { type: IssueAssigneeType; id: string }[];
   issueTypeId: string | null;
   startDate: string | null;
   dueDate: string | null;
@@ -28,6 +29,7 @@ const EMPTY_DRAFT: IssueDraft = {
   priority: "none",
   assigneeType: undefined,
   assigneeId: undefined,
+  assignees: [],
   issueTypeId: null,
   startDate: null,
   dueDate: null,
@@ -42,9 +44,11 @@ interface IssueDraftStore {
   // choice instead of always opening with no assignee.
   lastAssigneeType?: IssueAssigneeType;
   lastAssigneeId?: string;
+  lastAssignees?: { type: IssueAssigneeType; id: string }[];
   setDraft: (patch: Partial<IssueDraft>) => void;
   clearDraft: () => void;
   setLastAssignee: (type?: IssueAssigneeType, id?: string) => void;
+  setLastAssignees: (assignees?: { type: IssueAssigneeType; id: string }[]) => void;
   hasDraft: () => boolean;
 }
 
@@ -54,6 +58,7 @@ export const useIssueDraftStore = create<IssueDraftStore>()(
       draft: { ...EMPTY_DRAFT },
       lastAssigneeType: undefined,
       lastAssigneeId: undefined,
+      lastAssignees: [],
       setDraft: (patch) =>
         set((s) => ({ draft: { ...s.draft, ...patch } })),
       clearDraft: () =>
@@ -62,10 +67,13 @@ export const useIssueDraftStore = create<IssueDraftStore>()(
             ...EMPTY_DRAFT,
             assigneeType: s.lastAssigneeType,
             assigneeId: s.lastAssigneeId,
+            assignees: s.lastAssignees || [],
           },
         })),
       setLastAssignee: (type, id) =>
         set({ lastAssigneeType: type, lastAssigneeId: id }),
+      setLastAssignees: (assignees) =>
+        set({ lastAssignees: assignees }),
       hasDraft: () => {
         const { draft } = get();
         return !!(draft.title || draft.description);

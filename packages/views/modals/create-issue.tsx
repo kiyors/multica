@@ -197,7 +197,7 @@ export function ManualCreatePanel({
   const draft = useIssueDraftStore((s) => s.draft);
   const setDraft = useIssueDraftStore((s) => s.setDraft);
   const clearDraft = useIssueDraftStore((s) => s.clearDraft);
-  const setLastAssignee = useIssueDraftStore((s) => s.setLastAssignee);
+  const setLastAssignees = useIssueDraftStore((s) => s.setLastAssignees);
   const setLastMode = useCreateModeStore((s) => s.setLastMode);
   const keepOpen = useQuickCreateStore((s) => s.keepOpen);
   const setKeepOpen = useQuickCreateStore((s) => s.setKeepOpen);
@@ -211,18 +211,15 @@ export function ManualCreatePanel({
   const [status, setStatus] = useState<IssueStatus>((data?.status as IssueStatus) || draft.status);
   const [priority, setPriority] = useState<IssuePriority>(draft.priority);
   const [submitting, setSubmitting] = useState(false);
-  const [assigneeType, setAssigneeType] = useState<IssueAssigneeType | undefined>(() => {
-    if (data && "assignee_type" in data) {
-      return (data.assignee_type as IssueAssigneeType | null) ?? undefined;
+  const [assignees, setAssignees] = useState<{ type: IssueAssigneeType; id: string }[]>(() => {
+    if (data && "assignee_type" in data && "assignee_id" in data && data.assignee_type && data.assignee_id) {
+      return [{ type: data.assignee_type as IssueAssigneeType, id: data.assignee_id as string }];
     }
-    return draft.assigneeType;
+    return draft.assignees || [];
   });
-  const [assigneeId, setAssigneeId] = useState<string | undefined>(() => {
-    if (data && "assignee_id" in data) {
-      return (data.assignee_id as string | null) ?? undefined;
-    }
-    return draft.assigneeId;
-  });
+  
+  const assigneeType = assignees.length > 0 ? assignees[0]!.type : undefined;
+  const assigneeId = assignees.length > 0 ? assignees[0]!.id : undefined;
   const [issueTypeId, setIssueTypeId] = useState<string | null>(
     (data?.issue_type_id as string) || draft.issueTypeId || null
   );
@@ -304,10 +301,15 @@ export function ManualCreatePanel({
   const updateTitle = (v: string) => { setTitle(v); setDraft({ title: v }); };
   const updateStatus = (v: IssueStatus) => { setStatus(v); setDraft({ status: v }); };
   const updatePriority = (v: IssuePriority) => { setPriority(v); setDraft({ priority: v }); };
-  const updateAssignee = (type?: IssueAssigneeType, id?: string) => {
-    setAssigneeType(type);
-    setAssigneeId(id);
-    setDraft({ assigneeType: type, assigneeId: id });
+  const updateAssignee = (assignees?: { assignee_type?: IssueAssigneeType, assignee_id?: string }[]) => {
+    if (assignees && assignees.length > 0) {
+      const formattedAssignees = assignees.map(a => ({ type: a.assignee_type!, id: a.assignee_id! }));
+      setAssignees(formattedAssignees);
+      setDraft({ assignees: formattedAssignees });
+    } else {
+      setAssignees([]);
+      setDraft({ assignees: [] });
+    }
   };
   const updateIssueType = (id: string | null) => {
     setIssueTypeId(id);
@@ -364,6 +366,7 @@ export function ManualCreatePanel({
         issue_type_id: issueTypeId || undefined,
         assignee_type: assigneeType,
         assignee_id: assigneeId,
+        assignees: assignees.length > 0 ? assignees.map((a) => ({ assignee_type: a.type, assignee_id: a.id })) : undefined,
         start_date: startDate || undefined,
         due_date: dueDate || undefined,
         attachment_ids: activeAttachmentIds.length > 0 ? activeAttachmentIds : undefined,
@@ -429,7 +432,7 @@ export function ManualCreatePanel({
         }
       }
 
-      setLastAssignee(assigneeType, assigneeId);
+      setLastAssignees(assignees);
       setLastMode("manual");
       clearDraft();
       // The old post-create "agent paused in Backlog" blocking panel is gone —
@@ -674,10 +677,14 @@ export function ManualCreatePanel({
               <AssigneePicker
                 assigneeType={assigneeType ?? null}
                 assigneeId={assigneeId ?? null}
-                onUpdate={(u) => updateAssignee(
-                  u.assignee_type ?? undefined,
-                  u.assignee_id ?? undefined,
-                )}
+                assignees={assignees}
+                onUpdate={(u) => {
+                  if (u.assignees) {
+                    updateAssignee(u.assignees.map(a => ({ assignee_type: a.assignee_type!, assignee_id: a.assignee_id! })));
+                  } else {
+                    updateAssignee(u.assignee_type ? [{ assignee_type: u.assignee_type, assignee_id: u.assignee_id! }] : []);
+                  }
+                }}
                 triggerRender={<PillButton />}
                 align="start"
               />

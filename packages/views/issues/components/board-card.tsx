@@ -9,6 +9,7 @@ import type { Issue, Project, UpdateIssueRequest } from "@multica/core/types";
 import { formatDateOnly, isPastDateOnly } from "@multica/core/issues/date";
 import { CalendarClock, CalendarDays } from "lucide-react";
 import { ActorAvatar } from "../../common/actor-avatar";
+import { ActorAvatarStack } from "../../common/actor-avatar-stack";
 import { useWorkspacePaths } from "@multica/core/paths";
 import { useActorName } from "@multica/core/workspace/hooks";
 import { useTimeAgo } from "../../i18n";
@@ -86,7 +87,7 @@ export const BoardCardContent = memo(function BoardCardContent({
   const showPriority = storeProperties.priority;
   const showDescription = storeProperties.description && issue.description;
   const showAssigneeSection = storeProperties.assignee;
-  const hasAssignee = !!issue.assignee_type && !!issue.assignee_id;
+  const hasAssignee = issue.assignees ? issue.assignees.length > 0 : !!issue.assignee_type && !!issue.assignee_id;
   const showStartDate = storeProperties.startDate && issue.start_date;
   const showDueDate = storeProperties.dueDate && issue.due_date;
   const showProject = storeProperties.project && project;
@@ -97,8 +98,12 @@ export const BoardCardContent = memo(function BoardCardContent({
   const showUpdatedHint = showAssigneeName && !showChildProgress;
   const { getActorName } = useActorName();
   const assigneeName =
-    showAssigneeName && issue.assignee_type && issue.assignee_id
-      ? getActorName(issue.assignee_type, issue.assignee_id)
+    showAssigneeName
+      ? issue.assignees && issue.assignees.length > 0
+        ? issue.assignees.length === 1 ? getActorName(issue.assignees[0]!.assignee_type, issue.assignees[0]!.assignee_id) : `${issue.assignees.length} assignees`
+        : issue.assignee_type && issue.assignee_id
+          ? getActorName(issue.assignee_type, issue.assignee_id)
+          : null
       : null;
 
   const priorityLabel = t(($) => $.priority[issue.priority]);
@@ -134,13 +139,21 @@ export const BoardCardContent = memo(function BoardCardContent({
 
   const assigneeInner = hasAssignee ? (
     <span className="flex min-w-0 max-w-full items-center gap-1.5">
-      <ActorAvatar
-        actorType={issue.assignee_type!}
-        actorId={issue.assignee_id!}
-        size={20}
-        enableHoverCard
-        className="shrink-0"
-      />
+      {issue.assignees && issue.assignees.length > 0 ? (
+        <ActorAvatarStack
+          actors={issue.assignees.map(a => ({ type: a.assignee_type, id: a.assignee_id }))}
+          size={20}
+          className="shrink-0"
+        />
+      ) : (
+        <ActorAvatar
+          actorType={issue.assignee_type!}
+          actorId={issue.assignee_id!}
+          size={20}
+          enableHoverCard
+          className="shrink-0"
+        />
+      )}
       {assigneeName && (
         <span className="min-w-0 truncate text-xs text-foreground">{assigneeName}</span>
       )}
@@ -155,6 +168,7 @@ export const BoardCardContent = memo(function BoardCardContent({
         <AssigneePicker
           assigneeType={issue.assignee_type}
           assigneeId={issue.assignee_id}
+          assignees={issue.assignees?.map(a => ({ type: a.assignee_type, id: a.assignee_id }))}
           onUpdate={handleUpdate}
           trigger={assigneeInner}
         />
