@@ -107,7 +107,8 @@ type PresignReviewAssetUploadResponse struct {
 
 func (h *Handler) PresignReviewAssetUpload(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID, ok := requireUserID(w, r)
+	workspaceIDStr := h.resolveWorkspaceID(r)
+	requester, ok := h.requireWorkspaceRole(w, r, workspaceIDStr, "workspace not found", "owner", "admin", "member")
 	if !ok {
 		return
 	}
@@ -182,7 +183,7 @@ func (h *Handler) PresignReviewAssetUpload(w http.ResponseWriter, r *http.Reques
 		AssetType:    assetType,
 		FileUrl:      fileKey, // Store key, we can resolve full URL on fetch
 		Version:      version,
-		UploadedBy:   util.MustParseUUID(userID),
+		UploadedBy:   requester.ID,
 		AssetGroupID: assetGroupID,
 	})
 	if err != nil {
@@ -242,10 +243,12 @@ type CreateReviewCommentRequest struct {
 
 func (h *Handler) CreateReviewComment(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID, ok := requireUserID(w, r)
+	workspaceIDStr := h.resolveWorkspaceID(r)
+	requester, ok := h.requireWorkspaceRole(w, r, workspaceIDStr, "workspace not found", "owner", "admin", "member")
 	if !ok {
 		return
 	}
+	userID := uuidToString(requester.UserID)
 
 	var req CreateReviewCommentRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -277,7 +280,7 @@ func (h *Handler) CreateReviewComment(w http.ResponseWriter, r *http.Request) {
 
 	comment, err := h.Queries.CreateReviewComment(ctx, db.CreateReviewCommentParams{
 		AssetID:   assetUUID,
-		AuthorID:  util.MustParseUUID(userID),
+		AuthorID:  requester.ID,
 		Content:   req.Content,
 		Timestamp: timestamp,
 		Shapes:    shapes,
@@ -430,14 +433,16 @@ func (h *Handler) ResolveReviewComment(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	userID, ok := requireUserID(w, r)
+	workspaceIDStr := h.resolveWorkspaceID(r)
+	requester, ok := h.requireWorkspaceRole(w, r, workspaceIDStr, "workspace not found", "owner", "admin", "member")
 	if !ok {
 		return
 	}
+	userID := uuidToString(requester.UserID)
 
 	comment, err := h.Queries.ResolveReviewComment(ctx, db.ResolveReviewCommentParams{
 		ID:         commentUUID,
-		ResolvedBy: util.MustParseUUID(userID),
+		ResolvedBy: requester.ID,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to resolve comment")
