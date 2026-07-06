@@ -2300,12 +2300,14 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
       </ResizablePanelGroup>
 
       <Dialog open={!!reviewAsset} onOpenChange={(open) => !open && setReviewAsset(null)}>
-        <DialogContent className="max-w-[100vw] max-h-[100vh] w-screen h-screen p-0 border-0 bg-black">
+        {/* sm:max-w-none is required: DialogContent defaults to sm:max-w-sm, which a plain max-w-* cannot override */}
+        <DialogContent className="w-screen h-screen max-w-none sm:max-w-none max-h-none p-0 gap-0 rounded-none border-0 bg-black">
           {reviewAsset && (
             <MediaReviewLayout
               workspaceId={wsId}
               asset={reviewAsset}
               onAssetChange={setReviewAsset}
+              onClose={() => setReviewAsset(null)}
             />
           )}
         </DialogContent>

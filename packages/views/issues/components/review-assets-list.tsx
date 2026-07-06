@@ -1,10 +1,22 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, Video, Image as ImageIcon, Check, Clock, AlertCircle, Loader2 } from "lucide-react";
+import { Plus, Video, Image as ImageIcon, Check, Clock, AlertCircle, Trash2 } from "lucide-react";
 import type { ReviewAsset } from "@multica/core/types";
 import { listReviewAssetsOptions } from "@multica/core/reviews/queries";
-import { useBulkApproveReviewAssets, useReviewAssetUpload } from "@multica/core/reviews/mutations";
+import { useBulkApproveReviewAssets, useDeleteReviewAssetGroup, useReviewAssetUpload } from "@multica/core/reviews/mutations";
 import { Button } from "@multica/ui/components/ui/button";
+import { UploadShowcase } from "../../reviews/upload-showcase";
+import type { UploadPhase } from "../../reviews/upload-showcase";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@multica/ui/components/ui/alert-dialog";
 
 interface ReviewAssetsListProps {
   workspaceId: string;
@@ -14,10 +26,27 @@ interface ReviewAssetsListProps {
 
 export function ReviewAssetsList({ workspaceId, issueId, onOpenAsset }: ReviewAssetsListProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadPhase, setUploadPhase] = useState<UploadPhase | null>(null);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<ReviewAsset | null>(null);
+
   const { data: assets, isLoading } = useQuery(listReviewAssetsOptions(workspaceId, issueId));
   const bulkApprove = useBulkApproveReviewAssets();
+  const deleteGroup = useDeleteReviewAssetGroup();
   const uploadAsset = useReviewAssetUpload();
+
+  // Auto-clear the showcase 2.5 s after a successful upload
+  useEffect(() => {
+    if (!uploadAsset.isSuccess) return;
+    const t = setTimeout(() => {
+      uploadAsset.reset();
+      setUploadFile(null);
+      setUploadPhase(null);
+      setUploadProgress(0);
+    }, 2500);
+    return () => clearTimeout(t);
+  }, [uploadAsset.isSuccess]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (isLoading) {
     return <div className="text-sm text-gray-500 animate-pulse">Loading review assets...</div>;
@@ -41,42 +70,47 @@ export function ReviewAssetsList({ workspaceId, issueId, onOpenAsset }: ReviewAs
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setUploadFile(file);
       setUploadProgress(0);
-      uploadAsset.mutate(
-        { 
-          workspaceId, 
-          issueId, 
-          file,
-          onProgress: (p) => setUploadProgress(p),
-        },
-        {
-          onSettled: () => setUploadProgress(null)
-        }
-      );
+      setUploadPhase(null);
+      uploadAsset.mutate({
+        workspaceId,
+        issueId,
+        file,
+        onProgress: (p) => setUploadProgress(p),
+        onPhaseChange: (phase) => setUploadPhase(phase),
+      });
     }
-    // reset
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  if (latestAssets.length === 0 && !uploadAsset.isPending) {
-    // Show a placeholder dropzone-like area if no assets exist yet
+  const showUploadShowcase = uploadFile && (uploadAsset.isPending || uploadAsset.isSuccess || uploadAsset.isError);
+
+  if (latestAssets.length === 0 && !uploadAsset.isSuccess) {
     return (
-      <div className="mt-8 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-10 bg-gray-50/50">
-        <Video className="w-10 h-10 text-gray-400 mb-3" />
-        <h3 className="text-sm font-semibold text-gray-700">No media reviews yet</h3>
-        <p className="text-xs text-gray-500 mb-4 text-center max-w-sm">
-          Upload a video or image to start a timestamped review and collaborate with your team.
-        </p>
-        <Button size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploadAsset.isPending}>
-          {uploadAsset.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
-          Upload Asset
-        </Button>
+      <div className="mt-8">
         <input type="file" ref={fileInputRef} className="hidden" accept="video/*,image/*" onChange={handleFileChange} />
-        {uploadProgress !== null && (
-          <div className="w-full max-w-sm mt-4 bg-gray-200 rounded-full h-2.5">
-            <div className="bg-blue-600 h-2.5 rounded-full transition-all" style={{ width: `${uploadProgress}%` }}></div>
+
+        {showUploadShowcase ? (
+          <UploadShowcase
+            file={uploadFile}
+            phase={uploadPhase}
+            progress={uploadProgress}
+            isPending={uploadAsset.isPending}
+            isSuccess={uploadAsset.isSuccess}
+            isError={uploadAsset.isError}
+          />
+        ) : (
+          <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-10 bg-gray-50/50">
+            <Video className="w-10 h-10 text-gray-400 mb-3" />
+            <h3 className="text-sm font-semibold text-gray-700">No media reviews yet</h3>
+            <p className="text-xs text-gray-500 mb-4 text-center max-w-sm">
+              Upload a video or image to start a timestamped review and collaborate with your team.
+            </p>
+            <Button size="sm" onClick={() => fileInputRef.current?.click()}>
+              <Plus className="w-4 h-4 mr-2" />
+              Upload Asset
+            </Button>
           </div>
         )}
       </div>
@@ -99,22 +133,30 @@ export function ReviewAssetsList({ workspaceId, issueId, onOpenAsset }: ReviewAs
               Approve All
             </Button>
           )}
-          <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploadAsset.isPending}>
-            {uploadAsset.isPending ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                {uploadProgress !== null ? `Uploading ${Math.round(uploadProgress)}%` : "Uploading..."}
-              </>
-            ) : (
-              <>
-                <Plus className="w-4 h-4 mr-2" />
-                Upload Asset
-              </>
-            )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadAsset.isPending}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Upload Asset
           </Button>
           <input type="file" ref={fileInputRef} className="hidden" accept="video/*,image/*" onChange={handleFileChange} />
         </div>
       </div>
+      {/* Upload showcase above the grid while uploading */}
+      {showUploadShowcase && (
+        <UploadShowcase
+          file={uploadFile}
+          phase={uploadPhase}
+          progress={uploadProgress}
+          isPending={uploadAsset.isPending}
+          isSuccess={uploadAsset.isSuccess}
+          isError={uploadAsset.isError}
+        />
+      )}
+
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {latestAssets.map((asset) => (
           <div
@@ -122,9 +164,25 @@ export function ReviewAssetsList({ workspaceId, issueId, onOpenAsset }: ReviewAs
             onClick={() => onOpenAsset(asset)}
             className="group relative flex flex-col gap-2 rounded-md border p-2 hover:border-gray-400 cursor-pointer transition-colors bg-white shadow-sm"
           >
+            {/* Delete whole group — shown on hover */}
+            <button
+              className="absolute top-1.5 right-1.5 z-10 p-1 rounded bg-white/80 opacity-0 group-hover:opacity-100 hover:bg-red-50 hover:text-red-600 text-gray-400 transition-all"
+              title="Delete media"
+              onClick={(e) => {
+                e.stopPropagation();
+                setPendingDelete(asset);
+              }}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
             <div className="relative aspect-video bg-gray-100 rounded flex items-center justify-center overflow-hidden">
-              {asset.thumbnail_url ? (
+              {asset.asset_type === "image" ? (
+                <img src={asset.thumbnail_url || asset.src_url} alt={asset.name} className="object-cover w-full h-full" />
+              ) : asset.thumbnail_url ? (
                 <img src={asset.thumbnail_url} alt={asset.name} className="object-cover w-full h-full" />
+              ) : asset.src_url ? (
+                // ponytail: no server-side thumbnails yet; preload the first frame instead
+                <video src={`${asset.src_url}#t=0.1`} preload="metadata" muted playsInline className="object-cover w-full h-full pointer-events-none" />
               ) : (
                 <div className="text-gray-400">
                   {asset.asset_type === "video" ? <Video className="w-8 h-8" /> : <ImageIcon className="w-8 h-8" />}
@@ -163,6 +221,32 @@ export function ReviewAssetsList({ workspaceId, issueId, onOpenAsset }: ReviewAs
           </div>
         ))}
       </div>
+
+      <AlertDialog open={!!pendingDelete} onOpenChange={(open) => !open && setPendingDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete media</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete <strong>{pendingDelete?.name}</strong> and all its versions. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-white hover:bg-destructive/90"
+              onClick={() => {
+                if (!pendingDelete) return;
+                deleteGroup.mutate(
+                  { workspaceId, issueId, assetGroupId: pendingDelete.asset_group_id },
+                  { onSettled: () => setPendingDelete(null) }
+                );
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
