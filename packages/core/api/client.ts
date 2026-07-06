@@ -2386,15 +2386,16 @@ export class ApiClient {
     filename: string;
     content_type: string;
     size: number;
-    asset_group_id?: string;
-  }): Promise<{ upload_url: string; asset_id: string; upload_method: string }> {
+    previous_asset_id?: string;
+  }): Promise<{ upload_url: string; asset: ReviewAsset }> {
     const apiPayload = {
       filename: payload.filename,
       content_type: payload.content_type,
-      previous_asset_id: payload.asset_group_id,
+      previous_asset_id: payload.previous_asset_id,
     };
     return this.fetch(`/api/issues/${issueId}/reviews/assets/presign`, {
       method: "POST",
+      headers: { "X-Workspace-ID": workspaceId },
       body: JSON.stringify(apiPayload),
     });
   }
@@ -2402,16 +2403,21 @@ export class ApiClient {
   async completeReviewAssetUpload(workspaceId: string, issueId: string, assetId: string): Promise<ReviewAsset> {
     return this.fetch(`/api/issues/${issueId}/reviews/assets/complete`, {
       method: "POST",
+      headers: { "X-Workspace-ID": workspaceId },
       body: JSON.stringify({ asset_id: assetId }),
     });
   }
 
   async listReviewAssets(workspaceId: string, issueId: string): Promise<ReviewAsset[]> {
-    return this.fetch(`/api/issues/${issueId}/reviews/assets`);
+    return this.fetch(`/api/issues/${issueId}/reviews/assets`, {
+      headers: { "X-Workspace-ID": workspaceId },
+    });
   }
 
   async listReviewComments(workspaceId: string, issueId: string, assetId: string): Promise<ReviewComment[]> {
-    return this.fetch(`/api/issues/${issueId}/reviews/comments?asset_id=${assetId}`);
+    return this.fetch(`/api/issues/${issueId}/reviews/comments?asset_id=${assetId}`, {
+      headers: { "X-Workspace-ID": workspaceId },
+    });
   }
 
   async createReviewComment(workspaceId: string, issueId: string, payload: {
@@ -2423,6 +2429,7 @@ export class ApiClient {
   }): Promise<ReviewComment> {
     return this.fetch(`/api/issues/${issueId}/reviews/comments`, {
       method: "POST",
+      headers: { "X-Workspace-ID": workspaceId },
       body: JSON.stringify(payload),
     });
   }
@@ -2430,18 +2437,21 @@ export class ApiClient {
   async resolveReviewComment(workspaceId: string, issueId: string, commentId: string): Promise<ReviewComment> {
     return this.fetch(`/api/issues/${issueId}/reviews/comments/${commentId}/resolve`, {
       method: "PATCH",
+      headers: { "X-Workspace-ID": workspaceId },
     });
   }
 
   async unresolveReviewComment(workspaceId: string, issueId: string, commentId: string): Promise<ReviewComment> {
     return this.fetch(`/api/issues/${issueId}/reviews/comments/${commentId}/unresolve`, {
       method: "PATCH",
+      headers: { "X-Workspace-ID": workspaceId },
     });
   }
 
   async updateReviewAssetStatus(workspaceId: string, issueId: string, assetId: string, status: string): Promise<ReviewAsset> {
     return this.fetch(`/api/issues/${issueId}/reviews/assets/${assetId}/status`, {
       method: "PATCH",
+      headers: { "X-Workspace-ID": workspaceId },
       body: JSON.stringify({ status }),
     });
   }
@@ -2449,13 +2459,29 @@ export class ApiClient {
   async listPendingReviewIssueIDs(workspaceId: string): Promise<string[]> {
     return this.fetch(`/api/issues/default/reviews/pending-issues`, {
       method: "GET",
+      headers: { "X-Workspace-ID": workspaceId },
     });
   }
 
   async bulkApproveReviewAssets(workspaceId: string, issueId: string): Promise<void> {
     await this.fetch(`/api/issues/${issueId}/reviews/assets/bulk-approve`, {
       method: "POST",
+      headers: { "X-Workspace-ID": workspaceId },
       body: JSON.stringify({ issue_id: issueId }),
+    });
+  }
+
+  async deleteReviewAsset(workspaceId: string, issueId: string, assetId: string): Promise<void> {
+    await this.fetch(`/api/issues/${issueId}/reviews/assets/${assetId}`, {
+      method: "DELETE",
+      headers: { "X-Workspace-ID": workspaceId },
+    });
+  }
+
+  async deleteReviewAssetGroup(workspaceId: string, issueId: string, assetGroupId: string): Promise<void> {
+    await this.fetch(`/api/issues/${issueId}/reviews/assets/group/${assetGroupId}`, {
+      method: "DELETE",
+      headers: { "X-Workspace-ID": workspaceId },
     });
   }
 

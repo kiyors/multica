@@ -8,7 +8,7 @@ export interface ReviewAsset {
   asset_group_id: string;
   name: string;
   asset_type: ReviewAssetType;
-  file_url: string;
+  src_url: string;
   thumbnail_url?: string;
   width?: number;
   height?: number;

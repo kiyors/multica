@@ -93,27 +93,55 @@ export function useBulkApproveReviewAssets() {
   });
 }
 
+export function useDeleteReviewAsset() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: { workspaceId: string; issueId: string; assetId: string }) => {
+      return await api.deleteReviewAsset(params.workspaceId, params.issueId, params.assetId);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: reviewKeys.all(variables.workspaceId) });
+    },
+  });
+}
+
+export function useDeleteReviewAssetGroup() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: { workspaceId: string; issueId: string; assetGroupId: string }) => {
+      return await api.deleteReviewAssetGroup(params.workspaceId, params.issueId, params.assetGroupId);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: reviewKeys.all(variables.workspaceId) });
+    },
+  });
+}
+
 export function useReviewAssetUpload() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (params: { workspaceId: string; issueId: string; file: File; assetGroupId?: string; onProgress?: (progress: number) => void }) => {
-      const { workspaceId, issueId, file, assetGroupId, onProgress } = params;
-      
+    mutationFn: async (params: { workspaceId: string; issueId: string; file: File; previousAssetId?: string; onProgress?: (progress: number) => void; onPhaseChange?: (phase: 'presigning' | 'uploading' | 'completing') => void }) => {
+      const { workspaceId, issueId, file, previousAssetId, onProgress, onPhaseChange } = params;
+
       // 1. Presign
-      const { upload_url, asset_id, upload_method } = await api.presignReviewAssetUpload(workspaceId, issueId, {
+      onPhaseChange?.('presigning');
+      const { upload_url, asset } = await api.presignReviewAssetUpload(workspaceId, issueId, {
         filename: file.name,
         content_type: file.type,
         size: file.size,
-        asset_group_id: assetGroupId,
+        previous_asset_id: previousAssetId,
       });
 
       // 2. Upload with XHR to track progress
+      onPhaseChange?.('uploading');
       await new Promise<void>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
-        xhr.open(upload_method, upload_url, true);
+        xhr.open("PUT", upload_url, true);
         xhr.setRequestHeader("Content-Type", file.type);
-        
+
         xhr.upload.onprogress = (event) => {
           if (event.lengthComputable && onProgress) {
             const percentComplete = (event.loaded / event.total) * 100;
@@ -125,7 +153,7 @@ export function useReviewAssetUpload() {
           if (xhr.status >= 200 && xhr.status < 300) {
             resolve();
           } else {
-            reject(new Error("Failed to upload file to storage"));
+            reject(new Error(`Failed to upload file to storage: ${xhr.status} ${xhr.statusText}`));
           }
         };
 
@@ -134,7 +162,8 @@ export function useReviewAssetUpload() {
       });
 
       // 3. Complete
-      const asset = await api.completeReviewAssetUpload(workspaceId, issueId, asset_id);
+      onPhaseChange?.('completing');
+      await api.completeReviewAssetUpload(workspaceId, issueId, asset.id);
       return asset;
     },
     onSuccess: (_, variables) => {
