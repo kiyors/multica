@@ -652,30 +652,43 @@ Multica is a powerful AI-native task management platform where AI agents are fir
 - [x] **Install Prompt:** Added custom UI (`PwaInstallPrompt`) offering users the option to "Install as App" on their phone's home screen, listening to `beforeinstallprompt`.
 - [x] **Offline Resilience:** Ensure the app shell loads offline and leverages the IndexedDB cache (from Phase 11) to show previously loaded issues without a network connection.
 
-### 7.1 Mobile Feature Parity Audit
+### 7.1 Mobile Native Foundations & Push Notifications
 
-- [ ] Audit `apps/mobile/` against web features
-- [ ] Ensure these work on mobile:
-  - [ ] Issue list + detail view
-  - [ ] Create/edit issues
-  - [ ] Comments (view + create)
-  - [ ] Push notifications
-  - [ ] Board view (simplified)
-  - [ ] Inbox
-  - [ ] Review assets (view mode, leave comments)
+- [x] **Task 7.1.1:** Setup `expo-notifications` and `expo-device` in `apps/mobile/package.json`.
+- [x] **Task 7.1.2:** Configure iOS APNs (`UIBackgroundModes: remote-notification`) and Android FCM `googleServicesFile` in Expo app config (`app.config.ts`).
+- [x] **Task 7.1.3:** Create a push token registration hook (`usePushNotifications.ts`) and integrated it into the root authenticated layout (`_layout.tsx`) to request user permissions on login.
+- [x] **Task 7.1.4:** Build a backend API endpoint (`POST /api/users/me/device-tokens`) to securely store APNs/FCM tokens for the authenticated user (`user_device_tokens` table created, endpoint exposed in `device_token.go`).
+- [ ] **Task 7.1.5:** Implement backend background workers to trigger push notifications when a user is assigned an issue, mentioned in a comment, or when a review asset is uploaded.
+- [ ] **Task 7.1.6:** Configure deep linking schemas (`expo-linking`) in the mobile app to handle push notification taps (e.g., routing directly to `multica://workspace/issue/123`).
+- [ ] **Task 7.1.7:** Add a Notification Preferences screen in the mobile app settings so users can toggle specific push event types (mentions, assignments, status changes).
 
-### 7.2 Push Notifications
+### 7.2 Task-Giving & Issue Management Polish
 
-- [ ] **Backend:** Push notification service (FCM for Android, APNs for iOS)
-- [ ] **Backend:** Notification preferences (per-event-type opt-in/out)
-- [ ] **Mobile:** Register device tokens
-- [ ] **Mobile:** Handle notification tap → deep link to relevant screen
+- [ ] **Task 7.2.1:** Audit the existing `new-issue.tsx` screen for mobile ergonomics; ensure the keyboard avoids overlapping the input fields (`KeyboardAvoidingView`).
+- [ ] **Task 7.2.2:** Build a mobile-native Assignee Picker using a bottom sheet modal (`@rn-primitives/dropdown-menu` or custom bottom sheet) for quick team assignment.
+- [ ] **Task 7.2.3:** Enhance the issue list (`timeline-list.tsx` or `issue-row.tsx`) to pull-to-refresh (`RefreshControl`) via React Query invalidation.
+- [ ] **Task 7.2.4:** Implement optimistic UI updates when changing an issue's status from the mobile app (e.g. moving from 'In Progress' to 'In Review').
+- [ ] **Task 7.2.5:** Create a highly optimized offline cache (using `@tanstack/react-query-persist-client` with React Native MMKV or AsyncStorage) so the marketing team can browse their task lists on airplanes or in subways.
+- [ ] **Task 7.2.6:** Add mobile queueing for offline mutations—if an issue is created while offline, save it locally and push it to the server when network connectivity is restored (`@react-native-community/netinfo`).
 
-### 7.3 Offline Support
+### 7.3 Media Review Player & Annotations (Mobile)
 
-- [ ] **Mobile:** Cache critical data (issues list, recent comments) for offline viewing
-- [ ] **Mobile:** Queue mutations when offline, sync when back online
-- [ ] **Reference:** AFFiNE's local-first CRDT approach (y-octo) for inspiration
+- [ ] **Task 7.3.1:** Install and configure `expo-video` or `expo-av` for native mobile video playback.
+- [ ] **Task 7.3.2:** Implement HLS streaming support (`.m3u8` playlists) for the native video player on both iOS and Android.
+- [ ] **Task 7.3.3:** Build a custom transparent control overlay (play/pause, timestamp, full-screen toggle) using React Native Reanimated for smooth fade in/out interactions.
+- [ ] **Task 7.3.4:** Port the web `MediaScrubber` logic to React Native, using a horizontal `PanGestureHandler` (from `react-native-gesture-handler`) to scrub back and forth precisely on mobile touch screens.
+- [ ] **Task 7.3.5:** Implement the mobile canvas overlay for drawing annotations over the video/image. Use `react-native-svg` to capture touch events (`PanResponder` or `Gesture.Pan()`) and draw SVG paths in real-time.
+- [ ] **Task 7.3.6:** Build a tool palette (pen, arrow, rectangle, color picker) that docks to the side or bottom of the screen while in annotation mode.
+- [ ] **Task 7.3.7:** Ensure coordinate normalization logic perfectly translates touch coordinates (pixels on the physical screen) to the normalized `(0.0-1.0)` format used by the backend.
+- [ ] **Task 7.3.8:** Build the time-stamped comment composer overlay: when the user finishes drawing, pause the video and slide up a bottom-sheet keyboard view to type their review comment.
+- [ ] **Task 7.3.9:** Add the inline comment markers on the mobile video scrubber timeline, allowing users to tap a marker and jump exactly to that timestamp/annotation.
+
+### 7.4 Cross-Platform Polish & UI/UX 
+
+- [ ] **Task 7.4.1:** Verify that all SVGs/Icons scale correctly on high-DPI mobile screens.
+- [ ] **Task 7.4.2:** Implement native haptic feedback (`expo-haptics`) when tapping markers, scrubbing, or completing an issue.
+- [ ] **Task 7.4.3:** Ensure dark mode / light mode correctly respects the OS-level theme preferences out-of-the-box (`Appearance.getColorScheme()`).
+- [ ] **Task 7.4.4:** Conduct an end-to-end user testing flow: "Marketing Manager receives push notification -> taps it -> opens video -> draws circle on video -> leaves comment -> assigns to Editor." Fix all friction points in this loop.
 
 ---
 
