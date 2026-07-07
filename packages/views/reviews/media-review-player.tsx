@@ -346,31 +346,31 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
       {asset.asset_type === "video" && (
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-md bg-background/80 border border-border/50 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-30">
           <Tooltip>
-            {/* @ts-expect-error Base UI migration issue with asChild */}
-            <TooltipTrigger asChild>
-              <button onClick={() => stepFrame(-1)} className="p-1.5 hover:bg-muted rounded-full text-foreground transition-colors">
-                <SkipBack className="w-4 h-4" />
-              </button>
+            <TooltipTrigger 
+              onClick={() => stepFrame(-1)} 
+              className="p-1.5 hover:bg-muted rounded-full text-foreground transition-colors"
+            >
+              <SkipBack className="w-4 h-4" />
             </TooltipTrigger>
             <TooltipContent side="top">Frame Back</TooltipContent>
           </Tooltip>
 
           <Tooltip>
-            {/* @ts-expect-error Base UI migration issue with asChild */}
-            <TooltipTrigger asChild>
-              <button onClick={handlePlayPause} className="p-2 bg-foreground text-background hover:scale-105 rounded-full transition-transform">
-                {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
-              </button>
+            <TooltipTrigger 
+              onClick={handlePlayPause} 
+              className="p-2 bg-foreground text-background hover:scale-105 rounded-full transition-transform"
+            >
+              {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
             </TooltipTrigger>
             <TooltipContent side="top">{isPlaying ? "Pause" : "Play"}</TooltipContent>
           </Tooltip>
 
           <Tooltip>
-            {/* @ts-expect-error Base UI migration issue with asChild */}
-            <TooltipTrigger asChild>
-              <button onClick={() => stepFrame(1)} className="p-1.5 hover:bg-muted rounded-full text-foreground transition-colors">
-                <SkipForward className="w-4 h-4" />
-              </button>
+            <TooltipTrigger 
+              onClick={() => stepFrame(1)} 
+              className="p-1.5 hover:bg-muted rounded-full text-foreground transition-colors"
+            >
+              <SkipForward className="w-4 h-4" />
             </TooltipTrigger>
             <TooltipContent side="top">Frame Forward</TooltipContent>
           </Tooltip>
@@ -378,11 +378,11 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
           <div className="w-px h-4 bg-border mx-1" />
 
           <Tooltip>
-            {/* @ts-expect-error Base UI migration issue with asChild */}
-            <TooltipTrigger asChild>
-              <button onClick={handleFullscreen} className="p-1.5 hover:bg-muted rounded-full text-foreground transition-colors">
-                <Maximize2 className="w-4 h-4" />
-              </button>
+            <TooltipTrigger 
+              onClick={handleFullscreen} 
+              className="p-1.5 hover:bg-muted rounded-full text-foreground transition-colors"
+            >
+              <Maximize2 className="w-4 h-4" />
             </TooltipTrigger>
             <TooltipContent side="top">Fullscreen</TooltipContent>
           </Tooltip>

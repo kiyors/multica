@@ -119,14 +119,6 @@ export function createFormattingSlashCommandSuggestion(): Omit<SuggestionOptions
   return {
     char: "/",
     pluginKey,
-    // Only trigger at the start of a line
-    allow: ({ editor, range }) => {
-      const $from = editor.state.doc.resolve(range.from);
-      const isRootDepth = $from.depth === 1;
-      const isParagraph = $from.parent.type.name === "paragraph";
-      const isStartOfNode = $from.parent.textContent.charAt(0) === "/";
-      return isRootDepth && isParagraph && isStartOfNode;
-    },
     items: ({ query }) => {
       const q = query.toLowerCase();
       return getFormattingCommands().filter(

@@ -79,7 +79,7 @@ export function ReviewCommentSidebar({
   };
 
   return (
-    <div className="flex flex-col h-full bg-background text-foreground relative">
+    <div className="flex flex-col w-full h-full bg-background text-foreground relative">
       {/* Header */}
       <div className="p-4 border-b border-border shrink-0 font-semibold flex justify-between items-center">
         <span>Review Comments</span>
