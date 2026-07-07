@@ -834,10 +834,18 @@ func registerNotificationListeners(bus *events.Bus, queries *db.Queries) {
 			commentDetails)
 
 		mentions := parseMentions(commentContent)
+		skip := map[string]bool{e.ActorID: true}
+
 		if len(mentions) > 0 {
-			skip := map[string]bool{e.ActorID: true}
 			notifyMentionedMembers(bus, queries, e, mentions, issueID, issueTitle, issueStatus,
 				issueTitle, skip, commentDetails)
+		}
+
+		if uploadedBy, ok := payload["asset_uploaded_by"].(string); ok && uploadedBy != "" && uploadedBy != e.ActorID {
+			if !skip[uploadedBy] {
+				notifyDirect(context.Background(), queries, bus, "member", uploadedBy, e.WorkspaceID, e,
+					issueID, issueStatus, "new_review_comment", "info", issueTitle, commentContent, commentDetails)
+			}
 		}
 	})
 

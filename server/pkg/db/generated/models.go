@@ -798,7 +798,7 @@ type ReviewComment struct {
 	AssetID    pgtype.UUID        `json:"asset_id"`
 	AuthorID   pgtype.UUID        `json:"author_id"`
 	Content    string             `json:"content"`
-	Timestamp  pgtype.Float4      `json:"timestamp"`
+	StartTime  pgtype.Float4      `json:"start_time"`
 	Shapes     []byte             `json:"shapes"`
 	Resolved   bool               `json:"resolved"`
 	ResolvedBy pgtype.UUID        `json:"resolved_by"`
@@ -806,6 +806,7 @@ type ReviewComment struct {
 	ParentID   pgtype.UUID        `json:"parent_id"`
 	CreatedAt  pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
+	EndTime    pgtype.Float4      `json:"end_time"`
 }
 
 type RuntimeProfile struct {
