@@ -29,6 +29,7 @@ import type {
   PinnedItem,
   Project,
   ProjectResource,
+  ReviewComment,
   RuntimeDevice,
   SearchIssuesResponse,
   SearchProjectsResponse,
@@ -688,6 +689,42 @@ export const EMPTY_ISSUE_FALLBACK: import("@multica/core/types").Issue = {
   created_at: "",
   updated_at: "",
 };
+
+/** GET /api/issues/:id/reviews/comments. Shape `type` stays z.string() (not
+ *  z.enum) so a new server-side annotation tool degrades to the renderer's
+ *  fallback branch instead of dropping the whole comment list. `start_time`/
+ *  `end_time` stay optional-undefined — core's ReviewComment declares
+ *  `start_time?: number` and mobile must not diverge on data identity. */
+const AnnotationShapeSchema = z.object({
+  type: z.string(),
+  x: z.number().default(0),
+  y: z.number().default(0),
+  width: z.number().default(0),
+  height: z.number().default(0),
+  color: z.string().default("#3b82f6"),
+  strokeWidth: z.number().default(2),
+  points: z.array(z.object({ x: z.number(), y: z.number() })).optional(),
+}).loose();
+
+export const ReviewCommentListSchema: z.ZodType<ReviewComment[]> = z.array(
+  z.object({
+    id: z.string(),
+    asset_id: z.string().default(""),
+    author_id: z.string().default(""),
+    content: z.string().default(""),
+    start_time: z.number().optional(),
+    end_time: z.number().optional(),
+    shapes: z.array(AnnotationShapeSchema).default([]),
+    resolved: z.boolean().default(false),
+    resolved_by: z.string().optional(),
+    resolved_at: z.string().optional(),
+    parent_id: z.string().optional(),
+    created_at: z.string().default(""),
+    updated_at: z.string().default(""),
+  }).loose(),
+);
+
+export const EMPTY_REVIEW_COMMENTS: ReviewComment[] = [];
 
 // Helpers re-exported for ergonomic single-import at the call site.
 export type { Label, Project, ProjectResource };

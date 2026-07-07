@@ -6,15 +6,11 @@ import { MediaReviewPlayer } from "@/components/reviews/media-review-player";
 import { ToolPalette } from "@/components/reviews/tool-palette";
 import { ReviewComposer } from "@/components/reviews/review-composer";
 import { useWorkspaceStore } from "@/data/workspace-store";
-import { useCreateReviewComment } from "@multica/core/reviews/mutations";
-import { listReviewCommentsOptions } from "@multica/core/reviews/queries";
+import { useCreateReviewComment } from "@/data/mutations/reviews";
+import { listReviewCommentsOptions } from "@/data/queries/reviews";
 import { THEME } from "@/lib/theme";
 import { useColorScheme } from "@/lib/use-color-scheme";
 import { useQuery } from "@tanstack/react-query";
-
-// Assume we have queries for reviews like we do on web, but we'll mock or build the structure here
-// In a real implementation we would import these from @multica/core/reviews/queries
-// For this orchestrator, we'll fetch the issue, find the attachment, and wire the local components.
 
 export default function MediaReviewScreen() {
   const { assetId, issueId, workspace: wsSlug, url, filename, contentType } = useLocalSearchParams<{ assetId: string, issueId: string, workspace: string, url: string, filename: string, contentType: string }>();
@@ -31,7 +27,7 @@ export default function MediaReviewScreen() {
   // Find the target asset
   const asset = url ? { id: assetId, url, filename, content_type: contentType } : null;
 
-  const { data: comments = [] } = useQuery(listReviewCommentsOptions(wsId || "", issueId, assetId));
+  const { data: comments = [] } = useQuery(listReviewCommentsOptions(wsId, issueId, assetId));
 
   const { mutate: createComment } = useCreateReviewComment();
 
@@ -45,7 +41,7 @@ export default function MediaReviewScreen() {
   const submitComment = (content: string) => {
     if (!wsId) return;
     createComment({
-      workspaceId: wsId,
+      wsId,
       issueId: issueId,
       assetId: assetId,
       content,

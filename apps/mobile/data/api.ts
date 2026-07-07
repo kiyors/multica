@@ -47,8 +47,10 @@ import type {
   SearchProjectsResponse,
   SendChatMessageResponse,
   Squad,
+  AnnotationShape,
   NotificationPreferenceResponse,
   NotificationPreferences,
+  ReviewComment,
   TaskMessagePayload,
   TimelineEntry,
   UpdateIssueRequest,
@@ -107,6 +109,8 @@ import {
   PinListSchema,
   PinnedItemSchema,
   ProjectSchema,
+  ReviewCommentListSchema,
+  EMPTY_REVIEW_COMMENTS,
   RuntimeListSchema,
   SearchIssuesResponseSchema,
   SearchProjectsResponseSchema,
@@ -401,6 +405,40 @@ class ApiClient {
     await this.fetch<void>("/api/users/me/device-tokens", {
       method: "POST",
       body: JSON.stringify({ token, platform }),
+    });
+  }
+
+  // --- Media review (mirrors core api/client.ts listReviewComments /
+  // createReviewComment; endpoint + body shapes must match web verbatim) ---
+  async listReviewComments(
+    issueId: string,
+    assetId: string,
+    opts?: { signal?: AbortSignal },
+  ): Promise<ReviewComment[]> {
+    return this.fetchValidated(
+      `/api/issues/${issueId}/reviews/comments?asset_id=${encodeURIComponent(assetId)}`,
+      ReviewCommentListSchema,
+      EMPTY_REVIEW_COMMENTS,
+      { ...opts, endpoint: "listReviewComments" },
+    );
+  }
+
+  // Response is not consumed by UI logic (the mutation invalidates the
+  // comment list instead), so raw fetch is acceptable per the api.ts rules.
+  async createReviewComment(
+    issueId: string,
+    payload: {
+      asset_id: string;
+      content: string;
+      start_time?: number;
+      end_time?: number;
+      shapes?: AnnotationShape[];
+      parent_id?: string;
+    },
+  ): Promise<void> {
+    await this.fetch<void>(`/api/issues/${issueId}/reviews/comments`, {
+      method: "POST",
+      body: JSON.stringify(payload),
     });
   }
 
