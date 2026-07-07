@@ -154,7 +154,7 @@ export function MediaReviewLayout({ workspaceId, asset, onAssetChange, onClose }
           
           <div className="flex items-center gap-2">
             <Select value={asset.id} onValueChange={handleVersionChange}>
-              <SelectTrigger className="h-7 border-gray-700 bg-gray-800 text-xs w-28">
+              <SelectTrigger className="h-7 border-border bg-muted text-xs w-28">
                 <span>{asset.version ? `Version ${asset.version}` : "Version"}</span>
               </SelectTrigger>
               <SelectContent>
@@ -169,7 +169,7 @@ export function MediaReviewLayout({ workspaceId, asset, onAssetChange, onClose }
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={uploadAsset.isPending}
-              className="text-xs px-2 py-1 bg-gray-800 hover:bg-gray-700 rounded border border-gray-700 text-gray-300"
+              className="text-xs px-2 py-1 bg-muted hover:bg-muted/80 rounded border border-border text-foreground"
             >
               {uploadAsset.isPending ? "Uploading…" : "Upload New Version"}
             </button>
@@ -179,7 +179,7 @@ export function MediaReviewLayout({ workspaceId, asset, onAssetChange, onClose }
               onClick={handleDeleteVersion}
               disabled={deleteAsset.isPending}
               title="Delete this version"
-              className="text-xs px-2 py-1 bg-gray-800 hover:bg-red-900 hover:text-red-400 rounded border border-gray-700 text-gray-400 flex items-center gap-1"
+              className="text-xs px-2 py-1 bg-muted hover:bg-destructive/10 hover:text-destructive rounded border border-border text-muted-foreground flex items-center gap-1"
             >
               <Trash2 className="w-3 h-3" />
               Version
@@ -200,7 +200,7 @@ export function MediaReviewLayout({ workspaceId, asset, onAssetChange, onClose }
             onClick={handleDeleteGroup}
             disabled={deleteGroup.isPending}
             title="Delete all versions of this media"
-            className="p-1.5 rounded hover:bg-red-900/50 hover:text-red-400 text-gray-500 transition-colors"
+            className="p-1.5 rounded hover:bg-destructive/10 hover:text-destructive text-muted-foreground transition-colors"
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -224,7 +224,7 @@ export function MediaReviewLayout({ workspaceId, asset, onAssetChange, onClose }
 
       {/* Review Content */}
       <ResizablePanelGroup orientation="horizontal" className="flex-1 w-full overflow-hidden">
-        <ResizablePanel defaultSize="75" minSize="50" className="relative bg-black flex flex-col overflow-auto">
+        <ResizablePanel defaultSize="75" minSize="50" className="relative bg-background flex flex-col overflow-auto">
           {/* Upload showcase overlaid above player while uploading a new version */}
           {uploadFile && (uploadAsset.isPending || uploadAsset.isSuccess || uploadAsset.isError) && (
             <div className="absolute inset-x-0 top-0 z-20 p-4">

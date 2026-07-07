@@ -49,7 +49,7 @@ export function ReviewAssetsList({ workspaceId, issueId, onOpenAsset }: ReviewAs
   }, [uploadAsset.isSuccess]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (isLoading) {
-    return <div className="text-sm text-gray-500 animate-pulse">Loading review assets...</div>;
+    return <div className="text-sm text-muted-foreground animate-pulse">Loading review assets...</div>;
   }
 
   // Filter out older versions, only show the latest version per asset group
@@ -162,11 +162,11 @@ export function ReviewAssetsList({ workspaceId, issueId, onOpenAsset }: ReviewAs
           <div
             key={asset.id}
             onClick={() => onOpenAsset(asset)}
-            className="group relative flex flex-col gap-2 rounded-md border p-2 hover:border-gray-400 cursor-pointer transition-colors bg-white shadow-sm"
+            className="group relative flex flex-col gap-2 rounded-md border p-2 hover:border-primary/50 cursor-pointer transition-colors bg-card shadow-sm"
           >
             {/* Delete whole group — shown on hover */}
             <button
-              className="absolute top-1.5 right-1.5 z-10 p-1 rounded bg-white/80 opacity-0 group-hover:opacity-100 hover:bg-red-50 hover:text-red-600 text-gray-400 transition-all"
+              className="absolute top-1.5 right-1.5 z-10 p-1 rounded bg-background/80 opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive text-muted-foreground transition-all"
               title="Delete media"
               onClick={(e) => {
                 e.stopPropagation();
@@ -175,7 +175,7 @@ export function ReviewAssetsList({ workspaceId, issueId, onOpenAsset }: ReviewAs
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>
-            <div className="relative aspect-video bg-gray-100 rounded flex items-center justify-center overflow-hidden">
+            <div className="relative aspect-video bg-muted rounded flex items-center justify-center overflow-hidden">
               {asset.asset_type === "image" ? (
                 <img src={asset.thumbnail_url || asset.src_url} alt={asset.name} className="object-cover w-full h-full" />
               ) : asset.thumbnail_url ? (
@@ -184,7 +184,7 @@ export function ReviewAssetsList({ workspaceId, issueId, onOpenAsset }: ReviewAs
                 // ponytail: no server-side thumbnails yet; preload the first frame instead
                 <video src={`${asset.src_url}#t=0.1`} preload="metadata" muted playsInline className="object-cover w-full h-full pointer-events-none" />
               ) : (
-                <div className="text-gray-400">
+                <div className="text-muted-foreground">
                   {asset.asset_type === "video" ? <Video className="w-8 h-8" /> : <ImageIcon className="w-8 h-8" />}
                 </div>
               )}
@@ -202,16 +202,16 @@ export function ReviewAssetsList({ workspaceId, issueId, onOpenAsset }: ReviewAs
                 <span className="text-sm font-medium truncate" title={asset.name}>
                   {asset.name}
                 </span>
-                <span className="text-xs bg-gray-100 px-1.5 py-0.5 rounded text-gray-600 font-medium">
+                <span className="text-xs bg-muted px-1.5 py-0.5 rounded text-muted-foreground font-medium">
                   v{asset.version}
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1">
-                  {asset.status === "approved" && <Check className="w-3.5 h-3.5 text-green-500" />}
-                  {asset.status === "changes_requested" && <AlertCircle className="w-3.5 h-3.5 text-red-500" />}
+                  {asset.status === "approved" && <Check className="w-3.5 h-3.5 text-success" />}
+                  {asset.status === "changes_requested" && <AlertCircle className="w-3.5 h-3.5 text-destructive" />}
                   {asset.status === "pending" && <Clock className="w-3.5 h-3.5 text-yellow-500" />}
-                  <span className="text-xs text-gray-500 capitalize">
+                  <span className="text-xs text-muted-foreground capitalize">
                     {asset.status.replace("_", " ")}
                   </span>
                 </div>
