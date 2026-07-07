@@ -21,6 +21,14 @@ name: multica
 services:
   backend:
     image: ${MULTICA_BACKEND_IMAGE:-ghcr.io/kiyors/multica-backend}:${MULTICA_IMAGE_TAG:-latest}
+    networks:
+      - dokploy-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.multica-api.rule=Host(`${API_DOMAIN}`)"
+      - "traefik.http.routers.multica-api.entrypoints=websecure"
+      - "traefik.http.routers.multica-api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.multica-api.loadbalancer.server.port=8080"
     volumes:
       - backend_uploads:/app/data/uploads
     environment:
@@ -100,9 +108,21 @@ services:
     image: ${MULTICA_WEB_IMAGE:-ghcr.io/kiyors/multica-web}:${MULTICA_IMAGE_TAG:-latest}
     depends_on:
       - backend
+    networks:
+      - dokploy-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.multica-web.rule=Host(`${APP_DOMAIN}`)"
+      - "traefik.http.routers.multica-web.entrypoints=websecure"
+      - "traefik.http.routers.multica-web.tls.certresolver=letsencrypt"
+      - "traefik.http.services.multica-web.loadbalancer.server.port=3000"
     environment:
       HOSTNAME: "0.0.0.0"
     restart: unless-stopped
+
+networks:
+  dokploy-network:
+    external: true
 
 volumes:
   backend_uploads:
