@@ -738,15 +738,16 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
 
   const handleReviewAssetChange = useCallback((asset: ReviewAsset | null) => {
     setReviewAsset(asset);
-    const newParams = new URLSearchParams(router.searchParams);
+    const newParams = new URLSearchParams(window.location.search);
     if (asset) {
       newParams.set("review", asset.id);
     } else {
       newParams.delete("review");
     }
     const searchStr = newParams.toString();
-    router.replace(`${router.pathname}${searchStr ? `?${searchStr}` : ""}`);
-  }, [router]);
+    const newUrl = `${window.location.pathname}${searchStr ? `?${searchStr}` : ""}`;
+    window.history.replaceState(null, "", newUrl);
+  }, []);
 
   const { data: members = [] } = useQuery(memberListOptions(wsId));
   const { data: agents = [] } = useQuery(agentListOptions(wsId));
