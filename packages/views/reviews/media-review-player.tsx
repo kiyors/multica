@@ -340,7 +340,6 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
               />
             )})}
         </div>
-        </div>
       )}
 
       {/* Glassmorphism Custom Controls (only for video) */}

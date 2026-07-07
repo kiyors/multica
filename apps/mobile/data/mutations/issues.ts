@@ -430,7 +430,7 @@ export function useUpdateIssue(issueId: string) {
       await qc.cancelQueries({ queryKey: key });
       const prev = qc.getQueryData<Issue>(key);
       if (prev) {
-        qc.setQueryData<Issue>(key, { ...prev, ...patch });
+        qc.setQueryData<Issue>(key, { ...prev, ...patch } as any);
       }
       return { prev, key };
     },
