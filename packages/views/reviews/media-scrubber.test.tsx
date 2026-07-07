@@ -38,7 +38,7 @@ describe("MediaScrubber", () => {
     
     if (track) {
       track.getBoundingClientRect = () => ({ left: 0, width: 100, top: 0, height: 10, bottom: 10, right: 100, x: 0, y: 0, toJSON: () => {} });
-      fireEvent.pointerDown(track, { clientX: 50 });
+      fireEvent.mouseDown(track, { clientX: 50 });
       expect(onSeek).toHaveBeenCalled();
     }
   });

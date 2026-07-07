@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback, useImperativeHandle, forwardRef } from "react";
 import { Play, Pause, Maximize2, SkipBack, SkipForward, Clock, Repeat } from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@multica/ui/components/ui/tooltip";
+import Hls from "hls.js";
 import type { ReviewAsset, ReviewComment } from "@multica/core/types";
 import { MediaScrubber, formatTimecode, formatTime, formatFrames } from "./media-scrubber";
 
@@ -94,6 +95,23 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
     setDrawingShape(null);
     onDrawingShapeChange?.(null);
   }, [asset.id]);
+
+  useEffect(() => {
+    if (asset.asset_type === "video" && asset.src_url.endsWith(".m3u8") && mediaRef.current) {
+      const video = mediaRef.current as HTMLVideoElement;
+      let hls: Hls | null = null;
+      if (Hls.isSupported()) {
+        hls = new Hls({ capLevelToPlayerSize: true });
+        hls.loadSource(asset.src_url);
+        hls.attachMedia(video);
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = asset.src_url;
+      }
+      return () => {
+        if (hls) hls.destroy();
+      };
+    }
+  }, [asset.src_url, asset.asset_type]);
 
   useImperativeHandle(ref, () => ({
     seek: (time: number) => {
@@ -250,7 +268,7 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
         {asset.asset_type === "video" ? (
           <video
             ref={mediaRef as React.RefObject<HTMLVideoElement>}
-            src={asset.src_url}
+            src={asset.src_url.endsWith('.m3u8') ? undefined : asset.src_url}
             className="absolute inset-0 w-full h-full object-contain shadow-lg rounded-sm"
             onLoadedMetadata={calculateTrueLayout}
             onTimeUpdate={handleTimeUpdate}

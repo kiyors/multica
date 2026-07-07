@@ -406,6 +406,38 @@ func (q *Queries) UnresolveReviewComment(ctx context.Context, id pgtype.UUID) (R
 	return i, err
 }
 
+const updateReviewAssetMetadata = `-- name: UpdateReviewAssetMetadata :exec
+UPDATE review_assets 
+SET file_url = COALESCE($2, file_url), 
+    thumbnail_url = COALESCE($3, thumbnail_url),
+    width = COALESCE($4, width),
+    height = COALESCE($5, height),
+    duration = COALESCE($6, duration),
+    updated_at = now() 
+WHERE id = $1
+`
+
+type UpdateReviewAssetMetadataParams struct {
+	ID           pgtype.UUID   `json:"id"`
+	FileUrl      string        `json:"file_url"`
+	ThumbnailUrl pgtype.Text   `json:"thumbnail_url"`
+	Width        pgtype.Int4   `json:"width"`
+	Height       pgtype.Int4   `json:"height"`
+	Duration     pgtype.Float4 `json:"duration"`
+}
+
+func (q *Queries) UpdateReviewAssetMetadata(ctx context.Context, arg UpdateReviewAssetMetadataParams) error {
+	_, err := q.db.Exec(ctx, updateReviewAssetMetadata,
+		arg.ID,
+		arg.FileUrl,
+		arg.ThumbnailUrl,
+		arg.Width,
+		arg.Height,
+		arg.Duration,
+	)
+	return err
+}
+
 const updateReviewAssetStatus = `-- name: UpdateReviewAssetStatus :one
 UPDATE review_assets SET status = $2, updated_at = now() WHERE id = $1 RETURNING id, issue_id, workspace_id, name, asset_type, file_url, thumbnail_url, width, height, duration, version, status, uploaded_by, created_at, updated_at, asset_group_id
 `

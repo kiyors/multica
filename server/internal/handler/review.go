@@ -218,7 +218,37 @@ func (h *Handler) DirectUploadReviewAsset(w http.ResponseWriter, r *http.Request
 }
 
 func (h *Handler) CompleteReviewAssetUpload(w http.ResponseWriter, r *http.Request) {
-	// Stub for upload completion (triggers ffprobe metadata extraction in background)
+	ctx := r.Context()
+	workspaceIDStr := h.resolveWorkspaceID(r)
+	_, ok := h.requireWorkspaceRole(w, r, workspaceIDStr, "workspace not found", "owner", "admin", "member")
+	if !ok {
+		return
+	}
+
+	var req struct {
+		AssetID string `json:"asset_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+
+	assetUUID, ok := parseUUIDOrBadRequest(w, req.AssetID, "asset_id")
+	if !ok {
+		return
+	}
+
+	asset, err := h.Queries.GetReviewAsset(ctx, assetUUID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "asset not found")
+		return
+	}
+
+	if asset.AssetType == "video" || asset.AssetType == "audio" {
+		// Run transcode in background
+		go h.processVideoAsync(asset.ID, asset.FileUrl)
+	}
+
 	writeJSON(w, http.StatusOK, map[string]bool{"success": true})
 }
 

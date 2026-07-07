@@ -17,6 +17,16 @@ SELECT DISTINCT issue_id FROM review_assets WHERE workspace_id = $1 AND status !
 -- name: UpdateReviewAssetStatus :one
 UPDATE review_assets SET status = $2, updated_at = now() WHERE id = $1 RETURNING *;
 
+-- name: UpdateReviewAssetMetadata :exec
+UPDATE review_assets 
+SET file_url = COALESCE($2, file_url), 
+    thumbnail_url = COALESCE($3, thumbnail_url),
+    width = COALESCE($4, width),
+    height = COALESCE($5, height),
+    duration = COALESCE($6, duration),
+    updated_at = now() 
+WHERE id = $1;
+
 -- name: ListReviewAssetVersions :many
 SELECT * FROM review_assets WHERE asset_group_id = $1 ORDER BY version DESC;
 
