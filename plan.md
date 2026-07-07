@@ -318,6 +318,10 @@ Multica is a powerful AI-native task management platform where AI agents are fir
 - [x] **Views:** Type-based icons and color badges on board cards
 - *Note: Custom Fields have been extracted to Phase 8.*
 
+### 2.1.5 Terminology Dialects
+- [x] **Core:** Implement terminology dialects (`en-marketing`, `en-creative`) via i18next fallbacks
+- [x] **Settings:** Expose language preference options so non-developers can select Marketing or Creative terminology.
+
 ### 2.2 Approval Workflows
 
 - [x] **DB Migration:** Create `approvals` table
