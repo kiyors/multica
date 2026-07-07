@@ -10,6 +10,7 @@
  */
 import { Pressable, ScrollView, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { useColorScheme } from "nativewind";
 import type { IssueStatus } from "@multica/core/types";
 import { Text } from "@/components/ui/text";
@@ -40,7 +41,14 @@ export function StatusPickerBody({ value, onChange }: Props) {
           return (
             <Pressable
               key={status}
-              onPress={() => onChange(status)}
+              onPress={() => {
+                if (status === "done") {
+                  void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                } else {
+                  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }
+                onChange(status);
+              }}
               className="flex-row items-center gap-3 rounded-lg px-3 py-3 active:bg-secondary"
             >
               <StatusIcon status={status} size={18} />

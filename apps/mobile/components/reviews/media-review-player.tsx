@@ -4,7 +4,7 @@ import { Image } from "expo-image";
 import { useVideoPlayer, VideoView } from "expo-video";
 import type { ReviewAsset, ReviewComment } from "@multica/core/types";
 import { GestureDetector, Gesture } from "react-native-gesture-handler";
-import Svg, { Rect } from "react-native-svg";
+import Svg, { Rect, Path, Line, Polygon, Ellipse } from "react-native-svg";
 import { Ionicons } from "@expo/vector-icons";
 import { MediaScrubber, formatTime, formatTimecode } from "./media-scrubber";
 
@@ -15,6 +15,8 @@ export interface MediaReviewPlayerProps {
   selectedCommentId?: string;
   onSelectComment?: (id: string) => void;
   onDrawingShapeChange?: (shape: any) => void;
+  selectedTool?: 'pen' | 'arrow' | 'rectangle' | 'ellipse';
+  selectedColor?: string;
 }
 
 export interface MediaReviewPlayerRef {
@@ -26,7 +28,7 @@ export interface MediaReviewPlayerRef {
 }
 
 export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPlayerProps>(
-  ({ asset, onTimeUpdate, comments, selectedCommentId, onSelectComment, onDrawingShapeChange }, ref) => {
+  ({ asset, onTimeUpdate, comments, selectedCommentId, onSelectComment, onDrawingShapeChange, selectedTool = 'rectangle', selectedColor = '#ef4444' }, ref) => {
     const [drawingShape, setDrawingShape] = useState<any>(null);
     const [isDrawing, setIsDrawing] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
@@ -122,8 +124,9 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
         const nx = Math.max(0, Math.min(1, relX / layout.width));
         const ny = Math.max(0, Math.min(1, relY / layout.height));
         
-        const color = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#a855f7', '#ec4899'][Math.floor(Math.random() * 6)];
-        const newShape = { type: 'rectangle', x: nx, y: ny, width: 0, height: 0, color, strokeWidth: 2 };
+        const newShape = (selectedTool === 'rectangle' || selectedTool === 'ellipse')
+          ? { type: selectedTool, x: nx, y: ny, width: 0, height: 0, color: selectedColor, strokeWidth: 2 }
+          : { type: selectedTool, points: [{x: nx, y: ny}, {x: nx, y: ny}], color: selectedColor, strokeWidth: 2 };
         setDrawingShape(newShape);
         onDrawingShapeChange?.(newShape);
         
@@ -135,11 +138,31 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
         const relY = e.y - layout.y;
         const nx = Math.max(0, Math.min(1, relX / layout.width));
         const ny = Math.max(0, Math.min(1, relY / layout.height));
-        const newShape = {
-          ...drawingShape,
-          width: nx - drawingShape.x,
-          height: ny - drawingShape.y,
-        };
+        
+        let newShape;
+        if (drawingShape.type === 'rectangle' || drawingShape.type === 'ellipse') {
+          newShape = {
+            ...drawingShape,
+            width: nx - drawingShape.x,
+            height: ny - drawingShape.y,
+          };
+        } else if (drawingShape.type === 'pen') {
+          const lastPoint = drawingShape.points[drawingShape.points.length - 1];
+          const dist = Math.hypot(lastPoint.x - nx, lastPoint.y - ny);
+          if (dist > 0.005) {
+            newShape = {
+              ...drawingShape,
+              points: [...drawingShape.points, {x: nx, y: ny}]
+            };
+          } else {
+            newShape = drawingShape;
+          }
+        } else if (drawingShape.type === 'arrow') {
+          newShape = {
+            ...drawingShape,
+            points: [drawingShape.points[0], {x: nx, y: ny}]
+          };
+        }
         setDrawingShape(newShape);
         onDrawingShapeChange?.(newShape);
       });
@@ -195,15 +218,51 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
                     c.shapes?.map((s: any, i: number) => {
                       const isSelected = selectedCommentId === c.id;
                       const fillOpacity = isSelected ? 0.4 : 0.2;
+                      const strokeWidth = isSelected ? 4 : 2;
+                      if (s.type === 'pen' && s.points && s.points.length > 0) {
+                        const pathData = s.points.map((p: any, idx: number) => 
+                          `${idx === 0 ? 'M' : 'L'} ${p.x * 100} ${p.y * 100}`
+                        ).join(' ');
+                        return <Path key={`${c.id}-${i}`} d={pathData} stroke={s.color} strokeWidth={strokeWidth} fill="none" strokeLinecap="round" strokeLinejoin="round" onPress={() => onSelectComment?.(c.id)} />;
+                      }
+                      if (s.type === 'arrow' && s.points && s.points.length === 2) {
+                        const [start, end] = s.points;
+                        const angle = Math.atan2(end.y - start.y, end.x - start.x);
+                        const headLen = 0.05; // 5% of screen approx
+                        const p1 = { x: end.x - headLen * Math.cos(angle - Math.PI/6), y: end.y - headLen * Math.sin(angle - Math.PI/6) };
+                        const p2 = { x: end.x - headLen * Math.cos(angle + Math.PI/6), y: end.y - headLen * Math.sin(angle + Math.PI/6) };
+                        return (
+                          <React.Fragment key={`${c.id}-${i}`}>
+                            <Line x1={`${start.x * 100}%`} y1={`${start.y * 100}%`} x2={`${end.x * 100}%`} y2={`${end.y * 100}%`} stroke={s.color} strokeWidth={strokeWidth} onPress={() => onSelectComment?.(c.id)} />
+                            <Polygon points={`${end.x * 100},${end.y * 100} ${p1.x * 100},${p1.y * 100} ${p2.x * 100},${p2.y * 100}`} fill={s.color} onPress={() => onSelectComment?.(c.id)} />
+                          </React.Fragment>
+                        );
+                      }
+                      if (s.type === 'ellipse') {
+                        return (
+                          <Ellipse
+                            key={`${c.id}-${i}`}
+                            cx={`${(s.x + (s.width || 0) / 2) * 100}%`}
+                            cy={`${(s.y + (s.height || 0) / 2) * 100}%`}
+                            rx={`${Math.abs((s.width || 0) / 2) * 100}%`}
+                            ry={`${Math.abs((s.height || 0) / 2) * 100}%`}
+                            stroke={s.color}
+                            strokeWidth={strokeWidth}
+                            fill={s.color}
+                            fillOpacity={fillOpacity}
+                            onPress={() => onSelectComment?.(c.id)}
+                          />
+                        );
+                      }
                       return (
                         <Rect
                           key={`${c.id}-${i}`}
                           x={`${s.x * 100}%`}
                           y={`${s.y * 100}%`}
-                          width={`${s.width * 100}%`}
-                          height={`${s.height * 100}%`}
+                          width={`${(s.width || 0) * 100}%`}
+                          height={`${(s.height || 0) * 100}%`}
                           stroke={s.color}
-                          strokeWidth={isSelected ? 4 : 2}
+                          strokeWidth={strokeWidth}
                           fill={s.color}
                           fillOpacity={fillOpacity}
                           onPress={() => onSelectComment?.(c.id)}
@@ -211,7 +270,7 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
                       );
                     })
                   )}
-                  {drawingShape && (
+                  {drawingShape && drawingShape.type === 'rectangle' && (
                     <Rect
                       x={`${Math.min(drawingShape.x, drawingShape.x + drawingShape.width) * 100}%`}
                       y={`${Math.min(drawingShape.y, drawingShape.y + drawingShape.height) * 100}%`}
@@ -222,6 +281,45 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
                       fill={drawingShape.color}
                       fillOpacity={0.3}
                     />
+                  )}
+                  {drawingShape && drawingShape.type === 'ellipse' && (
+                    <Ellipse
+                      cx={`${(drawingShape.x + drawingShape.width / 2) * 100}%`}
+                      cy={`${(drawingShape.y + drawingShape.height / 2) * 100}%`}
+                      rx={`${Math.abs(drawingShape.width / 2) * 100}%`}
+                      ry={`${Math.abs(drawingShape.height / 2) * 100}%`}
+                      stroke={drawingShape.color}
+                      strokeWidth={2}
+                      fill={drawingShape.color}
+                      fillOpacity={0.3}
+                    />
+                  )}
+                  {drawingShape && drawingShape.type === 'pen' && drawingShape.points && drawingShape.points.length > 0 && (
+                    <Path
+                      d={drawingShape.points.map((p: any, idx: number) => `${idx === 0 ? 'M' : 'L'} ${p.x * 100} ${p.y * 100}`).join(' ')}
+                      stroke={drawingShape.color}
+                      strokeWidth={2}
+                      fill="none"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  )}
+                  {drawingShape && drawingShape.type === 'arrow' && drawingShape.points && drawingShape.points.length === 2 && (
+                    <React.Fragment>
+                      <Line 
+                        x1={`${drawingShape.points[0].x * 100}%`} y1={`${drawingShape.points[0].y * 100}%`} 
+                        x2={`${drawingShape.points[1].x * 100}%`} y2={`${drawingShape.points[1].y * 100}%`} 
+                        stroke={drawingShape.color} strokeWidth={2} 
+                      />
+                      <Polygon 
+                        points={`
+                          ${drawingShape.points[1].x * 100},${drawingShape.points[1].y * 100} 
+                          ${(drawingShape.points[1].x - 0.05 * Math.cos(Math.atan2(drawingShape.points[1].y - drawingShape.points[0].y, drawingShape.points[1].x - drawingShape.points[0].x) - Math.PI/6)) * 100},${(drawingShape.points[1].y - 0.05 * Math.sin(Math.atan2(drawingShape.points[1].y - drawingShape.points[0].y, drawingShape.points[1].x - drawingShape.points[0].x) - Math.PI/6)) * 100} 
+                          ${(drawingShape.points[1].x - 0.05 * Math.cos(Math.atan2(drawingShape.points[1].y - drawingShape.points[0].y, drawingShape.points[1].x - drawingShape.points[0].x) + Math.PI/6)) * 100},${(drawingShape.points[1].y - 0.05 * Math.sin(Math.atan2(drawingShape.points[1].y - drawingShape.points[0].y, drawingShape.points[1].x - drawingShape.points[0].x) + Math.PI/6)) * 100}
+                        `} 
+                        fill={drawingShape.color} 
+                      />
+                    </React.Fragment>
                   )}
                 </Svg>
               </View>

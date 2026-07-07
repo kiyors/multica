@@ -2,6 +2,7 @@ import React, { useCallback, useState } from "react";
 import { View, StyleSheet, Text, LayoutChangeEvent, Pressable } from "react-native";
 import { GestureDetector, Gesture } from "react-native-gesture-handler";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
+import * as Haptics from "expo-haptics";
 import type { ReviewComment } from "@multica/core/types";
 import { ActorAvatar } from "../ui/actor-avatar";
 
@@ -66,6 +67,7 @@ export function MediaScrubber({
   const panGesture = Gesture.Pan()
     .onStart((e) => {
       if (!trackWidth) return;
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       if (onScrubStart) onScrubStart();
       const ratio = Math.max(0, Math.min(1, e.x / trackWidth));
       onSeek(ratio * duration);
@@ -76,6 +78,7 @@ export function MediaScrubber({
       onSeek(ratio * duration);
     })
     .onEnd(() => {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       if (onScrubEnd) onScrubEnd();
     });
 
@@ -138,6 +141,7 @@ export function MediaScrubber({
                 key={c.id}
                 style={[styles.marker, { left: `${left}%`, borderColor: isSelected ? color : 'transparent' }]}
                 onPress={() => {
+                  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                   if (c.start_time !== undefined) onSeek(c.start_time);
                   onSelectComment?.(c.id);
                 }}

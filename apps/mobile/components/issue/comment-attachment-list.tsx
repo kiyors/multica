@@ -23,6 +23,7 @@
  */
 import { useMemo } from "react";
 import { Linking, Pressable, View } from "react-native";
+import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import type { Attachment } from "@multica/core/types";
 import { MarkdownImage } from "@/lib/markdown/markdown-image";
@@ -105,20 +106,20 @@ function FileCard({
   attachment: Attachment;
   theme: typeof THEME["light"];
 }) {
+  const params = useLocalSearchParams<{ workspace: string; id: string }>();
   const sizeLabel = formatBytes(attachment.size_bytes);
   return (
     <Pressable
       onPress={() => {
-        // download_url is the canonical link — opening it hands off to
-        // Safari which handles auth-token-free download + previewing for
-        // common types (PDF, txt). Mirrors what the markdown link renderer
-        // does for `[name](url)`.
-        //
-        // The backend may return a server-relative URL like
-        // `/api/attachments/{id}/download` when no CloudFront signer is
-        // configured (MUL-2976). RN's `Linking.openURL` requires an
-        // absolute http(s) URL — it returns "Cannot open URL" otherwise —
-        // so resolve against `EXPO_PUBLIC_API_URL` first.
+        const isMedia = attachment.content_type.startsWith("video/") || attachment.content_type.startsWith("image/");
+        if (isMedia && params.workspace && params.id) {
+          router.push({
+            pathname: `/${params.workspace}/review/${attachment.id}`,
+            params: { issueId: params.id, url: attachment.url, filename: attachment.filename, contentType: attachment.content_type }
+          });
+          return;
+        }
+
         const target = resolveAttachmentUrl(attachment.download_url);
         if (target) {
           void Linking.openURL(target);

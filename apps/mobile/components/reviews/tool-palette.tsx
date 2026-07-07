@@ -3,8 +3,8 @@ import { View, StyleSheet, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 export interface ToolPaletteProps {
-  selectedTool: 'pen' | 'arrow' | 'rectangle';
-  onSelectTool: (tool: 'pen' | 'arrow' | 'rectangle') => void;
+  selectedTool: 'pen' | 'arrow' | 'rectangle' | 'ellipse';
+  onSelectTool: (tool: 'pen' | 'arrow' | 'rectangle' | 'ellipse') => void;
   selectedColor: string;
   onSelectColor: (color: string) => void;
   onClear: () => void;
@@ -33,6 +33,12 @@ export function ToolPalette({ selectedTool, onSelectTool, selectedColor, onSelec
           style={[styles.toolButton, selectedTool === 'rectangle' && styles.toolButtonSelected]}
         >
           <Ionicons name="stop-outline" size={20} color={selectedTool === 'rectangle' ? "#3b82f6" : "white"} />
+        </Pressable>
+        <Pressable 
+          onPress={() => onSelectTool('ellipse')} 
+          style={[styles.toolButton, selectedTool === 'ellipse' && styles.toolButtonSelected]}
+        >
+          <Ionicons name="ellipse-outline" size={20} color={selectedTool === 'ellipse' ? "#3b82f6" : "white"} />
         </Pressable>
       </View>
       

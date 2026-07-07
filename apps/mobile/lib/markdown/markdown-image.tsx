@@ -27,6 +27,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Image as RNImage, Pressable, View } from "react-native";
 import { Image as ExpoImage } from "expo-image";
+import { router, useLocalSearchParams } from "expo-router";
 import type { Attachment } from "@multica/core/types";
 import { resolveAttachmentUrl } from "@/lib/attachment-url";
 import { useLightbox } from "./lightbox-provider";
@@ -79,8 +80,23 @@ export function MarkdownImage({ uri, attachments }: Props) {
     };
   }, [resolvedUri]);
 
+  const params = useLocalSearchParams<{ workspace: string; id: string }>();
+
   return (
-    <Pressable onPress={() => open(resolvedUri)}>
+    <Pressable onPress={() => {
+      let matchedAttachment = null;
+      if (attachments && attachments.length > 0) {
+        matchedAttachment = attachments.find((a) => a.url === uri);
+      }
+      if (matchedAttachment && params.workspace && params.id) {
+        router.push({
+          pathname: `/${params.workspace}/review/${matchedAttachment.id}`,
+          params: { issueId: params.id, url: matchedAttachment.url, filename: matchedAttachment.filename, contentType: matchedAttachment.content_type }
+        });
+      } else {
+        open(resolvedUri);
+      }
+    }}>
       <View className="rounded-lg overflow-hidden bg-muted">
         <ExpoImage
           source={{ uri: resolvedUri }}

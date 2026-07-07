@@ -18,6 +18,7 @@
  */
 import { useColorScheme as useNativewindColorScheme } from "nativewind";
 import { useEffect, useState } from "react";
+import { Appearance } from "react-native";
 import * as SecureStore from "expo-secure-store";
 
 const STORAGE_KEY = "theme-preference";
@@ -53,10 +54,16 @@ export function useColorScheme() {
     void SecureStore.setItemAsync(STORAGE_KEY, p);
   };
 
+  let osScheme = Appearance.getColorScheme();
+  if (osScheme !== "light" && osScheme !== "dark") {
+    osScheme = "light";
+  }
+  const resolvedScheme = (colorScheme === "light" || colorScheme === "dark") ? colorScheme : osScheme;
+
   return {
-    colorScheme: colorScheme ?? "light",
+    colorScheme: resolvedScheme as "light" | "dark",
     preference,
     setPreference,
-    isDarkColorScheme: colorScheme === "dark",
+    isDarkColorScheme: resolvedScheme === "dark",
   };
 }
