@@ -17,8 +17,8 @@ function NavigationProviderInner({
   const searchParams = useSearchParams();
 
   const adapter: NavigationAdapter = {
-    push: router.push,
-    replace: router.replace,
+    push: (path: string, opts?: { scroll?: boolean }) => router.push(path, opts),
+    replace: (path: string, opts?: { scroll?: boolean }) => router.replace(path, opts),
     back: router.back,
     pathname,
     searchParams: new URLSearchParams(searchParams.toString()),

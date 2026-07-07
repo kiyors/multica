@@ -1,6 +1,6 @@
 export interface NavigationAdapter {
-  push(path: string): void;
-  replace(path: string): void;
+  push(path: string, opts?: { scroll?: boolean }): void;
+  replace(path: string, opts?: { scroll?: boolean }): void;
   back(): void;
   pathname: string;
   searchParams: URLSearchParams;

@@ -727,17 +727,25 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
     enabled: !!reviewAssetId, // Only fetch at top level if there's a URL param
   });
 
+  const lastProcessedReviewRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (reviewAssetId && reviewAssets && !reviewAsset) {
-      const asset = reviewAssets.find((a) => a.id === reviewAssetId);
-      if (asset) {
-        setReviewAsset(asset);
+    if (reviewAssetId !== lastProcessedReviewRef.current) {
+      if (reviewAssetId && reviewAssets) {
+        const asset = reviewAssets.find((a) => a.id === reviewAssetId);
+        if (asset) {
+          setReviewAsset(asset);
+        }
+      } else if (!reviewAssetId) {
+        setReviewAsset(null);
       }
+      lastProcessedReviewRef.current = reviewAssetId || null;
     }
-  }, [reviewAssetId, reviewAssets, reviewAsset]);
+  }, [reviewAssetId, reviewAssets]);
 
   const handleReviewAssetChange = useCallback((asset: ReviewAsset | null) => {
     setReviewAsset(asset);
+    lastProcessedReviewRef.current = asset?.id || null;
     const newParams = new URLSearchParams(window.location.search);
     if (asset) {
       newParams.set("review", asset.id);
@@ -746,8 +754,8 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
     }
     const searchStr = newParams.toString();
     const newUrl = `${window.location.pathname}${searchStr ? `?${searchStr}` : ""}`;
-    window.history.replaceState(null, "", newUrl);
-  }, []);
+    router.replace(newUrl, { scroll: false });
+  }, [router]);
 
   const { data: members = [] } = useQuery(memberListOptions(wsId));
   const { data: agents = [] } = useQuery(agentListOptions(wsId));
