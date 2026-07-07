@@ -30,6 +30,7 @@ import { Text } from "@/components/ui/text";
 import { ActorAvatar } from "@/components/ui/actor-avatar";
 import { PriorityIcon } from "@/components/ui/priority-icon";
 import { StatusIcon } from "@/components/ui/status-icon";
+import { AssigneeDropdownMenu } from "./pickers/assignee-dropdown";
 
 interface Props {
   issue: Issue;
@@ -50,14 +51,20 @@ export function IssueRow({ issue, onPress, showStatus = false }: Props) {
         <Text className="flex-1 text-sm text-foreground" numberOfLines={1}>
           {issue.title}
         </Text>
-        {issue.assignee_type && issue.assignee_id ? (
-          <ActorAvatar
-            type={issue.assignee_type}
-            id={issue.assignee_id}
-            size={20}
-            showPresence
-          />
-        ) : null}
+        <AssigneeDropdownMenu issue={issue}>
+          <Pressable hitSlop={8}>
+            {issue.assignee_type && issue.assignee_id ? (
+              <ActorAvatar
+                type={issue.assignee_type}
+                id={issue.assignee_id}
+                size={20}
+                showPresence
+              />
+            ) : (
+              <View className="size-5 rounded-full border border-dashed border-muted-foreground/40 items-center justify-center" />
+            )}
+          </Pressable>
+        </AssigneeDropdownMenu>
       </View>
     </Pressable>
   );
