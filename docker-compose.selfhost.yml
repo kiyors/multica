@@ -102,6 +102,7 @@ services:
       # in the database, so this single deployment-wide key is all the operator
       # needs to set here.
       MULTICA_SLACK_SECRET_KEY: ${MULTICA_SLACK_SECRET_KEY:-}
+      REDIS_URL: ${REDIS_URL:-redis://valkey:6379}
     restart: unless-stopped
 
   frontend:
@@ -120,9 +121,18 @@ services:
       HOSTNAME: "0.0.0.0"
     restart: unless-stopped
 
+  valkey:
+    image: valkey/valkey:8-alpine
+    restart: unless-stopped
+    networks:
+      - dokploy-network
+    volumes:
+      - valkey_data:/data
+
 networks:
   dokploy-network:
     external: true
 
 volumes:
   backend_uploads:
+  valkey_data:

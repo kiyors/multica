@@ -317,34 +317,37 @@ Multica is a powerful AI-native task management platform where AI agents are fir
 > **Dependencies:** Phase 1
 
 ### 1.5.1 Advanced Video Scrubber & Playback
-- [x] **Frame-accurate Preview:** 
+
+- [x] **Frame-accurate Preview:**
   - **Implementation:** Created a `useFramePreview` hook that renders a hidden `<video>` element + offscreen `<canvas>` (160x90). Extracts JPEG data URLs at 0.7 quality on hover.
   - **Thought Process:** Avoided server-side sprite generation to reduce backend load. The client-side approach (like YouTube/Vimeo) is fast and requires zero infrastructure changes.
-- [x] **Keyboard Shortcuts:** 
+- [x] **Keyboard Shortcuts:**
   - **Implementation:** Added Arrow keys for 1/30s (frame-accurate) stepping, `ArrowUp/Down` for ±10s seek, and standard spacebar play/pause.
   - **Thought Process:** Professional reviewers need frame-accurate control to pinpoint visual artifacts.
-- [x] **Timecode Formatting & Playback Speed:** 
+- [x] **Timecode Formatting & Playback Speed:**
   - **Implementation:** Added speed control button (0.5x-2.x) directly mutating `video.playbackRate`. Added format toggle cycling through Standard (00:00), Frames (0123), and SMPTE Timecode.
   - **Thought Process:** Standardized the UI with a Clock icon toggle; instant DOM mutation for speed control provides immediate feedback.
-- [x] **Adaptive Quality (HLS Transcoder):** 
+- [x] **Adaptive Quality (HLS Transcoder):**
   - **Implementation:** Built a native Go goroutine (`processVideoAsync` in `transcoder.go`) using `ffmpeg`. Splits input to 720p (CRF 22) and 480p (CRF 26), uploads segments to S3, and updates DB via `COALESCE`. Frontend uses `hls.js` with `capLevelToPlayerSize`.
   - **Thought Process:** Avoided external services for cost efficiency. 720p/480p is the sweet spot for review vs storage. HLS ensures fast scrubbing on large video assets.
 
 ### 1.5.2 Rich Progress Bar & Visual Comment Markers
-- [x] **Standalone Scrubber Component:** 
+
+- [x] **Standalone Scrubber Component:**
   - **Implementation:** Extracted a 389-line `MediaScrubber` component with drag-to-seek, buffered progress bars, and unified `HTMLMediaElement` support (video + audio).
-- [x] **Visual Markers & Range Highlights:** 
+- [x] **Visual Markers & Range Highlights:**
   - **Implementation:** Dual marker types: point markers (single timestamp dots below track) and range markers (translucent colored bands on the progress bar).
   - **Thought Process:** Visually distinguishes between a quick comment at a specific frame vs feedback spanning a 5-second scene.
-- [x] **Portal Hover Tooltips:** 
+- [x] **Portal Hover Tooltips:**
   - **Implementation:** Hovering over a comment marker uses `createPortal` to render the tooltip outside the player container.
   - **Thought Process:** Necessary to prevent tooltips from being clipped by the player's `overflow: hidden` boundaries.
 
 ### 1.5.3 Guest Share Mode & Comment UI Polish
-- [x] **Guest Share Mode:** 
+
+- [x] **Guest Share Mode:**
   - **Implementation:** Built `/guest/review/[id]/page.tsx` as a static placeholder with a frosted-glass lock screen. Added a "Guest Share" clipboard copy button.
-- [x] **Freeframe-style Comment Input:** 
-  - **Implementation:** Redesigned `ReviewCommentSidebar`. Timecode badges are now clickable pills (`bg-primary/15`). The input area is a unified bounded box with inline timecode and a bottom toolbar (Clock, Pencil, Smile icons). 
+- [x] **Freeframe-style Comment Input:**
+  - **Implementation:** Redesigned `ReviewCommentSidebar`. Timecode badges are now clickable pills (`bg-primary/15`). The input area is a unified bounded box with inline timecode and a bottom toolbar (Clock, Pencil, Smile icons).
   - **Thought Process:** Modeled after Frame.io's premium input bar. The duration toggle (Clock) is more intuitive than the old numeric input. Dynamic time sorting ensures ranges are always visually correct regardless of scrub direction.
 
 ---
@@ -360,28 +363,30 @@ Multica is a powerful AI-native task management platform where AI agents are fir
 - [x] **Default types:** Task, Bug, Feature, Story, Creative Brief, Content Piece, Campaign
 - [x] **Views:** Issue type selector in create/edit forms
 - [x] **Views:** Type-based icons and color badges on board cards
-- *Note: Custom Fields have been extracted to Phase 8.*
+- _Note: Custom Fields have been extracted to Phase 8._
 
 ### 2.1.5 Terminology Dialects
+
 - [x] **Core Implementation:** Added `en-marketing` and `en-creative` dialects via `i18next` fallbacks. Configured `pick-locale.ts` to bypass `formatjs` BCP-47 strict validation for custom dialects.
 - [x] **UI Integration:** Updated landing page and workspace settings to expose these dialects. Added `issue_types` translations for `ja`, `ko`, `zh-Hans`.
 - **Thought Process:** Non-developer teams (like legal or marketing) find terms like "Issues" or "Bugs" alienating. Dialects allow customizing the UI vocabulary without maintaining separate codebases.
 
 ### 2.2 Approval Workflows
+
 - [x] **Database Schema:** Created `approvals` table linking `issue_id` to `approver_id` with pending/approved/rejected status tracking.
 - [x] **Backend API:** Built request, approve, and reject endpoints (`server/internal/handler/approvals.go`).
-- [x] **Notifications Engine:** 
+- [x] **Notifications Engine:**
   - **In-App:** Hooked into the inbox system to generate unread notifications for approval events.
   - **Email:** Implemented `server/internal/service/email.go` to dispatch structured transactional emails when an approval is requested or decided. Fixed CI pipeline issues related to email compose tests.
   - **Thought Process:** Approvals block work. Multi-channel notifications (Inbox + Email) ensure approvers don't miss requests, accelerating the creative pipeline.
 
 ### 2.3 Templates for Non-Dev Workflows
 
-- *Note: This entire epic (Issue/Project Templates & Template Gallery) has been extracted to Phase 9 to keep the scope of Phase 2 manageable.*
+- _Note: This entire epic (Issue/Project Templates & Template Gallery) has been extracted to Phase 9 to keep the scope of Phase 2 manageable._
 
 ### 2.4 Autopilot Presets for Marketing
 
-- *Note: This entire epic (Autopilot Automations & Preset Gallery) has been extracted to Phase 10 to keep the scope of Phase 2 manageable.*
+- _Note: This entire epic (Autopilot Automations & Preset Gallery) has been extracted to Phase 10 to keep the scope of Phase 2 manageable._
 
 ---
 
@@ -653,12 +658,14 @@ Multica is a powerful AI-native task management platform where AI agents are fir
 > **Dependencies:** All previous phases (mobile reflects web features)
 
 ### 7.0 Progressive Web App (PWA) Foundation
+
 - [x] **PWA Configuration:** Implemented `next-pwa` to generate service workers and manifest files.
 - [x] **Install Prompt:** Added custom UI (`PwaInstallPrompt`) offering users the option to "Install as App" on their phone's home screen, listening to `beforeinstallprompt`.
 - [x] **Offline Resilience:** Added IndexedDB query caching via `@tanstack/react-query-persist-client`. The app shell now loads offline and displays previously cached issues.
 - **Thought Process:** Bridge the gap for users who don't want to install the native app but need offline reliability and home-screen access.
 
 ### 7.1 Mobile Native Foundations & Push Notifications
+
 - [x] **Device Registration:** Created a `usePushNotifications` hook integrating `expo-notifications`. Built backend endpoint `POST /api/users/me/device-tokens` backed by `user_device_tokens` table.
 - [x] **Push Dispatch Engine:** Implemented background Go workers in `notification_listeners.go`. Listens for `EventInboxNew` and dispatches payloads to Expo's Push Service.
 - [x] **Deep Linking:** Configured `expo-linking` to handle notification taps. Tapping an assignment push directly routes the user to `multica://[workspace]/issue/[id]`.
@@ -674,12 +681,14 @@ Multica is a powerful AI-native task management platform where AI agents are fir
 - **Fixed — permission prompt before login.** `usePushNotifications()` mounted above the auth redirect in `(app)/_layout.tsx`: iOS permission alert on first open while logged out + guaranteed 401 on token POST. Now mounts only for authenticated users.
 
 ### 7.2 Task-Giving & Issue Management Polish
+
 - [x] **Assignee Dropdown:** Built a mobile-native Assignee Picker using `@rn-primitives/dropdown-menu` replacing the clunky standard picker.
 - [x] **Optimistic Updates:** Hooked into React Query's `onMutate` to instantly reflect issue status changes (e.g. In Progress → Done) across both list and detail views.
 - [x] **Offline Cache & Mutation Queueing:** Integrated `@react-native-community/netinfo` and `shouldDehydrateMutation`. Issues created or edited on the subway are saved locally and synced automatically upon reconnection.
 - **Thought Process:** The mobile app must feel instant. Optimistic UI and aggressive offline caching mask network latency entirely.
 
 ### 7.3 Media Review Player & Annotations (Mobile)
+
 - [x] **HLS Video Playback:** Integrated `expo-video` for native HLS (`.m3u8`) support on both iOS and Android.
 - [x] **Custom Gestures:** Ported the web's video scrubbing logic to native using `react-native-gesture-handler`'s `Gesture.Pan()`. Added point decimation to the `pen` tool to prevent UI lag.
 - [x] **SVG Drawing Overlay:** Implemented absolute-positioned `react-native-svg` canvases. Coordinates are properly normalized `(0.0-1.0)` by extracting intrinsic video dimensions via `tracksChanged` events.
@@ -696,7 +705,8 @@ Multica is a powerful AI-native task management platform where AI agents are fir
 - **Metro bundle hygiene.** Two barrel imports (`@multica/core/agents`, `@multica/core/permissions`) pulled web hooks + a second React copy into the bundle; switched to deep imports (`agents/derive-presence`, `permissions/rules`) with new core subpath exports.
 - **Still open:** review screen re-renders ~4×/s during playback (`onTimeUpdate={setTimestamp}`); no resolve/unresolve UI for review comments (web has it); `buildReactNativeFromSource: true` slows iOS builds — remove if no longer needed.
 
-### 7.4 Cross-Platform Polish & UI/UX 
+### 7.4 Cross-Platform Polish & UI/UX
+
 - [x] **SVG Scaling:** Verified `react-native-svg` scaling. Since we store % based coordinates, drawn shapes map perfectly across standard iPhones and high-DPI iPads.
 - [x] **Haptic Feedback:** Added `expo-haptics`. The timeline scrubber provides tactile bumps when passing comment markers. Marking an issue "Done" fires a satisfying `NotificationFeedbackType.Success` vibration.
 - [x] **OS Theme Sync:** Fixed `useColorScheme` to securely fallback to React Native's `Appearance.getColorScheme()` before SecureStore hydrates, eliminating white-flashes on app launch in Dark Mode.
@@ -706,8 +716,9 @@ Multica is a powerful AI-native task management platform where AI agents are fir
 ---
 
 ## Phase 12 — CI/CD & Infrastructure Improvements (Completed)
+
 - [x] **Container Publish:** Created GitHub Actions workflow (`build-and-push.yml`) to automatically build and push custom Docker images to GHCR. Unlocked the release pipeline for forks.
-- [x] **Desktop Releases:** Added macOS support to the Desktop electron-builder release matrix. 
+- [x] **Desktop Releases:** Added macOS support to the Desktop electron-builder release matrix.
 - [x] **Deployment Orchestration:** Updated `docker-compose.selfhost.yml` to support NeonDB, Dokploy Traefik routing labels, and removed hardcoded ports for seamless container orchestration.
 - **Thought Process:** A robust devops pipeline guarantees that every feature shipped is immediately testable and deployable by self-hosted users.
 
@@ -808,12 +819,14 @@ All new features must follow the existing pattern:
 > **Dependencies:** None
 
 ### 8.1 Schema & Backend
+
 - [ ] **DB Migrations:**
   - `custom_field_definitions`: `id`, `workspace_id`, `issue_type_id`, `name`, `type` (text, select, date, url, boolean), `options` (JSONB)
   - `issue_custom_field_values`: `issue_id`, `custom_field_id`, `value` (TEXT or JSONB)
 - [ ] **API:** CRUD endpoints for definitions. Endpoints to upsert field values on issues.
 
 ### 8.2 UI Implementation
+
 - [ ] **Settings UI:** A builder interface to add, remove, and configure custom fields on a per-issue-type basis.
 - [ ] **Issue Form/Detail UI:** Dynamically render inputs (Text area, Date picker, Select dropdown) based on the issue type's custom field definitions.
 
@@ -826,12 +839,14 @@ All new features must follow the existing pattern:
 > **Dependencies:** Phase 8 (Custom Fields) is recommended so templates can pre-fill custom data.
 
 ### 9.1 Schema & Backend
+
 - [ ] **DB Migrations:**
   - `issue_templates`: pre-filled title, description, issue type, custom fields, default assignees.
   - `project_templates`: pre-configured milestones, issue templates, roles.
 - [ ] **API:** Endpoints to create templates and instantiate real issues/projects from templates.
 
 ### 9.2 UI Implementation
+
 - [ ] **Template Gallery:** A modal or page showing available templates when creating a new Project or Issue.
 - [ ] **Template Builder:** UI to design templates visually.
 
@@ -844,12 +859,14 @@ All new features must follow the existing pattern:
 > **Dependencies:** Agent architecture or background worker system (Temporal, Cloudflare Workers, etc.)
 
 ### 10.1 Automation Engine
+
 - [ ] **Cron/Worker System:** Set up a resilient task queue to handle scheduled generation of tasks.
-- [ ] **Preset Logics:** 
+- [ ] **Preset Logics:**
   - Weekly SEO audit report (creates an issue every Monday)
   - Content calendar reminders (pings channel/inbox 3 days before due date)
 
 ### 10.2 UI Implementation
+
 - [ ] **Autopilot Gallery:** A marketplace-like view allowing users to "enable" or "install" specific automations.
 - [ ] **Configuration UI:** For enabled automations, allow configuring parameters (e.g., "Run every [Monday] at [9am]").
 
@@ -860,15 +877,18 @@ All new features must follow the existing pattern:
 > **Dependencies:** None
 
 ### 11.1 Frontend React Query Persistence (loc DB)
+
 - [x] **Implementation:** Install `@tanstack/react-query-persist-client` and `idb-keyval`.
 - [x] **Setup:** Configure the `QueryClient` to persist server state into the browser's IndexedDB. When users navigate, data instantly loads from the local cache while a background revalidation fetches fresh data.
 - [ ] **UX Polish:** Add subtle background fetching indicators so the user knows data is syncing, even when UI is instantly populated.
 
 ### 11.2 Next.js Navigation Optimization
+
 - [ ] **Prefetching:** Audit all `<Link>` components to ensure `prefetch={true}` is utilized for high-traffic routes to prevent waterfalls during client-side navigation.
 - [ ] **Bundle Splitting:** Check for heavy dependencies causing main-thread blocking during route transitions.
 
 ### 11.3 Database Query Optimization
+
 - [x] **Audit:** Identify slow Postgres queries (especially in issue lists and grouped board views).
 - [x] **Indexes:** Write `sqlc` migrations to add targeted compound indexes, ensuring the backend resolves queries within <100ms.
 
@@ -892,22 +912,22 @@ Root cause of "slow data fetching": round-trip count × distance to Postgres, no
 
 ## Progress Tracker
 
-| Phase        | Description                    | Status         | Started | Completed |
-| ------------ | ------------------------------ | -------------- | ------- | --------- |
-| **Phase 0**  | Foundation & Quick Wins        | ✅ Completed   | Yes     | Yes       |
-| **Phase 1**  | Media Review Module            | ✅ Completed   | Yes     | Yes       |
-| **Phase 1.5**| Advanced Media Review Workflow | ✅ Completed   | Yes     | Yes       |
-| **Phase 2**  | Marketing & Creative Workflows | ✅ Completed   | Yes     | Yes       |
-| **Phase 3**  | Rich Text Editor Upgrade       | ✅ Completed   | Yes     | Yes       |
-| **Phase 4**  | Project Architecture & RBAC    | ✅ Completed   | Yes     | Yes       |
-| **Phase 5**  | Enhanced GitHub Integration    | ⬜ Not Started | —       | —         |
-| **Phase 6**  | Communication Layer            | ⏭️ Skipped     | —       | —         |
-| **Phase 7**  | PWA & Mobile Polish            | ✅ Code complete¹ | Yes  | Yes       |
-| **Phase 8**  | Dynamic Custom Fields          | ⏭️ Skipped     | —       | —         |
-| **Phase 9**  | Project & Issue Templates      | ⬜ Not Started | —       | —         |
-| **Phase 10** | Autopilot Automation Presets   | ⬜ Not Started | —       | —         |
-| **Phase 11** | Web Perf & Instant DB Caching  | ✅ Completed²  | Yes     | Yes       |
-| **Phase 12** | CI/CD & Infrastructure         | ✅ Completed   | Yes     | Yes       |
+| Phase         | Description                    | Status            | Started | Completed |
+| ------------- | ------------------------------ | ----------------- | ------- | --------- |
+| **Phase 0**   | Foundation & Quick Wins        | ✅ Completed      | Yes     | Yes       |
+| **Phase 1**   | Media Review Module            | ✅ Completed      | Yes     | Yes       |
+| **Phase 1.5** | Advanced Media Review Workflow | ✅ Completed      | Yes     | Yes       |
+| **Phase 2**   | Marketing & Creative Workflows | ✅ Completed      | Yes     | Yes       |
+| **Phase 3**   | Rich Text Editor Upgrade       | ✅ Completed      | Yes     | Yes       |
+| **Phase 4**   | Project Architecture & RBAC    | ✅ Completed      | Yes     | Yes       |
+| **Phase 5**   | Enhanced GitHub Integration    | ⬜ Not Started    | —       | —         |
+| **Phase 6**   | Communication Layer            | ⏭️ Skipped        | —       | —         |
+| **Phase 7**   | PWA & Mobile Polish            | ✅ Code complete¹ | Yes     | Yes       |
+| **Phase 8**   | Dynamic Custom Fields          | ⬜ Not Started    | —       | —         |
+| **Phase 9**   | Project & Issue Templates      | ⏭️ Skipped        | —       | —         |
+| **Phase 10**  | Autopilot Automation Presets   | ⏭️ Skipped        | —       | —         |
+| **Phase 11**  | Web Perf & Instant DB Caching  | ✅ Completed²     | Yes     | Yes       |
+| **Phase 12**  | CI/CD & Infrastructure         | ✅ Completed      | Yes     | Yes       |
 
 ¹ Phase 7: 2026-07-08 audit fixed device-breaking bugs before the first build (see §7.1/§7.3 audit findings). Still open: EAS projectId (`eas init`), push preference gating, deep-link workspace slug, on-device validation.
 ² Phase 11: 2026-07-08 audit found migration 145 had never applied anywhere (prod runner stuck at 144–146, now unblocked) and added the §11.4 backend round-trip reductions.
