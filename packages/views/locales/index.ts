@@ -212,4 +212,54 @@ export const RESOURCES: Record<SupportedLocale, LocaleResources> = {
     squads: jaSquads,
     billing: jaBilling,
   },
+  "en-marketing": {
+    issues: {
+      page: {
+        breadcrumb_title: "Tasks",
+        empty_title: "No tasks yet",
+        empty_hint: "Create a task to get started."
+      },
+      filters: {
+        issue_count_one: "{{count}} task",
+        issue_count_other: "{{count}} tasks"
+      }
+    },
+    common: {
+      issue_title: "Task",
+      create_issue: "Create task"
+    },
+    layout: {
+      navigation: {
+        issues: "Tasks"
+      },
+      quick_add: {
+        issue: "New task"
+      }
+    }
+  },
+  "en-creative": {
+    issues: {
+      page: {
+        breadcrumb_title: "Assets",
+        empty_title: "No assets yet",
+        empty_hint: "Create an asset to get started."
+      },
+      filters: {
+        issue_count_one: "{{count}} asset",
+        issue_count_other: "{{count}} assets"
+      }
+    },
+    common: {
+      issue_title: "Asset",
+      create_issue: "Create asset"
+    },
+    layout: {
+      navigation: {
+        issues: "Assets"
+      },
+      quick_add: {
+        issue: "New asset"
+      }
+    }
+  }
 };
