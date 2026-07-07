@@ -94,7 +94,9 @@ describe("locale bundle parity", () => {
 // gate on the same source of truth.
 describe("dead plural-key guard", () => {
   for (const locale of translatedLocales) {
-    const categories = new Intl.PluralRules(locale).resolvedOptions()
+    let baseLocale = locale.split('-')[0];
+    if (baseLocale === "en") baseLocale = "en";
+    const categories = new Intl.PluralRules(baseLocale).resolvedOptions()
       .pluralCategories;
     if (categories.includes("one")) continue;
 
