@@ -155,7 +155,7 @@ export function MediaReviewLayout({ workspaceId, asset, onAssetChange, onClose }
           <div className="flex items-center gap-2">
             <Select value={asset.id} onValueChange={handleVersionChange}>
               <SelectTrigger className="h-7 border-gray-700 bg-gray-800 text-xs w-28">
-                <SelectValue placeholder="Version" />
+                <span>{asset.version ? `Version ${asset.version}` : "Version"}</span>
               </SelectTrigger>
               <SelectContent>
                 {assetVersions.map((v) => (

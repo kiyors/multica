@@ -56,26 +56,22 @@ export function ReviewCommentSidebar({
       end_time = currentTime + duration;
     }
 
-    createComment(
-      {
-        workspaceId,
-        issueId: asset.issue_id,
-        assetId: asset.id,
-        content: draftContent,
-        start_time,
-        end_time,
-        shapes,
-        parentId: replyingTo || undefined,
-      },
-      {
-        onSuccess: () => {
-          setDraftContent("");
-          setReplyingTo(null);
-          clearCanvasShapes();
-          editorRef.current?.clearContent();
-        },
-      }
-    );
+    createComment({
+      workspaceId,
+      issueId: asset.issue_id,
+      assetId: asset.id,
+      content: draftContent,
+      start_time,
+      end_time,
+      shapes,
+      parentId: replyingTo || undefined,
+    });
+
+    // Optimistically clear the form so the user can immediately type another comment
+    setDraftContent("");
+    setReplyingTo(null);
+    clearCanvasShapes();
+    editorRef.current?.clearContent();
   };
 
   return (

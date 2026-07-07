@@ -79,6 +79,7 @@ import { projectDetailOptions } from "@multica/core/projects/queries";
 import { ProjectIcon } from "../../projects/components/project-icon";
 import { issueLabelsOptions } from "@multica/core/labels";
 import { memberListOptions, agentListOptions } from "@multica/core/workspace/queries";
+import { listReviewAssetsOptions } from "@multica/core/reviews/queries";
 import { useRecentIssuesStore } from "@multica/core/issues/stores";
 import { useIssueSelectionStore } from "@multica/core/issues/stores/selection-store";
 import { BatchActionToolbar } from "./batch-action-toolbar";
@@ -720,6 +721,33 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
 
   // Issue navigation — read from TQ list cache
   const wsId = useWorkspaceId();
+  const reviewAssetId = router.searchParams.get("review");
+  const { data: reviewAssets } = useQuery({
+    ...listReviewAssetsOptions(wsId, id),
+    enabled: !!reviewAssetId, // Only fetch at top level if there's a URL param
+  });
+
+  useEffect(() => {
+    if (reviewAssetId && reviewAssets && !reviewAsset) {
+      const asset = reviewAssets.find((a) => a.id === reviewAssetId);
+      if (asset) {
+        setReviewAsset(asset);
+      }
+    }
+  }, [reviewAssetId, reviewAssets, reviewAsset]);
+
+  const handleReviewAssetChange = useCallback((asset: ReviewAsset | null) => {
+    setReviewAsset(asset);
+    const newParams = new URLSearchParams(router.searchParams);
+    if (asset) {
+      newParams.set("review", asset.id);
+    } else {
+      newParams.delete("review");
+    }
+    const searchStr = newParams.toString();
+    router.replace(`${router.pathname}${searchStr ? `?${searchStr}` : ""}`);
+  }, [router]);
+
   const { data: members = [] } = useQuery(memberListOptions(wsId));
   const { data: agents = [] } = useQuery(agentListOptions(wsId));
   // Workspace owners and admins moderate any comment authored by anyone
@@ -2172,7 +2200,7 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
 
             <LocalDirectoryHint projectId={issue?.project_id} />
 
-            <ReviewAssetsList workspaceId={wsId} issueId={id} onOpenAsset={setReviewAsset} />
+            <ReviewAssetsList workspaceId={wsId} issueId={id} onOpenAsset={handleReviewAssetChange} />
 
             {/* The "agent is working" live signal now lives in the header
                 (IssueAgentHeaderChip) so it stays in one fixed place and
@@ -2299,15 +2327,15 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
         </ResizablePanel>
       </ResizablePanelGroup>
 
-      <Dialog open={!!reviewAsset} onOpenChange={(open) => !open && setReviewAsset(null)}>
+      <Dialog open={!!reviewAsset} onOpenChange={(open) => !open && handleReviewAssetChange(null)}>
         {/* sm:max-w-none is required: DialogContent defaults to sm:max-w-sm, which a plain max-w-* cannot override */}
         <DialogContent className="w-screen h-screen max-w-none sm:max-w-none max-h-none p-0 gap-0 rounded-none border-0 bg-black">
           {reviewAsset && (
             <MediaReviewLayout
               workspaceId={wsId}
               asset={reviewAsset}
-              onAssetChange={setReviewAsset}
-              onClose={() => setReviewAsset(null)}
+              onAssetChange={handleReviewAssetChange}
+              onClose={() => handleReviewAssetChange(null)}
             />
           )}
         </DialogContent>
