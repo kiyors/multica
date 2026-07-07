@@ -62,13 +62,22 @@ export function ReviewCommentSidebar({
     e.preventDefault();
     if (!draftContent.trim()) return;
 
+    let finalStartTime = (asset.asset_type === "video" || asset.asset_type === "audio") && !replyingTo ? currentTime : null;
+    let finalEndTime = (asset.asset_type === "video" || asset.asset_type === "audio") && !replyingTo ? endTime : null;
+
+    if (finalStartTime !== null && finalEndTime !== null && finalStartTime > finalEndTime) {
+      const temp = finalStartTime;
+      finalStartTime = finalEndTime;
+      finalEndTime = temp;
+    }
+
     createComment({
       workspaceId,
       issueId: asset.issue_id,
       assetId: asset.id,
       content: draftContent,
-      start_time: (asset.asset_type === "video" || asset.asset_type === "audio") && !replyingTo ? currentTime : null,
-      end_time: (asset.asset_type === "video" || asset.asset_type === "audio") && !replyingTo ? endTime : null,
+      start_time: finalStartTime,
+      end_time: finalEndTime,
       shapes: getCanvasShapes() || [],
       parentId: replyingTo || undefined,
     });
@@ -349,15 +358,15 @@ export function ReviewCommentSidebar({
               onClick={() => editorRef.current?.focus()}
             >
               {asset.asset_type === "video" && (
-                <div className="shrink-0 ml-3 mt-[10px] flex items-center gap-1">
+                <div className="shrink-0 ml-3 mt-[10px] mr-2 flex items-center gap-1">
                   <span className="rounded bg-amber-500/10 px-1.5 py-0.5 font-mono text-[11px] font-medium text-amber-500 leading-none select-none border border-amber-500/20">
-                    {new Date(currentTime * 1000).toISOString().substring(11, 19).replace(/^00:/, '')}
+                    {new Date((endTime !== null ? Math.min(currentTime, endTime) : currentTime) * 1000).toISOString().substring(11, 19).replace(/^00:/, '')}
                   </span>
                   {endTime !== null && (
                     <>
                       <span className="text-muted-foreground text-[10px]">-</span>
                       <span className="rounded bg-amber-500/10 px-1.5 py-0.5 font-mono text-[11px] font-medium text-amber-500 leading-none select-none border border-amber-500/20">
-                        {new Date(endTime * 1000).toISOString().substring(11, 19).replace(/^00:/, '')}
+                        {new Date(Math.max(currentTime, endTime) * 1000).toISOString().substring(11, 19).replace(/^00:/, '')}
                       </span>
                     </>
                   )}
