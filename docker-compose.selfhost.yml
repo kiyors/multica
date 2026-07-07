@@ -21,8 +21,6 @@ name: multica
 services:
   backend:
     image: ${MULTICA_BACKEND_IMAGE:-ghcr.io/kiyors/multica-backend}:${MULTICA_IMAGE_TAG:-latest}
-    ports:
-      - "127.0.0.1:${BACKEND_PORT:-8080}:8080"
     volumes:
       - backend_uploads:/app/data/uploads
     environment:
@@ -102,8 +100,6 @@ services:
     image: ${MULTICA_WEB_IMAGE:-ghcr.io/kiyors/multica-web}:${MULTICA_IMAGE_TAG:-latest}
     depends_on:
       - backend
-    ports:
-      - "127.0.0.1:${FRONTEND_PORT:-3000}:3000"
     environment:
       HOSTNAME: "0.0.0.0"
     restart: unless-stopped
