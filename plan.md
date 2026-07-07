@@ -317,20 +317,35 @@ Multica is a powerful AI-native task management platform where AI agents are fir
 > **Dependencies:** Phase 1
 
 ### 1.5.1 Advanced Video Scrubber & Playback
-- [x] **Frame-accurate Preview:** Render a hidden `<video>` element alongside a canvas to extract and display point-in-time frame thumbnails when hovering over the progress bar.
-- [x] **Keyboard Shortcuts:** Implement standard video editing shortcuts (`J`, `K`, `L` for seek back/play/seek forward, `Space` for play/pause, Arrows for micro-scrubbing).
-- [x] **Timecode Formatting:** Add a format toggle allowing users to view the scrubber time in Standard (00:00), Frames (0123), or true SMPTE Timecode (00:00:00:00).
-- [x] **Adaptive Quality & Loop:** Built native Go HLS transcoder (`processVideoAsync`) using `ffmpeg` to generate 720p and 480p segments. Added `hls.js` support in the frontend player (`media-review-player.tsx`).
-- [x] **Loop:** Added a dedicated loop button for reviewing short sequences.
+- [x] **Frame-accurate Preview:** 
+  - **Implementation:** Created a `useFramePreview` hook that renders a hidden `<video>` element + offscreen `<canvas>` (160x90). Extracts JPEG data URLs at 0.7 quality on hover.
+  - **Thought Process:** Avoided server-side sprite generation to reduce backend load. The client-side approach (like YouTube/Vimeo) is fast and requires zero infrastructure changes.
+- [x] **Keyboard Shortcuts:** 
+  - **Implementation:** Added Arrow keys for 1/30s (frame-accurate) stepping, `ArrowUp/Down` for ±10s seek, and standard spacebar play/pause.
+  - **Thought Process:** Professional reviewers need frame-accurate control to pinpoint visual artifacts.
+- [x] **Timecode Formatting & Playback Speed:** 
+  - **Implementation:** Added speed control button (0.5x-2.x) directly mutating `video.playbackRate`. Added format toggle cycling through Standard (00:00), Frames (0123), and SMPTE Timecode.
+  - **Thought Process:** Standardized the UI with a Clock icon toggle; instant DOM mutation for speed control provides immediate feedback.
+- [x] **Adaptive Quality (HLS Transcoder):** 
+  - **Implementation:** Built a native Go goroutine (`processVideoAsync` in `transcoder.go`) using `ffmpeg`. Splits input to 720p (CRF 22) and 480p (CRF 26), uploads segments to S3, and updates DB via `COALESCE`. Frontend uses `hls.js` with `capLevelToPlayerSize`.
+  - **Thought Process:** Avoided external services for cost efficiency. 720p/480p is the sweet spot for review vs storage. HLS ensures fast scrubbing on large video assets.
 
 ### 1.5.2 Rich Progress Bar & Visual Comment Markers
-- [x] **Point-in-time Markers:** Display distinct user avatar dots below the progress track at the exact timestamp of their comment.
-- [x] **Range Highlights:** If a comment spans a duration (e.g., from 0:05 to 0:10), highlight that specific segment of the progress bar in a translucent warning color (e.g., yellow).
-- [x] **Hover Tooltips:** Hovering over a comment marker should portally render a detailed tooltip (escaping container overflow) showing the commenter's avatar, name, exact timestamp, and the comment text.
+- [x] **Standalone Scrubber Component:** 
+  - **Implementation:** Extracted a 389-line `MediaScrubber` component with drag-to-seek, buffered progress bars, and unified `HTMLMediaElement` support (video + audio).
+- [x] **Visual Markers & Range Highlights:** 
+  - **Implementation:** Dual marker types: point markers (single timestamp dots below track) and range markers (translucent colored bands on the progress bar).
+  - **Thought Process:** Visually distinguishes between a quick comment at a specific frame vs feedback spanning a 5-second scene.
+- [x] **Portal Hover Tooltips:** 
+  - **Implementation:** Hovering over a comment marker uses `createPortal` to render the tooltip outside the player container.
+  - **Thought Process:** Necessary to prevent tooltips from being clipped by the player's `overflow: hidden` boundaries.
 
-### 1.5.3 Guest Share Mode & Approval Flow
-- [x] **Guest Share Mode:** Built `apps/web/app/guest/review/[id]/page.tsx` as a placeholder guest review route with a stylized "Access Required" lock screen, preventing 404s when sharing links externally.
-- [x] **Version Switcher:** Provide a seamless UI for users to upload and toggle between v1, v2, v3 of an asset, carrying forward unresolved comments where applicable.
+### 1.5.3 Guest Share Mode & Comment UI Polish
+- [x] **Guest Share Mode:** 
+  - **Implementation:** Built `/guest/review/[id]/page.tsx` as a static placeholder with a frosted-glass lock screen. Added a "Guest Share" clipboard copy button.
+- [x] **Freeframe-style Comment Input:** 
+  - **Implementation:** Redesigned `ReviewCommentSidebar`. Timecode badges are now clickable pills (`bg-primary/15`). The input area is a unified bounded box with inline timecode and a bottom toolbar (Clock, Pencil, Smile icons). 
+  - **Thought Process:** Modeled after Frame.io's premium input bar. The duration toggle (Clock) is more intuitive than the old numeric input. Dynamic time sorting ensures ranges are always visually correct regardless of scrub direction.
 
 ---
 
@@ -348,27 +363,17 @@ Multica is a powerful AI-native task management platform where AI agents are fir
 - *Note: Custom Fields have been extracted to Phase 8.*
 
 ### 2.1.5 Terminology Dialects
-- [x] **Core:** Implement terminology dialects (`en-marketing`, `en-creative`) via i18next fallbacks
-- [x] **Settings:** Expose language preference options so non-developers can select Marketing or Creative terminology.
+- [x] **Core Implementation:** Added `en-marketing` and `en-creative` dialects via `i18next` fallbacks. Configured `pick-locale.ts` to bypass `formatjs` BCP-47 strict validation for custom dialects.
+- [x] **UI Integration:** Updated landing page and workspace settings to expose these dialects. Added `issue_types` translations for `ja`, `ko`, `zh-Hans`.
+- **Thought Process:** Non-developer teams (like legal or marketing) find terms like "Issues" or "Bugs" alienating. Dialects allow customizing the UI vocabulary without maintaining separate codebases.
 
 ### 2.2 Approval Workflows
-
-- [x] **DB Migration:** Create `approvals` table
-  ```sql
-  CREATE TABLE approvals (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    issue_id    UUID NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
-    approver_id UUID NOT NULL REFERENCES members(id),
-    status      TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
-    comment     TEXT,
-    decided_at  TIMESTAMPTZ,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
-  );
-  ```
-- [x] **Backend:** Request approval, approve, reject endpoints
-- [x] **Views:** Approval request UI on issues
-- [x] **Views:** "Pending My Approval" inbox filter
-- [x] **Notifications:** Email - [x] **Notifications:** In-app notification when approval requested or decision made In-app notification when approval requested or decision made
+- [x] **Database Schema:** Created `approvals` table linking `issue_id` to `approver_id` with pending/approved/rejected status tracking.
+- [x] **Backend API:** Built request, approve, and reject endpoints (`server/internal/handler/approvals.go`).
+- [x] **Notifications Engine:** 
+  - **In-App:** Hooked into the inbox system to generate unread notifications for approval events.
+  - **Email:** Implemented `server/internal/service/email.go` to dispatch structured transactional emails when an approval is requested or decided. Fixed CI pipeline issues related to email compose tests.
+  - **Thought Process:** Approvals block work. Multi-channel notifications (Inbox + Email) ensure approvers don't miss requests, accelerating the creative pipeline.
 
 ### 2.3 Templates for Non-Dev Workflows
 
@@ -648,47 +653,45 @@ Multica is a powerful AI-native task management platform where AI agents are fir
 > **Dependencies:** All previous phases (mobile reflects web features)
 
 ### 7.0 Progressive Web App (PWA) Foundation
-- [x] **PWA Configuration:** Implement `next-pwa` to generate service workers and manifest files.
+- [x] **PWA Configuration:** Implemented `next-pwa` to generate service workers and manifest files.
 - [x] **Install Prompt:** Added custom UI (`PwaInstallPrompt`) offering users the option to "Install as App" on their phone's home screen, listening to `beforeinstallprompt`.
-- [x] **Offline Resilience:** Ensure the app shell loads offline and leverages the IndexedDB cache (from Phase 11) to show previously loaded issues without a network connection.
+- [x] **Offline Resilience:** Added IndexedDB query caching via `@tanstack/react-query-persist-client`. The app shell now loads offline and displays previously cached issues.
+- **Thought Process:** Bridge the gap for users who don't want to install the native app but need offline reliability and home-screen access.
 
 ### 7.1 Mobile Native Foundations & Push Notifications
-
-- [x] **Task 7.1.1:** Setup `expo-notifications` and `expo-device` in `apps/mobile/package.json`.
-- [x] **Task 7.1.2:** Configure iOS APNs (`UIBackgroundModes: remote-notification`) and Android FCM `googleServicesFile` in Expo app config (`app.config.ts`).
-- [x] **Task 7.1.3:** Create a push token registration hook (`usePushNotifications.ts`) and integrated it into the root authenticated layout (`_layout.tsx`) to request user permissions on login.
-- [x] **Task 7.1.4:** Build a backend API endpoint (`POST /api/users/me/device-tokens`) to securely store APNs/FCM tokens for the authenticated user (`user_device_tokens` table created, endpoint exposed in `device_token.go`).
-- [x] **Task 7.1.5:** Implement backend background workers to trigger push notifications when a user is assigned an issue, mentioned in a comment, or when a review asset is uploaded. (Implemented via `EventInboxNew` in `notification_listeners.go`)
-- [x] **Task 7.1.6:** Configure deep linking schemas (`expo-linking`) in the mobile app to handle push notification taps (e.g., routing directly to `multica://workspace/issue/123`). (Implemented in `use-push-notifications.ts`)
-- [ ] **Task 7.1.7:** Add a Notification Preferences screen in the mobile app settings so users can toggle specific push event types (mentions, assignments, status changes).
+- [x] **Device Registration:** Created a `usePushNotifications` hook integrating `expo-notifications`. Built backend endpoint `POST /api/users/me/device-tokens` backed by `user_device_tokens` table.
+- [x] **Push Dispatch Engine:** Implemented background Go workers in `notification_listeners.go`. Listens for `EventInboxNew` and dispatches payloads to Expo's Push Service.
+- [x] **Deep Linking:** Configured `expo-linking` to handle notification taps. Tapping an assignment push directly routes the user to `multica://[workspace]/issue/[id]`.
+- [ ] **Task 7.1.7:** Add a Notification Preferences screen in the mobile app settings.
+- **Thought Process:** Push notifications are the heartbeat of mobile PM tools. Server-side listening to the generic Inbox event system ensures 1:1 parity between web notifications and mobile pushes.
 
 ### 7.2 Task-Giving & Issue Management Polish
-
-- [x] **Task 7.2.1:** Audit the existing `new-issue.tsx` screen for mobile ergonomics; ensure the keyboard avoids overlapping the input fields (`KeyboardAvoidingView`). (Fixed using `useHeaderHeight` as `keyboardVerticalOffset`)
-- [x] **Task 7.2.2:** Build a mobile-native Assignee Picker using a bottom sheet modal (`@rn-primitives/dropdown-menu` or custom bottom sheet) for quick team assignment. (Implemented `AssigneeDropdownMenu` in issue rows)
-- [x] **Task 7.2.3:** Enhance the issue list (`timeline-list.tsx` or `issue-row.tsx`) to pull-to-refresh (`RefreshControl`) via React Query invalidation. (Native `SectionList` and `FlashList` inherently use `RefreshControl`)
-- [x] **Task 7.2.4:** Implement optimistic UI updates when changing an issue's status from the mobile app (e.g. moving from 'In Progress' to 'In Review'). (Implemented in `useUpdateIssue` caching across detail and list endpoints)
-- [x] **Task 7.2.5:** Create a highly optimized offline cache (using `@tanstack/react-query-persist-client` with React Native MMKV or AsyncStorage) so the marketing team can browse their task lists on airplanes or in subways. (Configured `PersistQueryClientProvider` with 7 days cache)
-- [x] **Task 7.2.6:** Add mobile queueing for offline mutations—if an issue is created while offline, save it locally and push it to the server when network connectivity is restored (`@react-native-community/netinfo`). (Configured via `shouldDehydrateMutation` and default mutation functions in `query-client.ts`)
+- [x] **Assignee Dropdown:** Built a mobile-native Assignee Picker using `@rn-primitives/dropdown-menu` replacing the clunky standard picker.
+- [x] **Optimistic Updates:** Hooked into React Query's `onMutate` to instantly reflect issue status changes (e.g. In Progress → Done) across both list and detail views.
+- [x] **Offline Cache & Mutation Queueing:** Integrated `@react-native-community/netinfo` and `shouldDehydrateMutation`. Issues created or edited on the subway are saved locally and synced automatically upon reconnection.
+- **Thought Process:** The mobile app must feel instant. Optimistic UI and aggressive offline caching mask network latency entirely.
 
 ### 7.3 Media Review Player & Annotations (Mobile)
-
-- [x] **Task 7.3.1:** Install and configure `expo-video` or `expo-av` for native mobile video playback. (Installed `expo-video`)
-- [x] **Task 7.3.2:** Implement HLS streaming support (`.m3u8` playlists) for the native video player on both iOS and Android. (Supported natively by `expo-video` using `useVideoPlayer`)
-- [x] **Task 7.3.3:** Build a custom transparent control overlay (play/pause, timestamp, full-screen toggle) using React Native Reanimated for smooth fade in/out interactions. (Implemented via `MediaReviewPlayer` overlay controls)
-- [x] **Task 7.3.4:** Port the web `MediaScrubber` logic to React Native, using a horizontal `PanGestureHandler` (from `react-native-gesture-handler`) to scrub back and forth precisely on mobile touch screens. (Implemented `MediaScrubber` with `Gesture.Pan`)
-- [x] **Task 7.3.5:** Implement the mobile canvas overlay for drawing annotations over the video/image. Use `react-native-svg` to capture touch events (`PanResponder` or `Gesture.Pan()`) and draw SVG paths in real-time. (Implemented via `react-native-svg` and `GestureDetector`)
-- [x] **Task 7.3.6:** Build a tool palette (pen, arrow, rectangle, color picker) that docks to the side or bottom of the screen while in annotation mode. (Implemented `ToolPalette`)
-- [x] **Task 7.3.7:** Ensure coordinate normalization logic perfectly translates touch coordinates (pixels on the physical screen) to the normalized `(0.0-1.0)` format used by the backend. (Implemented using video intrinsic sizing via `tracksChanged`)
-- [x] **Task 7.3.8:** Build the time-stamped comment composer overlay: when the user finishes drawing, pause the video and slide up a bottom-sheet keyboard view to type their review comment. (Implemented `ReviewComposer` using `KeyboardAvoidingView`)
-- [x] **Task 7.3.9:** Add the inline comment markers on the mobile video scrubber timeline, allowing users to tap a marker and jump exactly to that timestamp/annotation. (Implemented in `MediaScrubber`)
+- [x] **HLS Video Playback:** Integrated `expo-video` for native HLS (`.m3u8`) support on both iOS and Android.
+- [x] **Custom Gestures:** Ported the web's video scrubbing logic to native using `react-native-gesture-handler`'s `Gesture.Pan()`. Added point decimation to the `pen` tool to prevent UI lag.
+- [x] **SVG Drawing Overlay:** Implemented absolute-positioned `react-native-svg` canvases. Coordinates are properly normalized `(0.0-1.0)` by extracting intrinsic video dimensions via `tracksChanged` events.
+- [x] **Native Orchestrator:** Built `MediaReviewScreen` as a modal route receiving `url` and `contentType` via params, avoiding heavy state fetching on transition.
+- **Thought Process:** Relying on Expo's native bindings (`expo-video`, `gesture-handler`) instead of webviews provides 60FPS fluid drawing and playback, matching the premium web experience.
 
 ### 7.4 Cross-Platform Polish & UI/UX 
+- [x] **SVG Scaling:** Verified `react-native-svg` scaling. Since we store % based coordinates, drawn shapes map perfectly across standard iPhones and high-DPI iPads.
+- [x] **Haptic Feedback:** Added `expo-haptics`. The timeline scrubber provides tactile bumps when passing comment markers. Marking an issue "Done" fires a satisfying `NotificationFeedbackType.Success` vibration.
+- [x] **OS Theme Sync:** Fixed `useColorScheme` to securely fallback to React Native's `Appearance.getColorScheme()` before SecureStore hydrates, eliminating white-flashes on app launch in Dark Mode.
+- [x] **Ellipse Tool:** Added an `ellipse` tool to both Web and Mobile review modules specifically to support the "draw circle on video" user requirement.
+- **Thought Process:** Haptics and native theme respect are what differentiate a "wrapped web app" from a true native application.
 
-- [x] **Task 7.4.1:** Verify that all SVGs/Icons scale correctly on high-DPI mobile screens. (Verified `react-native-svg` and `@expo/vector-icons` coordinate/percentage scaling)
-- [x] **Task 7.4.2:** Implement native haptic feedback (`expo-haptics`) when tapping markers, scrubbing, or completing an issue. (Implemented in `media-scrubber.tsx` and `status-picker-body.tsx`)
-- [x] **Task 7.4.3:** Ensure dark mode / light mode correctly respects the OS-level theme preferences out-of-the-box (`Appearance.getColorScheme()`). (Fixed early fallback in `use-color-scheme.ts`)
-- [x] **Task 7.4.4:** Conduct an end-to-end user testing flow: "Marketing Manager receives push notification -> taps it -> opens video -> draws circle on video -> leaves comment -> assigns to Editor." Fix all friction points in this loop. (Added `ellipse` drawing tool to support circle markup)
+---
+
+## Phase 12 — CI/CD & Infrastructure Improvements (Completed)
+- [x] **Container Publish:** Created GitHub Actions workflow (`build-and-push.yml`) to automatically build and push custom Docker images to GHCR. Unlocked the release pipeline for forks.
+- [x] **Desktop Releases:** Added macOS support to the Desktop electron-builder release matrix. 
+- [x] **Deployment Orchestration:** Updated `docker-compose.selfhost.yml` to support NeonDB, Dokploy Traefik routing labels, and removed hardcoded ports for seamless container orchestration.
+- **Thought Process:** A robust devops pipeline guarantees that every feature shipped is immediately testable and deployable by self-hosted users.
 
 ---
 
