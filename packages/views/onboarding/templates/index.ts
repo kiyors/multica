@@ -35,6 +35,8 @@ const CONTENT_LANG_BY_LOCALE: Record<SupportedLocale, ContentLang> = {
   "zh-Hans": "zh",
   ko: "ko",
   ja: "ja",
+  "en-marketing": "en",
+  "en-creative": "en",
 };
 
 /**

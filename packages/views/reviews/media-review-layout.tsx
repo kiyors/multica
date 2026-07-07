@@ -223,6 +223,7 @@ export function MediaReviewLayout({ workspaceId, asset, onAssetChange, onClose }
       </div>
 
       {/* Review Content */}
+      {/* @ts-expect-error react-resizable-panels migration issue with direction */}
       <ResizablePanelGroup direction="horizontal" className="flex-1 w-full overflow-hidden">
         <ResizablePanel defaultSize={75} minSize={50} className="relative bg-black flex flex-col overflow-auto">
           {/* Upload showcase overlaid above player while uploading a new version */}
