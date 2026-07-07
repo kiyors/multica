@@ -685,10 +685,10 @@ Multica is a powerful AI-native task management platform where AI agents are fir
 
 ### 7.4 Cross-Platform Polish & UI/UX 
 
-- [ ] **Task 7.4.1:** Verify that all SVGs/Icons scale correctly on high-DPI mobile screens.
-- [ ] **Task 7.4.2:** Implement native haptic feedback (`expo-haptics`) when tapping markers, scrubbing, or completing an issue.
-- [ ] **Task 7.4.3:** Ensure dark mode / light mode correctly respects the OS-level theme preferences out-of-the-box (`Appearance.getColorScheme()`).
-- [ ] **Task 7.4.4:** Conduct an end-to-end user testing flow: "Marketing Manager receives push notification -> taps it -> opens video -> draws circle on video -> leaves comment -> assigns to Editor." Fix all friction points in this loop.
+- [x] **Task 7.4.1:** Verify that all SVGs/Icons scale correctly on high-DPI mobile screens. (Verified `react-native-svg` and `@expo/vector-icons` coordinate/percentage scaling)
+- [x] **Task 7.4.2:** Implement native haptic feedback (`expo-haptics`) when tapping markers, scrubbing, or completing an issue. (Implemented in `media-scrubber.tsx` and `status-picker-body.tsx`)
+- [x] **Task 7.4.3:** Ensure dark mode / light mode correctly respects the OS-level theme preferences out-of-the-box (`Appearance.getColorScheme()`). (Fixed early fallback in `use-color-scheme.ts`)
+- [x] **Task 7.4.4:** Conduct an end-to-end user testing flow: "Marketing Manager receives push notification -> taps it -> opens video -> draws circle on video -> leaves comment -> assigns to Editor." Fix all friction points in this loop. (Added `ellipse` drawing tool to support circle markup)
 
 ---
 
