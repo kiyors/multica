@@ -300,7 +300,8 @@ func main() {
 	// so subscribers must be written first within the same synchronous event dispatch.
 	registerSubscriberListeners(bus, queries)
 	registerActivityListeners(bus, queries)
-	registerNotificationListeners(bus, queries)
+	pushSvc := service.NewPushService()
+	registerNotificationListeners(bus, queries, pushSvc)
 
 	metricsConfig := obsmetrics.ConfigFromEnv()
 	var metricsServer *http.Server

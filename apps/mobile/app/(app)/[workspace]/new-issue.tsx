@@ -22,6 +22,7 @@ import {
   ScrollView,
   TextInput,
 } from "react-native";
+import { useHeaderHeight } from "@react-navigation/elements";
 import { Stack, router } from "expo-router";
 import { SubmitIssueButton } from "@/components/issue/submit-issue-button";
 import { CreateFormAttributeRow } from "@/components/issue/create-form-attribute-row";
@@ -33,6 +34,7 @@ import { useNewIssueDraftStore } from "@/data/stores/new-issue-draft-store";
 import { useMentionInput } from "@/lib/use-mention-input";
 
 export default function NewIssueModal() {
+  const headerHeight = useHeaderHeight();
   const [title, setTitle] = useState("");
   const description = useMentionInput();
   // Attribute chips (status / priority / assignee / due date / project)
@@ -110,6 +112,7 @@ export default function NewIssueModal() {
       <KeyboardAvoidingView
         className="flex-1 bg-background"
         behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={headerHeight}
       >
         <ScrollView
           className="flex-1"

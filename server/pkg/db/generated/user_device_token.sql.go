@@ -11,6 +11,50 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const deleteUserDeviceToken = `-- name: DeleteUserDeviceToken :exec
+DELETE FROM user_device_tokens WHERE user_id = $1 AND token = $2
+`
+
+type DeleteUserDeviceTokenParams struct {
+	UserID pgtype.UUID `json:"user_id"`
+	Token  string      `json:"token"`
+}
+
+func (q *Queries) DeleteUserDeviceToken(ctx context.Context, arg DeleteUserDeviceTokenParams) error {
+	_, err := q.db.Exec(ctx, deleteUserDeviceToken, arg.UserID, arg.Token)
+	return err
+}
+
+const getUserDeviceTokens = `-- name: GetUserDeviceTokens :many
+SELECT user_id, token, platform, created_at, updated_at FROM user_device_tokens WHERE user_id = $1
+`
+
+func (q *Queries) GetUserDeviceTokens(ctx context.Context, userID pgtype.UUID) ([]UserDeviceToken, error) {
+	rows, err := q.db.Query(ctx, getUserDeviceTokens, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []UserDeviceToken{}
+	for rows.Next() {
+		var i UserDeviceToken
+		if err := rows.Scan(
+			&i.UserID,
+			&i.Token,
+			&i.Platform,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const upsertUserDeviceToken = `-- name: UpsertUserDeviceToken :exec
 INSERT INTO user_device_tokens (user_id, token, platform)
 VALUES ($1, $2, $3)

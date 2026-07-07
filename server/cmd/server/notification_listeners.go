@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/multica-ai/multica/server/internal/events"
 	"github.com/multica-ai/multica/server/internal/handler"
+	"github.com/multica-ai/multica/server/internal/service"
 	"github.com/multica-ai/multica/server/internal/util"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/protocol"
@@ -541,8 +542,59 @@ func notifyMentionedMembers(
 // NOTE: uses context.Background() because the event bus dispatches synchronously
 // within the HTTP request goroutine. Adding per-handler timeouts is a bus-level
 // concern — see events.Bus for future improvements.
-func registerNotificationListeners(bus *events.Bus, queries *db.Queries) {
+func registerNotificationListeners(bus *events.Bus, queries *db.Queries, pushSvc *service.PushService) {
 	ctx := context.Background()
+
+	bus.Subscribe(protocol.EventInboxNew, func(e events.Event) {
+		payload, ok := e.Payload.(map[string]any)
+		if !ok {
+			return
+		}
+		item, ok := payload["item"].(map[string]any)
+		if !ok {
+			return
+		}
+		recipientType, _ := item["recipient_type"].(string)
+		if recipientType != "member" {
+			return
+		}
+		recipientIDStr, _ := item["recipient_id"].(string)
+		recipientID := parseUUID(recipientIDStr)
+		if !recipientID.Valid {
+			return
+		}
+
+		tokens, err := queries.GetUserDeviceTokens(context.Background(), recipientID)
+		if err != nil || len(tokens) == 0 {
+			return
+		}
+
+		title, _ := item["title"].(string)
+		var body string
+		if b, ok := item["body"].(*string); ok && b != nil {
+			body = *b
+		}
+
+		var data map[string]any
+		if issueID, ok := item["issue_id"].(*string); ok && issueID != nil {
+			data = map[string]any{
+				"url": "multica://issue/" + *issueID,
+			}
+		}
+
+		messages := make([]service.ExpoPushMessage, len(tokens))
+		for i, t := range tokens {
+			messages[i] = service.ExpoPushMessage{
+				To:    t.Token,
+				Title: title,
+				Body:  body,
+				Data:  data,
+			}
+		}
+		if pushSvc != nil {
+			go pushSvc.SendPushNotifications(context.Background(), messages)
+		}
+	})
 
 	// issue:created — Direct notification to assignee if assignee != actor
 	bus.Subscribe(protocol.EventIssueCreated, func(e events.Event) {
