@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Trash2 } from "lucide-react";
+import { Trash2, Share2, Link as LinkIcon } from "lucide-react";
+import { toast } from "sonner";
 import type { ReviewAsset } from "@multica/core/types";
 import {
   AlertDialog,
@@ -172,6 +173,19 @@ export function MediaReviewLayout({ workspaceId, asset, onAssetChange, onClose }
               className="text-xs px-2 py-1 bg-muted hover:bg-muted/80 rounded border border-border text-foreground"
             >
               {uploadAsset.isPending ? "Uploading…" : "Upload New Version"}
+            </button>
+
+            {/* Guest Share */}
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(`${window.location.origin}/guest/review/${asset.id}`);
+                toast.success("Guest share link copied to clipboard");
+              }}
+              title="Share with guests"
+              className="text-xs px-2 py-1 bg-muted hover:bg-muted/80 rounded border border-border text-foreground flex items-center gap-1"
+            >
+              <Share2 className="w-3 h-3" />
+              Share
             </button>
 
             {/* Delete current version */}

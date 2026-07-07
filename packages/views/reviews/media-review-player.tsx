@@ -1,7 +1,8 @@
 import React, { useRef, useEffect, useState, useCallback, useImperativeHandle, forwardRef } from "react";
-import { Play, Pause, Maximize2, SkipBack, SkipForward } from "lucide-react";
+import { Play, Pause, Maximize2, SkipBack, SkipForward, Clock, Repeat } from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@multica/ui/components/ui/tooltip";
 import type { ReviewAsset, ReviewComment } from "@multica/core/types";
+import { MediaScrubber, formatTimecode, formatTime, formatFrames } from "./media-scrubber";
 
 export interface MediaReviewPlayerProps {
   asset: ReviewAsset;
@@ -30,6 +31,9 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
   const [drawingShape, setDrawingShape] = useState<any>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isLooping, setIsLooping] = useState(false);
+  const [timeFormat, setTimeFormat] = useState<"standard" | "frames" | "timecode">("standard");
 
   const calculateTrueLayout = useCallback(() => {
     if (!containerRef.current || !mediaRef.current) return;
@@ -42,6 +46,9 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
       const video = mediaRef.current as HTMLVideoElement;
       mediaWidth = video.videoWidth;
       mediaHeight = video.videoHeight;
+    } else if (asset.asset_type === "audio") {
+      mediaWidth = container.width;
+      mediaHeight = container.height;
     } else {
       const img = mediaRef.current as HTMLImageElement;
       mediaWidth = img.naturalWidth;
@@ -89,13 +96,13 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
 
   useImperativeHandle(ref, () => ({
     seek: (time: number) => {
-      if (asset.asset_type === "video" && mediaRef.current) {
-        (mediaRef.current as HTMLVideoElement).currentTime = time;
+      if ((asset.asset_type === "video" || asset.asset_type === "audio") && mediaRef.current) {
+        (mediaRef.current as HTMLMediaElement).currentTime = time;
       }
     },
     pause: () => {
-      if (asset.asset_type === "video" && mediaRef.current) {
-        (mediaRef.current as HTMLVideoElement).pause();
+      if ((asset.asset_type === "video" || asset.asset_type === "audio") && mediaRef.current) {
+        (mediaRef.current as HTMLMediaElement).pause();
       }
     },
     getCanvasShapes: () => {
@@ -114,8 +121,8 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
   }));
 
   const handleTimeUpdate = () => {
-    if (asset.asset_type === "video" && mediaRef.current) {
-      const time = (mediaRef.current as HTMLVideoElement).currentTime;
+    if ((asset.asset_type === "video" || asset.asset_type === "audio") && mediaRef.current) {
+      const time = (mediaRef.current as HTMLMediaElement).currentTime;
       setCurrentTime(time);
       if (onTimeUpdate) onTimeUpdate(time);
     }
@@ -133,8 +140,8 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
     setDrawingShape(newShape);
     onDrawingShapeChange?.(newShape);
     
-    if (asset.asset_type === "video" && mediaRef.current) {
-      (mediaRef.current as HTMLVideoElement).pause();
+    if ((asset.asset_type === "video" || asset.asset_type === "audio") && mediaRef.current) {
+      (mediaRef.current as HTMLMediaElement).pause();
     }
   };
 
@@ -169,36 +176,49 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
   });
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (asset.asset_type !== "video" || !mediaRef.current) return;
-    const video = mediaRef.current as HTMLVideoElement;
+    if ((asset.asset_type !== "video" && asset.asset_type !== "audio") || !mediaRef.current) return;
+    const media = mediaRef.current as HTMLMediaElement;
     
     // Ignore keyboard events if we're focused in an input/textarea
     if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
 
     switch (e.key) {
       case ' ':
+      case 'k':
+      case 'K':
         e.preventDefault();
-        video.paused ? video.play() : video.pause();
+        media.paused ? media.play() : media.pause();
+        break;
+      case 'j':
+      case 'J':
+        e.preventDefault();
+        media.currentTime = Math.max(0, media.currentTime - 10);
+        break;
+      case 'l':
+      case 'L':
+        e.preventDefault();
+        if (asset.duration) {
+          media.currentTime = Math.min(asset.duration, media.currentTime + 10);
+        }
         break;
       case 'ArrowLeft':
         e.preventDefault();
-        video.currentTime = Math.max(0, video.currentTime - 5);
+        media.currentTime = Math.max(0, media.currentTime - (1/30));
         break;
       case 'ArrowRight':
         e.preventDefault();
         if (asset.duration) {
-          video.currentTime = Math.min(asset.duration, video.currentTime + 5);
+          media.currentTime = Math.min(asset.duration, media.currentTime + (1/30));
         }
         break;
     }
   };
 
-  const [isPlaying, setIsPlaying] = useState(false);
   const handlePlayPause = () => {
-    if (!mediaRef.current || asset.asset_type !== "video") return;
-    const video = mediaRef.current as HTMLVideoElement;
-    if (video.paused) video.play();
-    else video.pause();
+    if (!mediaRef.current || (asset.asset_type !== "video" && asset.asset_type !== "audio")) return;
+    const media = mediaRef.current as HTMLMediaElement;
+    if (media.paused) media.play();
+    else media.pause();
   };
 
   const handleFullscreen = () => {
@@ -212,10 +232,10 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
   };
 
   const stepFrame = (frames: number) => {
-    if (!mediaRef.current || asset.asset_type !== "video") return;
-    const video = mediaRef.current as HTMLVideoElement;
+    if (!mediaRef.current || (asset.asset_type !== "video" && asset.asset_type !== "audio")) return;
+    const media = mediaRef.current as HTMLMediaElement;
     // Assume 30fps for stepping
-    video.currentTime = Math.max(0, Math.min(asset.duration || 0, video.currentTime + (frames * (1/30))));
+    media.currentTime = Math.max(0, Math.min(asset.duration || 0, media.currentTime + (frames * (1/30))));
   };
 
   return (
@@ -236,7 +256,26 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
             onPlay={() => setIsPlaying(true)}
             onPause={() => setIsPlaying(false)}
             onClick={handlePlayPause}
+            loop={isLooping}
           />
+        ) : asset.asset_type === "audio" ? (
+          <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-zinc-900 rounded-sm">
+            <audio
+              ref={mediaRef as React.RefObject<HTMLAudioElement>}
+              src={asset.src_url}
+              onLoadedMetadata={calculateTrueLayout}
+              onTimeUpdate={handleTimeUpdate}
+              onPlay={() => setIsPlaying(true)}
+              onPause={() => setIsPlaying(false)}
+              loop={isLooping}
+            />
+            <div className="text-muted-foreground flex flex-col items-center gap-4">
+              <div className="w-32 h-32 rounded-full bg-zinc-800 flex items-center justify-center animate-pulse">
+                <Play className="w-12 h-12 text-zinc-600 ml-2" />
+              </div>
+              <span className="text-sm font-medium">Audio Asset</span>
+            </div>
+          </div>
         ) : (
         <img
           ref={mediaRef as React.RefObject<HTMLImageElement>}
@@ -304,47 +343,45 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
         </div>
       )}
 
-      {asset.asset_type === "video" && asset.duration && comments && (
-        <div className="absolute bottom-12 left-0 right-0 h-2 pointer-events-none z-10 px-4">
-          {comments
-            .filter(c => c.start_time !== null && c.start_time !== undefined && !c.parent_id)
-            .map((comment) => {
-              const isSelected = selectedCommentId === comment.id;
-              const color = comment.shapes?.[0]?.color || (comment.resolved ? '#22c55e' : '#3b82f6');
-              
-              return (
-              <div
-                key={comment.id}
-                className={`absolute top-0 bottom-0 pointer-events-auto cursor-pointer transition-all ${
-                  isSelected 
-                    ? 'scale-y-[2.5] opacity-100 z-20 border-y border-white' 
-                    : 'hover:scale-y-150 opacity-70 hover:opacity-100 z-10'
-                }`}
-                style={{
-                  left: `calc(1rem + ${(comment.start_time! / asset.duration!) * 100}%)`,
-                  width: `${((comment.end_time! - comment.start_time!) / asset.duration!) * 100}%`,
-                  minWidth: '6px',
-                  backgroundColor: color,
-                  borderRadius: '3px',
-                  boxShadow: isSelected ? `0 0 12px ${color}` : `0 0 6px ${color}80`,
-                  transformOrigin: 'bottom'
-                }}
-                title={comment.content}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (mediaRef.current) {
-                    (mediaRef.current as HTMLVideoElement).currentTime = comment.start_time!;
-                  }
-                  if (onSelectComment) onSelectComment(comment.id);
-                }}
-              />
-            )})}
+      {(asset.asset_type === "video" || asset.asset_type === "audio") && asset.duration && (
+        <div className="absolute bottom-16 left-0 right-0 z-10 px-4">
+          <MediaScrubber 
+            currentTime={currentTime} 
+            duration={asset.duration} 
+            comments={comments} 
+            streamUrl={asset.src_url}
+            selectedCommentId={selectedCommentId}
+            onSeek={(t) => {
+              if (mediaRef.current) (mediaRef.current as HTMLMediaElement).currentTime = t;
+            }}
+            onSelectComment={onSelectComment}
+          />
         </div>
       )}
 
-      {/* Glassmorphism Custom Controls (only for video) */}
-      {asset.asset_type === "video" && (
+      {/* Glassmorphism Custom Controls (only for video/audio) */}
+      {(asset.asset_type === "video" || asset.asset_type === "audio") && (
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-md bg-background/80 border border-border/50 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-30">
+          
+          <div className="flex items-center gap-1.5 mr-2">
+            <span className="text-xs font-mono w-16 text-center select-none text-foreground">
+              {timeFormat === "standard" && formatTime(currentTime)}
+              {timeFormat === "frames" && formatFrames(currentTime)}
+              {timeFormat === "timecode" && formatTimecode(currentTime)}
+            </span>
+            <Tooltip>
+              <TooltipTrigger 
+                onClick={() => setTimeFormat(prev => prev === "standard" ? "frames" : prev === "frames" ? "timecode" : "standard")}
+                className="p-1 hover:bg-muted rounded text-muted-foreground transition-colors"
+              >
+                <Clock className="w-3.5 h-3.5" />
+              </TooltipTrigger>
+              <TooltipContent side="top">Toggle Time Format</TooltipContent>
+            </Tooltip>
+          </div>
+
+          <div className="w-px h-4 bg-border mx-1" />
+
           <Tooltip>
             <TooltipTrigger 
               onClick={() => stepFrame(-1)} 
@@ -376,6 +413,16 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
           </Tooltip>
 
           <div className="w-px h-4 bg-border mx-1" />
+
+          <Tooltip>
+            <TooltipTrigger 
+              onClick={() => setIsLooping(!isLooping)} 
+              className={`p-1.5 hover:bg-muted rounded-full transition-colors ${isLooping ? 'text-primary' : 'text-foreground'}`}
+            >
+              <Repeat className="w-4 h-4" />
+            </TooltipTrigger>
+            <TooltipContent side="top">{isLooping ? "Disable Loop" : "Enable Loop"}</TooltipContent>
+          </Tooltip>
 
           <Tooltip>
             <TooltipTrigger 
