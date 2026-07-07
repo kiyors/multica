@@ -397,6 +397,13 @@ class ApiClient {
     );
   }
 
+  async registerDeviceToken(token: string, platform: string): Promise<void> {
+    await this.fetch<void>("/api/users/me/device-tokens", {
+      method: "POST",
+      body: JSON.stringify({ token, platform }),
+    });
+  }
+
   // --- Notification preferences ---
   async getNotificationPreferences(
     opts?: { signal?: AbortSignal },

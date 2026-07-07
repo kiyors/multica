@@ -46,12 +46,27 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         : isStaging
           ? "ai.multica.mobile.staging"
           : (process.env.EXPO_BUNDLE_IDENTIFIER_DEV ?? "ai.multica.mobile.dev"),
+      infoPlist: {
+        UIBackgroundModes: ["remote-notification"],
+      },
+      entitlements: {
+        "aps-environment": isProd ? "production" : "development",
+      },
+    },
+    android: {
+      package: isProd
+        ? (process.env.EXPO_BUNDLE_IDENTIFIER_PROD ?? "ai.multica.mobile")
+        : isStaging
+          ? "ai.multica.mobile.staging"
+          : (process.env.EXPO_BUNDLE_IDENTIFIER_DEV ?? "ai.multica.mobile.dev"),
+      googleServicesFile: process.env.GOOGLE_SERVICES_FILE ?? "./google-services.json",
     },
     plugins: [
       "expo-router",
       "expo-secure-store",
       "@react-native-community/datetimepicker",
       "react-native-enriched-markdown",
+      "expo-notifications",
       [
         "expo-image-picker",
         {
