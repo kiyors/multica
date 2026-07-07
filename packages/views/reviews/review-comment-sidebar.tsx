@@ -52,6 +52,7 @@ export function ReviewCommentSidebar({
   const { mutate: updateComment } = useUpdateReviewComment();
   
   const [draftContent, setDraftContent] = useState("");
+  const [endTime, setEndTime] = useState<number | null>(null);
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "unresolved" | "resolved">("all");
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
@@ -61,27 +62,20 @@ export function ReviewCommentSidebar({
     e.preventDefault();
     if (!draftContent.trim()) return;
 
-    const shapes = getCanvasShapes() || [];
-    let start_time = undefined;
-    let end_time = undefined;
-    if (asset.asset_type === "video") {
-      start_time = currentTime;
-      end_time = currentTime;
-    }
-
     createComment({
       workspaceId,
       issueId: asset.issue_id,
       assetId: asset.id,
       content: draftContent,
-      start_time,
-      end_time,
-      shapes,
+      start_time: (asset.asset_type === "video" || asset.asset_type === "audio") && !replyingTo ? currentTime : null,
+      end_time: (asset.asset_type === "video" || asset.asset_type === "audio") && !replyingTo ? endTime : null,
+      shapes: getCanvasShapes() || [],
       parentId: replyingTo || undefined,
     });
 
     // Optimistically clear the form so the user can immediately type another comment
     setDraftContent("");
+    setEndTime(null);
     setReplyingTo(null);
     clearCanvasShapes();
     editorRef.current?.clearContent();
@@ -341,84 +335,99 @@ export function ReviewCommentSidebar({
             </button>
           </div>
         )}
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-2">
           <div 
-            className="flex items-start gap-0 rounded-lg border border-border bg-card focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/20 transition-all cursor-text min-h-[46px]" 
+            className="flex flex-col rounded-xl border border-border bg-card shadow-sm focus-within:border-primary/40 focus-within:ring-4 focus-within:ring-primary/10 transition-all"
             style={{ 
-              borderColor: drawingShape?.color || 'hsl(var(--border))',
-              boxShadow: drawingShape?.color ? `0 0 0 1px ${drawingShape.color}40` : undefined
+              borderColor: drawingShape?.color || undefined,
+              boxShadow: drawingShape?.color ? `0 0 0 1px ${drawingShape.color}40, 0 0 0 4px ${drawingShape.color}15` : undefined
             }}
-            onFocus={onDrawStart}
-            onClick={() => editorRef.current?.focus()}
           >
-            {asset.asset_type === "video" && (
-              <span className="shrink-0 ml-2.5 mt-[11px] rounded bg-amber-500/20 px-1.5 py-0.5 font-mono text-[11px] text-amber-500 leading-none select-none">
-                {new Date(currentTime * 1000).toISOString().substring(11, 19).replace(/^00:/, '')}
-              </span>
-            )}
-            <div className="flex-1 min-w-0 pt-0.5 pb-0.5">
-              <ContentEditor
-                ref={editorRef}
-                defaultValue={draftContent}
-                placeholder={replyingTo ? "Write a reply..." : "Leave your comment..."}
-                onUpdate={(md) => setDraftContent(md)}
-                enableSlashCommands
-                mentionMode="context"
-                submitOnEnter
-                onSubmit={() => {
-                  const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
-                  handleSubmit(fakeEvent);
-                }}
-              />
-            </div>
-          </div>
-          
-          {/* Bottom toolbar */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1">
+            <div 
+              className="flex items-start gap-1 cursor-text min-h-[56px] pt-1"
+              onFocus={onDrawStart}
+              onClick={() => editorRef.current?.focus()}
+            >
               {asset.asset_type === "video" && (
-                <button
-                  type="button"
-                  className="p-1.5 rounded transition-colors text-amber-500 bg-amber-500/10 hover:bg-amber-500/20"
-                  title="Timecode attached"
-                >
-                  <Clock className="w-4 h-4" />
-                </button>
+                <div className="shrink-0 ml-3 mt-[10px] flex items-center gap-1">
+                  <span className="rounded bg-amber-500/10 px-1.5 py-0.5 font-mono text-[11px] font-medium text-amber-500 leading-none select-none border border-amber-500/20">
+                    {new Date(currentTime * 1000).toISOString().substring(11, 19).replace(/^00:/, '')}
+                  </span>
+                  {endTime !== null && (
+                    <>
+                      <span className="text-muted-foreground text-[10px]">-</span>
+                      <span className="rounded bg-amber-500/10 px-1.5 py-0.5 font-mono text-[11px] font-medium text-amber-500 leading-none select-none border border-amber-500/20">
+                        {new Date(endTime * 1000).toISOString().substring(11, 19).replace(/^00:/, '')}
+                      </span>
+                    </>
+                  )}
+                </div>
               )}
-              <button
-                type="button"
-                onClick={onDrawStart}
-                className={`p-1.5 rounded transition-colors ${drawingShape ? "text-purple-400 bg-purple-500/15" : "text-muted-foreground hover:text-foreground hover:bg-muted"}`}
-                title={drawingShape ? "Drawing active" : "Draw on frame"}
-              >
-                <Pencil className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                title="Add emoji"
-              >
-                <Smile className="w-4 h-4" />
-              </button>
+              <div className="flex-1 min-w-0 pt-0.5 pb-2">
+                <ContentEditor
+                  ref={editorRef}
+                  defaultValue={draftContent}
+                  placeholder={replyingTo ? "Write a reply..." : "Leave your comment..."}
+                  onUpdate={(md) => setDraftContent(md)}
+                  enableSlashCommands
+                  mentionMode="context"
+                  submitOnEnter
+                  onSubmit={() => {
+                    const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
+                    handleSubmit(fakeEvent);
+                  }}
+                />
+              </div>
             </div>
             
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-muted-foreground border border-border rounded hover:bg-muted transition-colors"
-              >
-                <Globe className="w-3.5 h-3.5" />
-                Public
-                <ChevronDown className="w-3.5 h-3.5 opacity-50" />
-              </button>
-              <button
-                type="submit"
-                disabled={isCreating || !draftContent.trim()}
-                className="w-8 h-8 flex items-center justify-center bg-primary text-primary-foreground rounded-full hover:bg-primary/90 disabled:opacity-50 transition-colors"
-                title="Send comment"
-              >
-                <Send className="w-3.5 h-3.5 -ml-0.5" />
-              </button>
+            {/* Bottom toolbar */}
+            <div className="flex items-center justify-between px-2 pb-2 pt-1 border-t border-border/50">
+              <div className="flex items-center gap-0.5">
+                {asset.asset_type === "video" && (
+                  <button
+                    type="button"
+                    onClick={() => setEndTime(endTime === null ? currentTime : null)}
+                    className={`p-1.5 rounded-md transition-colors ${endTime !== null ? "text-amber-500 bg-amber-500/10" : "text-muted-foreground hover:text-foreground hover:bg-muted"}`}
+                    title={endTime !== null ? "Remove end time" : "Set end time (duration)"}
+                  >
+                    <Clock className="w-4 h-4" />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={onDrawStart}
+                  className={`p-1.5 rounded-md transition-colors ${drawingShape ? "text-purple-500 bg-purple-500/10" : "text-muted-foreground hover:text-foreground hover:bg-muted"}`}
+                  title={drawingShape ? "Drawing active" : "Draw on frame"}
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  title="Add emoji"
+                >
+                  <Smile className="w-4 h-4" />
+                </button>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="flex items-center gap-1.5 px-2 py-1 text-[11px] font-medium text-muted-foreground rounded-md hover:bg-muted transition-colors"
+                >
+                  <Globe className="w-3.5 h-3.5" />
+                  Public
+                  <ChevronDown className="w-3 h-3 opacity-50" />
+                </button>
+                <button
+                  type="submit"
+                  disabled={isCreating || !draftContent.trim()}
+                  className="w-7 h-7 flex items-center justify-center bg-primary text-primary-foreground rounded-full hover:bg-primary/90 disabled:opacity-50 transition-colors shadow-sm"
+                  title="Send comment"
+                >
+                  <Send className="w-3 h-3 -ml-0.5" />
+                </button>
+              </div>
             </div>
           </div>
         </form>

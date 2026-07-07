@@ -33,6 +33,7 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLooping, setIsLooping] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState(1);
   const [timeFormat, setTimeFormat] = useState<"standard" | "frames" | "timecode">("standard");
 
   const calculateTrueLayout = useCallback(() => {
@@ -381,6 +382,24 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
           </div>
 
           <div className="w-px h-4 bg-border mx-1" />
+
+          <Tooltip>
+            <TooltipTrigger 
+              onClick={() => {
+                const video = mediaRef.current as HTMLVideoElement;
+                if (!video) return;
+                const speeds = [0.5, 1, 1.25, 1.5, 2];
+                let nextIndex = speeds.indexOf(video.playbackRate) + 1;
+                if (nextIndex >= speeds.length) nextIndex = 0;
+                video.playbackRate = speeds[nextIndex];
+                setPlaybackRate(speeds[nextIndex]);
+              }} 
+              className="px-2 py-1 text-[11px] font-mono font-medium hover:bg-muted rounded text-foreground transition-colors min-w-[36px]"
+            >
+              {playbackRate}x
+            </TooltipTrigger>
+            <TooltipContent side="top">Playback Speed</TooltipContent>
+          </Tooltip>
 
           <Tooltip>
             <TooltipTrigger 
