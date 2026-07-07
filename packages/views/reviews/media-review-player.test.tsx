@@ -78,4 +78,21 @@ describe("MediaReviewPlayer", () => {
     fireEvent.click(screen.getByText("1.25x"));
     expect(screen.getByText("1.5x")).toBeInTheDocument();
   });
+
+  it("omits src attribute on video element when using HLS", () => {
+    const asset: ReviewAsset = {
+      id: "5",
+      name: "test.m3u8",
+      src_url: "http://example.com/test.m3u8",
+      asset_type: "video",
+      issue_id: "1",
+      duration: 10,
+    } as ReviewAsset;
+
+    const { container } = render(<MediaReviewPlayer asset={asset} />);
+    const video = container.querySelector("video");
+    expect(video).toBeInTheDocument();
+    expect(video?.hasAttribute("src")).toBe(false); // HLS overrides src
+  });
 });
+

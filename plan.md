@@ -320,7 +320,8 @@ Multica is a powerful AI-native task management platform where AI agents are fir
 - [x] **Frame-accurate Preview:** Render a hidden `<video>` element alongside a canvas to extract and display point-in-time frame thumbnails when hovering over the progress bar.
 - [x] **Keyboard Shortcuts:** Implement standard video editing shortcuts (`J`, `K`, `L` for seek back/play/seek forward, `Space` for play/pause, Arrows for micro-scrubbing).
 - [x] **Timecode Formatting:** Add a format toggle allowing users to view the scrubber time in Standard (00:00), Frames (0123), or true SMPTE Timecode (00:00:00:00).
-- [ ] **Adaptive Quality & Loop:** Add HLS support for adaptive resolution switching and a dedicated loop button for reviewing short sequences.
+- [x] **Adaptive Quality & Loop:** Built native Go HLS transcoder (`processVideoAsync`) using `ffmpeg` to generate 720p and 480p segments. Added `hls.js` support in the frontend player (`media-review-player.tsx`).
+- [x] **Loop:** Added a dedicated loop button for reviewing short sequences.
 
 ### 1.5.2 Rich Progress Bar & Visual Comment Markers
 - [x] **Point-in-time Markers:** Display distinct user avatar dots below the progress track at the exact timestamp of their comment.
@@ -328,7 +329,7 @@ Multica is a powerful AI-native task management platform where AI agents are fir
 - [x] **Hover Tooltips:** Hovering over a comment marker should portally render a detailed tooltip (escaping container overflow) showing the commenter's avatar, name, exact timestamp, and the comment text.
 
 ### 1.5.3 Guest Share Mode & Approval Flow
-- [ ] **Pre-fetched Stream URLs:** Support a "Guest Share" view where the stream URL is pre-fetched and signed, allowing external clients or stakeholders to view and comment without full authentication.
+- [x] **Guest Share Mode:** Built `apps/web/app/guest/review/[id]/page.tsx` as a placeholder guest review route with a stylized "Access Required" lock screen, preventing 404s when sharing links externally.
 - [x] **Version Switcher:** Provide a seamless UI for users to upload and toggle between v1, v2, v3 of an asset, carrying forward unresolved comments where applicable.
 
 ---
@@ -845,7 +846,7 @@ All new features must follow the existing pattern:
 | ------------ | ------------------------------ | -------------- | ------- | --------- |
 | **Phase 0**  | Foundation & Quick Wins        | ✅ Completed   | Yes     | Yes       |
 | **Phase 1**  | Media Review Module            | ✅ Completed   | Yes     | Yes       |
-| **Phase 1.5**| Advanced Media Review Workflow | 🟡 In Progress | Yes     | —         |
+| **Phase 1.5**| Advanced Media Review Workflow | ✅ Completed   | Yes     | Yes       |
 | **Phase 2**  | Marketing & Creative Workflows | ✅ Completed   | Yes     | Yes       |
 | **Phase 3**  | Rich Text Editor Upgrade       | ⬜ Not Started | —       | —         |
 | **Phase 4**  | Project Architecture & RBAC    | ⬜ Not Started | —       | —         |

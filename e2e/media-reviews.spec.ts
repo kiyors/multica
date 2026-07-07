@@ -67,4 +67,18 @@ test.describe("Media Reviews", () => {
     // The comment should be visible in the sidebar
     await expect(page.locator(`text=${commentText}`)).toBeVisible({ timeout: 5000 });
   });
+
+  test("guest review page shows access required screen", async ({ page }) => {
+    // Navigate to a random asset ID guest review page
+    const testAssetId = "123e4567-e89b-12d3-a456-426614174000";
+    await page.goto(`/guest/review/${testAssetId}`);
+
+    // Verify the lock icon or the title
+    await expect(page.locator("text=Guest Access Required")).toBeVisible();
+    await expect(page.locator("text=Guest share mode is currently disabled")).toBeVisible();
+    
+    // Verify login link works
+    await page.locator("text=Go to Login").click();
+    await expect(page).toHaveURL(/.*\/auth\/login/);
+  });
 });
