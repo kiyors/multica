@@ -98,8 +98,8 @@ export default function NotificationsSettingsScreen() {
       contentContainerClassName="px-4 py-4 gap-6"
     >
       <Section
-        title="Inbox notifications"
-        description="Which events show up in your inbox."
+        title="Push & Inbox notifications"
+        description="Which events trigger a push notification and show up in your inbox."
       >
         {INBOX_GROUPS.map((group, idx) => {
           const enabled = preferences[group.key] !== "muted";

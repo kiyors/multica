@@ -116,7 +116,7 @@ export default function SettingsPage() {
           onPress={goNotifications}
           chevronColor={mutedFg}
           title="Notifications"
-          subtitle="Inbox and system alerts"
+          subtitle="Push and inbox alerts"
         />
       </SectionGroup>
 

@@ -662,7 +662,7 @@ Multica is a powerful AI-native task management platform where AI agents are fir
 - [x] **Device Registration:** Created a `usePushNotifications` hook integrating `expo-notifications`. Built backend endpoint `POST /api/users/me/device-tokens` backed by `user_device_tokens` table.
 - [x] **Push Dispatch Engine:** Implemented background Go workers in `notification_listeners.go`. Listens for `EventInboxNew` and dispatches payloads to Expo's Push Service.
 - [x] **Deep Linking:** Configured `expo-linking` to handle notification taps. Tapping an assignment push directly routes the user to `multica://[workspace]/issue/[id]`.
-- [ ] **Task 7.1.7:** Add a Notification Preferences screen in the mobile app settings.
+- [x] **Task 7.1.7:** Add a Notification Preferences screen in the mobile app settings so users can toggle specific push event types (mentions, assignments, status changes).
 - **Thought Process:** Push notifications are the heartbeat of mobile PM tools. Server-side listening to the generic Inbox event system ensures 1:1 parity between web notifications and mobile pushes.
 
 ### 7.2 Task-Giving & Issue Management Polish
