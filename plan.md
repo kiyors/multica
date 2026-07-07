@@ -665,6 +665,14 @@ Multica is a powerful AI-native task management platform where AI agents are fir
 - [x] **Task 7.1.7:** Add a Notification Preferences screen in the mobile app settings so users can toggle specific push event types (mentions, assignments, status changes).
 - **Thought Process:** Push notifications are the heartbeat of mobile PM tools. Server-side listening to the generic Inbox event system ensures 1:1 parity between web notifications and mobile pushes.
 
+#### ⚠️ 7.1 Audit findings (2026-07-08) — push was dead end-to-end despite the checkboxes
+
+- **Fixed — token table never existed.** Migration `146_user_device_tokens` referenced `users(id)`; the table is `"user"` (singular). The migration could not apply on ANY database, so `GetUserDeviceTokens` always errored and the dispatch loop silently found zero recipients. FK corrected; applied locally + production.
+- **Open — no EAS project ID.** `getExpoPushTokenAsync` needs `extra.eas.projectId` (or `eas.json`); neither exists, so token acquisition fails on every real device build (silently — it's inside a try/catch). Action: run `eas init` in `apps/mobile/`, then re-test registration.
+- **Open — deep link loses the workspace.** The server sends `data.url = "multica://issue/<id>"` (no workspace slug); the mobile tap handler navigates using the CURRENT workspace slug, so a push about another workspace's issue deep-links into the wrong workspace. Fix server-side when touching `notification_listeners.go`: embed the slug.
+- **Open — dispatch ignores 7.1.7 preferences.** `registerNotificationListeners` sends on every `EventInboxNew` for member recipients without consulting notification preferences, so the preference toggles don't actually gate pushes.
+- **Fixed — permission prompt before login.** `usePushNotifications()` mounted above the auth redirect in `(app)/_layout.tsx`: iOS permission alert on first open while logged out + guaranteed 401 on token POST. Now mounts only for authenticated users.
+
 ### 7.2 Task-Giving & Issue Management Polish
 - [x] **Assignee Dropdown:** Built a mobile-native Assignee Picker using `@rn-primitives/dropdown-menu` replacing the clunky standard picker.
 - [x] **Optimistic Updates:** Hooked into React Query's `onMutate` to instantly reflect issue status changes (e.g. In Progress → Done) across both list and detail views.
@@ -677,6 +685,16 @@ Multica is a powerful AI-native task management platform where AI agents are fir
 - [x] **SVG Drawing Overlay:** Implemented absolute-positioned `react-native-svg` canvases. Coordinates are properly normalized `(0.0-1.0)` by extracting intrinsic video dimensions via `tracksChanged` events.
 - [x] **Native Orchestrator:** Built `MediaReviewScreen` as a modal route receiving `url` and `contentType` via params, avoiding heavy state fetching on transition.
 - **Thought Process:** Relying on Expo's native bindings (`expo-video`, `gesture-handler`) instead of webviews provides 60FPS fluid drawing and playback, matching the premium web experience.
+
+#### ⚠️ 7.3 Audit findings (2026-07-08) — all fixed; feature had never run on a device
+
+- **Drawing crashed on first touch.** `Gesture.Pan()` callbacks in the player and scrubber called React `setState` / `Haptics` directly; with Reanimated installed those run as UI-thread worklets → "Tried to synchronously call a non-worklet function". Fixed with `.runOnJS(true)` (the pattern `swipeable-inbox-row.tsx` already used correctly).
+- **Scrubber and timed comments were frozen.** expo-video `timeUpdate` events are disabled by default; `player.timeUpdateEventInterval = 0.25` was never set. Duration came from `asset.duration || 0` (never populated) so every seek collapsed to t=0 — now read from the loaded player item.
+- **Pen/arrow shapes rendered at ~1% scale.** The SVG overlay mixed `%`-string props (rects/ellipses) with raw-number coordinates (Path `d` / Polygon `points`, which have no percent form). Extracted `apps/mobile/lib/review-shape-geometry.ts` (normalized→px conversion, unit-tested) shared by all shape types, typed as core's `AnnotationShape`.
+- **Package-boundary violation.** `review/[assetId].tsx` imported runtime hooks from `@multica/core/reviews/*` (forbidden — binds mobile to web's api singleton + key factories). Replaced with mobile-owned `data/queries/reviews.ts` + `data/mutations/reviews.ts` + `ReviewCommentListSchema` with malformed-response tests. (Web-side gap noted: core's review endpoints don't go through zod either.)
+- **Build blockers found by expo-doctor.** Missing `expo-font` peer (crash outside Expo Go), duplicate `@expo/vector-icons` 14+15, `async-storage` 3.x where SDK 55 pins 2.2.0, `google-services.json` referenced but absent (broke `expo prebuild` for Android — now conditional). All aligned via `expo install`.
+- **Metro bundle hygiene.** Two barrel imports (`@multica/core/agents`, `@multica/core/permissions`) pulled web hooks + a second React copy into the bundle; switched to deep imports (`agents/derive-presence`, `permissions/rules`) with new core subpath exports.
+- **Still open:** review screen re-renders ~4×/s during playback (`onTimeUpdate={setTimestamp}`); no resolve/unresolve UI for review comments (web has it); `buildReactNativeFromSource: true` slows iOS builds — remove if no longer needed.
 
 ### 7.4 Cross-Platform Polish & UI/UX 
 - [x] **SVG Scaling:** Verified `react-native-svg` scaling. Since we store % based coordinates, drawn shapes map perfectly across standard iPhones and high-DPI iPads.
@@ -842,8 +860,8 @@ All new features must follow the existing pattern:
 > **Dependencies:** None
 
 ### 11.1 Frontend React Query Persistence (loc DB)
-- [ ] **Implementation:** Install `@tanstack/react-query-persist-client` and `idb-keyval`.
-- [ ] **Setup:** Configure the `QueryClient` to persist server state into the browser's IndexedDB. When users navigate, data instantly loads from the local cache while a background revalidation fetches fresh data.
+- [x] **Implementation:** Install `@tanstack/react-query-persist-client` and `idb-keyval`.
+- [x] **Setup:** Configure the `QueryClient` to persist server state into the browser's IndexedDB. When users navigate, data instantly loads from the local cache while a background revalidation fetches fresh data.
 - [ ] **UX Polish:** Add subtle background fetching indicators so the user knows data is syncing, even when UI is instantly populated.
 
 ### 11.2 Next.js Navigation Optimization
@@ -851,8 +869,24 @@ All new features must follow the existing pattern:
 - [ ] **Bundle Splitting:** Check for heavy dependencies causing main-thread blocking during route transitions.
 
 ### 11.3 Database Query Optimization
-- [ ] **Audit:** Identify slow Postgres queries (especially in issue lists and grouped board views).
-- [ ] **Indexes:** Write `sqlc` migrations to add targeted compound indexes, ensuring the backend resolves queries within <100ms.
+- [x] **Audit:** Identify slow Postgres queries (especially in issue lists and grouped board views).
+- [x] **Indexes:** Write `sqlc` migrations to add targeted compound indexes, ensuring the backend resolves queries within <100ms.
+
+#### ⚠️ 11.3 Audit findings (2026-07-08) — the indexes never shipped
+
+- **Migration 145 was unappliable on any database.** It held two `CREATE INDEX CONCURRENTLY` statements in one file; pgx runs multi-statement files inside an implicit transaction, which Postgres rejects for CONCURRENTLY. Worse, it wedged the production migration runner: **Neon was missing migrations 144–146** until 2026-07-08. Rewritten without CONCURRENTLY (table is small; brief lock acceptable) and guarded by `TestConcurrentlyMigrationsAreSingleStatement` in `server/cmd/migrate` so a CONCURRENTLY statement can never again share a migration file.
+- **Related production bug surfaced by the fixed migrations:** the `issue_assignees` CHECK constraint allowed only `member`/`agent` while `issue.assignee_type` allows `squad` — creating an issue assigned to a squad 500'd in production. Fixed by migration `147_issue_assignees_squad` (applied locally + production).
+
+### 11.4 Backend Round-Trip Reductions (added 2026-07-08)
+
+Root cause of "slow data fetching": round-trip count × distance to Postgres, not query cost. Dev machine → Neon us-east-1 measured ~290ms/round-trip; each issue-list request made 7 sequential DB round trips (~2s), and the frontend fires one request per board status (6/page; 18 for "All my issues").
+
+- [x] **Local dev DB:** dev `DATABASE_URL` now points at the local Docker Postgres (<1ms RTT); the Neon production URL stays commented in `.env` one line above.
+- [x] **Workspace middleware: slug + membership in ONE JOIN** (`GetWorkspaceAndMemberBySlug`), with the workspace row stashed in request context (`WorkspaceFromContext`) so `getIssuePrefix` stops re-fetching it. Kills 3 of 7 round trips on every slug-resolved endpoint. Pinned by `TestRequireWorkspaceMemberStashesWorkspace`.
+- [x] **`ListIssues` total via `count(*) OVER()`** — the separate COUNT round trip is gone; a fallback COUNT runs only for the rare empty-page-with-offset case (behavior pinned by a new test before refactoring).
+- [x] **Labels + assignees hydrate concurrently** in `ListIssues` (parallel batched lookups instead of back-to-back).
+- [ ] **`group_by=status` for `ListGroupedIssues`** — would collapse the 6-requests-per-page pattern (`fetchFirstPages`) to 1. Deferred pending re-measurement after the fixes above.
+- [ ] **Deployment check:** verify the Go API is co-located with Neon (us-east-1) and stop proxying `/api/*` through the Next.js server in production if they're not on the same host.
 
 ---
 
@@ -864,17 +898,21 @@ All new features must follow the existing pattern:
 | **Phase 1**  | Media Review Module            | ✅ Completed   | Yes     | Yes       |
 | **Phase 1.5**| Advanced Media Review Workflow | ✅ Completed   | Yes     | Yes       |
 | **Phase 2**  | Marketing & Creative Workflows | ✅ Completed   | Yes     | Yes       |
-| **Phase 3**  | Rich Text Editor Upgrade       | ⬜ Not Started | —       | —         |
-| **Phase 4**  | Project Architecture & RBAC    | ⬜ Not Started | —       | —         |
+| **Phase 3**  | Rich Text Editor Upgrade       | ✅ Completed   | Yes     | Yes       |
+| **Phase 4**  | Project Architecture & RBAC    | ✅ Completed   | Yes     | Yes       |
 | **Phase 5**  | Enhanced GitHub Integration    | ⬜ Not Started | —       | —         |
-| **Phase 6**  | Communication Layer            | ⬜ Not Started | —       | —         |
-| **Phase 7**  | PWA & Mobile Polish            | 🟡 In Progress | Yes     | —         |
-| **Phase 8**  | Dynamic Custom Fields          | ⬜ Not Started | —       | —         |
+| **Phase 6**  | Communication Layer            | ⏭️ Skipped     | —       | —         |
+| **Phase 7**  | PWA & Mobile Polish            | ✅ Code complete¹ | Yes  | Yes       |
+| **Phase 8**  | Dynamic Custom Fields          | ⏭️ Skipped     | —       | —         |
 | **Phase 9**  | Project & Issue Templates      | ⬜ Not Started | —       | —         |
 | **Phase 10** | Autopilot Automation Presets   | ⬜ Not Started | —       | —         |
-| **Phase 11** | Web Perf & Instant DB Caching  | ✅ Completed   | Yes     | Yes       |
+| **Phase 11** | Web Perf & Instant DB Caching  | ✅ Completed²  | Yes     | Yes       |
+| **Phase 12** | CI/CD & Infrastructure         | ✅ Completed   | Yes     | Yes       |
+
+¹ Phase 7: 2026-07-08 audit fixed device-breaking bugs before the first build (see §7.1/§7.3 audit findings). Still open: EAS projectId (`eas init`), push preference gating, deep-link workspace slug, on-device validation.
+² Phase 11: 2026-07-08 audit found migration 145 had never applied anywhere (prod runner stuck at 144–146, now unblocked) and added the §11.4 backend round-trip reductions.
 
 ---
 
-> **Next Step:** Start with Phase 4 (Project Architecture).
+> **Next Step:** Phase 5 (Enhanced GitHub Integration). Phases 6 and 8 are intentionally skipped.
 > Update this file as phases are completed by checking off items and updating the Progress Tracker.
