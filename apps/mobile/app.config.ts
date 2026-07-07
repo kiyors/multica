@@ -1,3 +1,5 @@
+import { existsSync } from "fs";
+import { resolve } from "path";
 import type { ExpoConfig, ConfigContext } from "expo/config";
 
 /**
@@ -59,7 +61,14 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         : isStaging
           ? "ai.multica.mobile.staging"
           : (process.env.EXPO_BUNDLE_IDENTIFIER_DEV ?? "ai.multica.mobile.dev"),
-      googleServicesFile: process.env.GOOGLE_SERVICES_FILE ?? "./google-services.json",
+      // Only reference google-services.json when it actually exists —
+      // referencing a missing file makes `expo prebuild` fail for Android.
+      // iOS is the primary target; Android push needs this file (FCM).
+      ...(existsSync(
+        resolve(__dirname, process.env.GOOGLE_SERVICES_FILE ?? "./google-services.json"),
+      )
+        ? { googleServicesFile: process.env.GOOGLE_SERVICES_FILE ?? "./google-services.json" }
+        : {}),
     },
     plugins: [
       "expo-router",
