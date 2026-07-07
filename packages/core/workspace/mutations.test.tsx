@@ -16,6 +16,21 @@ import {
   unmarkWorkspaceDeletePending,
 } from "./pending-delete";
 
+const mockStorage = new Map<string, string>();
+Object.defineProperty(globalThis, "localStorage", {
+  value: {
+    getItem: (k: string) => mockStorage.get(k) ?? null,
+    setItem: (k: string, v: string) => mockStorage.set(k, v),
+    removeItem: (k: string) => mockStorage.delete(k),
+    clear: () => mockStorage.clear(),
+  },
+  writable: true,
+});
+Object.defineProperty(globalThis, "window", {
+  value: { localStorage: globalThis.localStorage },
+  writable: true,
+});
+
 function createWrapper(qc: QueryClient) {
   return function Wrapper({ children }: { children: ReactNode }) {
     return <QueryClientProvider client={qc}>{children}</QueryClientProvider>;
@@ -66,7 +81,7 @@ describe("useDeleteWorkspace", () => {
     // after a successful delete (it suppresses the WS echo); reset it so
     // tests stay independent.
     unmarkWorkspaceDeletePending("ws-2");
-    localStorage.clear();
+    window.localStorage?.clear();
     vi.restoreAllMocks();
   });
 

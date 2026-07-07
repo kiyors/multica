@@ -43,6 +43,21 @@ function createStores(): RealtimeSyncStores {
   } as unknown as RealtimeSyncStores;
 }
 
+const mockStorage = new Map<string, string>();
+Object.defineProperty(globalThis, "localStorage", {
+  value: {
+    getItem: (k: string) => mockStorage.get(k) ?? null,
+    setItem: (k: string, v: string) => mockStorage.set(k, v),
+    removeItem: (k: string) => mockStorage.delete(k),
+    clear: () => mockStorage.clear(),
+  },
+  writable: true,
+});
+Object.defineProperty(globalThis, "window", {
+  value: { localStorage: globalThis.localStorage },
+  writable: true,
+});
+
 function createWrapper(qc: QueryClient) {
   // Named function (not arrow) so react/display-name lint rule passes —
   // anonymous render-fn components break that rule even in test files.
@@ -205,7 +220,7 @@ describe("useRealtimeSync — workspace:deleted self-initiated suppression", () 
 
   afterEach(() => {
     unmarkWorkspaceDeletePending("ws-2");
-    localStorage.clear();
+    window.localStorage?.clear();
   });
 
   // getCurrentWsId is mocked to "ws-1" at module level, so deleting "ws-2"
