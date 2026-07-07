@@ -718,6 +718,16 @@ func splitIdentifier(id string) *identifierParts {
 // Falls back to generating a prefix from the workspace name if the stored
 // prefix is empty (e.g. workspaces created before the prefix was introduced).
 func (h *Handler) getIssuePrefix(ctx context.Context, workspaceID pgtype.UUID) string {
+	// Fast path: the workspace middleware's slug resolution already loaded
+	// the workspace row — reuse it instead of another DB round trip. The ID
+	// check guards callers that pass a workspace other than the request's
+	// (e.g. cross-workspace webhook paths).
+	if ws, ok := middleware.WorkspaceFromContext(ctx); ok && ws.ID == workspaceID {
+		if ws.IssuePrefix != "" {
+			return ws.IssuePrefix
+		}
+		return generateIssuePrefix(ws.Name)
+	}
 	ws, err := h.Queries.GetWorkspace(ctx, workspaceID)
 	if err != nil {
 		return ""

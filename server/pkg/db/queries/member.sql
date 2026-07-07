@@ -31,3 +31,13 @@ FROM member m
 JOIN "user" u ON u.id = m.user_id
 WHERE m.workspace_id = $1
 ORDER BY m.created_at ASC;
+
+-- name: GetWorkspaceAndMemberBySlug :one
+-- Single round trip for the workspace middleware's hot path: resolve the
+-- slug and validate membership together. No rows means "workspace missing
+-- OR requester not a member" — both map to the same 404 the middleware
+-- has always returned.
+SELECT sqlc.embed(w), sqlc.embed(m)
+FROM workspace w
+JOIN member m ON m.workspace_id = w.id AND m.user_id = $2
+WHERE w.slug = $1;

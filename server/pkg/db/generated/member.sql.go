@@ -86,6 +86,52 @@ func (q *Queries) GetMemberByUserAndWorkspace(ctx context.Context, arg GetMember
 	return i, err
 }
 
+const getWorkspaceAndMemberBySlug = `-- name: GetWorkspaceAndMemberBySlug :one
+SELECT w.id, w.name, w.slug, w.description, w.settings, w.created_at, w.updated_at, w.context, w.repos, w.issue_prefix, w.issue_counter, w.avatar_url, m.id, m.workspace_id, m.user_id, m.role, m.created_at
+FROM workspace w
+JOIN member m ON m.workspace_id = w.id AND m.user_id = $2
+WHERE w.slug = $1
+`
+
+type GetWorkspaceAndMemberBySlugParams struct {
+	Slug   string      `json:"slug"`
+	UserID pgtype.UUID `json:"user_id"`
+}
+
+type GetWorkspaceAndMemberBySlugRow struct {
+	Workspace Workspace `json:"workspace"`
+	Member    Member    `json:"member"`
+}
+
+// Single round trip for the workspace middleware's hot path: resolve the
+// slug and validate membership together. No rows means "workspace missing
+// OR requester not a member" — both map to the same 404 the middleware
+// has always returned.
+func (q *Queries) GetWorkspaceAndMemberBySlug(ctx context.Context, arg GetWorkspaceAndMemberBySlugParams) (GetWorkspaceAndMemberBySlugRow, error) {
+	row := q.db.QueryRow(ctx, getWorkspaceAndMemberBySlug, arg.Slug, arg.UserID)
+	var i GetWorkspaceAndMemberBySlugRow
+	err := row.Scan(
+		&i.Workspace.ID,
+		&i.Workspace.Name,
+		&i.Workspace.Slug,
+		&i.Workspace.Description,
+		&i.Workspace.Settings,
+		&i.Workspace.CreatedAt,
+		&i.Workspace.UpdatedAt,
+		&i.Workspace.Context,
+		&i.Workspace.Repos,
+		&i.Workspace.IssuePrefix,
+		&i.Workspace.IssueCounter,
+		&i.Workspace.AvatarUrl,
+		&i.Member.ID,
+		&i.Member.WorkspaceID,
+		&i.Member.UserID,
+		&i.Member.Role,
+		&i.Member.CreatedAt,
+	)
+	return i, err
+}
+
 const listMembers = `-- name: ListMembers :many
 SELECT id, workspace_id, user_id, role, created_at FROM member
 WHERE workspace_id = $1
