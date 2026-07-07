@@ -335,7 +335,7 @@ Multica is a powerful AI-native task management platform where AI agents are fir
 - [x] **Backend:** Request approval, approve, reject endpoints
 - [x] **Views:** Approval request UI on issues
 - [x] **Views:** "Pending My Approval" inbox filter
-- [x] **Notifications:** In-app notification when approval requested or decision made
+- [x] **Notifications:** Email - [x] **Notifications:** In-app notification when approval requested or decision made In-app notification when approval requested or decision made
 
 ### 2.3 Templates for Non-Dev Workflows
 

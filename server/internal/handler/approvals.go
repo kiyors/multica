@@ -249,6 +249,18 @@ func (h *Handler) CreateApproval(w http.ResponseWriter, r *http.Request) {
 		ActorID:       pgtype.UUID{Bytes: actorID.Bytes, Valid: true},
 	})
 
+	// Dispatch email
+	if h.EmailService != nil && body.ApproverType == "member" {
+		if member, err := h.Queries.GetMember(r.Context(), approverID); err == nil {
+			if user, err := h.Queries.GetUser(r.Context(), member.UserID); err == nil && user.Email != "" {
+				if issue, err := h.Queries.GetIssue(r.Context(), issueID); err == nil {
+					issueUrl := fmt.Sprintf("/%s/issues/%s", wsIDStr, issue.Identifier)
+					go h.EmailService.SendApprovalRequestEmail(user.Email, issue.Title, issueUrl)
+				}
+			}
+		}
+	}
+
 	writeJSON(w, http.StatusCreated, res)
 }
 
@@ -350,6 +362,18 @@ func (h *Handler) handleApprovalDecision(w http.ResponseWriter, r *http.Request,
 		ActorType:     pgtype.Text{String: actorType, Valid: true},
 		ActorID:       pgtype.UUID{Bytes: actorID.Bytes, Valid: true},
 	})
+
+	// Dispatch email
+	if h.EmailService != nil && a.RequesterType == "member" {
+		if member, err := h.Queries.GetMember(r.Context(), a.RequesterID); err == nil {
+			if user, err := h.Queries.GetUser(r.Context(), member.UserID); err == nil && user.Email != "" {
+				if issue, err := h.Queries.GetIssue(r.Context(), a.IssueID.Bytes); err == nil {
+					issueUrl := fmt.Sprintf("/%s/issues/%s", wsIDStr, issue.Identifier)
+					go h.EmailService.SendApprovalDecisionEmail(user.Email, issue.Title, issueUrl, action)
+				}
+			}
+		}
+	}
 
 	writeJSON(w, http.StatusOK, res)
 }

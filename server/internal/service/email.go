@@ -418,3 +418,71 @@ func sanitizeSubjectField(s string) string {
 	runes := []rune(cleaned)
 	return string(runes[:maxSubjectFieldRunes-1]) + "…"
 }
+
+func (s *EmailService) SendApprovalRequestEmail(to, issueTitle, issueUrl string) error {
+	appURL := strings.TrimSpace(os.Getenv("FRONTEND_ORIGIN"))
+	if appURL == "" {
+		appURL = "http://localhost:5173"
+	}
+	fullUrl := fmt.Sprintf("%s%s", appURL, issueUrl)
+
+	subject := fmt.Sprintf("Approval Requested: %s", issueTitle)
+	body := fmt.Sprintf(
+		`<div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+			<h2>Approval Requested</h2>
+			<p>You have been requested to review and approve an issue:</p>
+			<p><strong>%s</strong></p>
+			<p style="margin: 24px 0;">
+				<a href="%s" style="display: inline-block; padding: 12px 24px; background: #000; color: #fff; text-decoration: none; border-radius: 6px; font-weight: 500;">View Issue</a>
+			</p>
+		</div>`, html.EscapeString(issueTitle), fullUrl)
+
+	if s.smtpHost != "" {
+		return s.sendSMTP(to, subject, body)
+	}
+	if s.client == nil {
+		fmt.Printf("[DEV] Approval Request email to %s: %s\n", to, fullUrl)
+		return nil
+	}
+	_, err := s.client.Emails.Send(&resend.SendEmailRequest{
+		From:    s.fromEmail,
+		To:      []string{to},
+		Subject: subject,
+		Html:    body,
+	})
+	return err
+}
+
+func (s *EmailService) SendApprovalDecisionEmail(to, issueTitle, issueUrl, decision string) error {
+	appURL := strings.TrimSpace(os.Getenv("FRONTEND_ORIGIN"))
+	if appURL == "" {
+		appURL = "http://localhost:5173"
+	}
+	fullUrl := fmt.Sprintf("%s%s", appURL, issueUrl)
+
+	subject := fmt.Sprintf("Approval %s: %s", strings.Title(decision), issueTitle)
+	body := fmt.Sprintf(
+		`<div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+			<h2>Approval %s</h2>
+			<p>Your approval request has been <strong>%s</strong>.</p>
+			<p><strong>%s</strong></p>
+			<p style="margin: 24px 0;">
+				<a href="%s" style="display: inline-block; padding: 12px 24px; background: #000; color: #fff; text-decoration: none; border-radius: 6px; font-weight: 500;">View Issue</a>
+			</p>
+		</div>`, strings.Title(decision), decision, html.EscapeString(issueTitle), fullUrl)
+
+	if s.smtpHost != "" {
+		return s.sendSMTP(to, subject, body)
+	}
+	if s.client == nil {
+		fmt.Printf("[DEV] Approval Decision email to %s: %s\n", to, fullUrl)
+		return nil
+	}
+	_, err := s.client.Emails.Send(&resend.SendEmailRequest{
+		From:    s.fromEmail,
+		To:      []string{to},
+		Subject: subject,
+		Html:    body,
+	})
+	return err
+}
