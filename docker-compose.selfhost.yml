@@ -19,30 +19,8 @@
 name: multica
 
 services:
-  postgres:
-    image: pgvector/pgvector:pg17
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-multica}
-      POSTGRES_USER: ${POSTGRES_USER:-multica}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-multica}
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    restart: unless-stopped
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "pg_isready -U ${POSTGRES_USER:-multica} -d ${POSTGRES_DB:-multica}",
-        ]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
   backend:
-    image: ${MULTICA_BACKEND_IMAGE:-ghcr.io/multica-ai/multica-backend}:${MULTICA_IMAGE_TAG:-latest}
-    depends_on:
-      postgres:
-        condition: service_healthy
+    image: ${MULTICA_BACKEND_IMAGE:-ghcr.io/kiyors/multica-backend}:${MULTICA_IMAGE_TAG:-latest}
     ports:
       - "127.0.0.1:${BACKEND_PORT:-8080}:8080"
     volumes:
@@ -121,7 +99,7 @@ services:
     restart: unless-stopped
 
   frontend:
-    image: ${MULTICA_WEB_IMAGE:-ghcr.io/multica-ai/multica-web}:${MULTICA_IMAGE_TAG:-latest}
+    image: ${MULTICA_WEB_IMAGE:-ghcr.io/kiyors/multica-web}:${MULTICA_IMAGE_TAG:-latest}
     depends_on:
       - backend
     ports:
@@ -131,5 +109,4 @@ services:
     restart: unless-stopped
 
 volumes:
-  pgdata:
   backend_uploads:
