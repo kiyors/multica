@@ -309,16 +309,14 @@ Multica is a powerful AI-native task management platform where AI agents are fir
 
 > **Goal:** Make Multica usable for non-dev teams (marketing, design, content).
 > **Effort:** 5-7 days
-> **Dependencies:** Phase 1 (media review)
-> **Reference:** Huly's workflow automation, AFFiNE's template system
 
 ### 2.1 Custom Issue Types
 
 - [x] **DB Migration:** Add `issue_type` column to issues (or separate `issue_types` table for user-defined types)
 - [x] **Default types:** Task, Bug, Feature, Story, Creative Brief, Content Piece, Campaign
-- [ ] **Custom fields:** Allow per-type custom fields (text, date, select, URL)
-- [ ] **Views:** Issue type selector in create/edit forms
-- [ ] **Views:** Type-based icons and color badges on board cards
+- [x] **Views:** Issue type selector in create/edit forms
+- [x] **Views:** Type-based icons and color badges on board cards
+- *Note: Custom Fields have been extracted to Phase 8.*
 
 ### 2.2 Approval Workflows
 
@@ -335,24 +333,17 @@ Multica is a powerful AI-native task management platform where AI agents are fir
   );
   ```
 - [x] **Backend:** Request approval, approve, reject endpoints
-- [ ] **Views:** Approval request UI on issues
-- [ ] **Views:** "Pending My Approval" inbox filter
+- [x] **Views:** Approval request UI on issues
+- [x] **Views:** "Pending My Approval" inbox filter
 - [x] **Notifications:** In-app notification when approval requested or decision made
 
 ### 2.3 Templates for Non-Dev Workflows
 
-- [ ] **Feature:** Issue templates with pre-filled fields (Creative Brief template, Content Calendar template, Campaign template)
-- [ ] **Feature:** Project templates (Marketing Campaign project with predefined milestones and issue templates)
-- [ ] **Feature:** Template gallery accessible during project/issue creation
+- *Note: This entire epic (Issue/Project Templates & Template Gallery) has been extracted to Phase 9 to keep the scope of Phase 2 manageable.*
 
 ### 2.4 Autopilot Presets for Marketing
 
-- [ ] **Feature:** Pre-built autopilot templates:
-  - Weekly SEO audit report
-  - Social media content drafting
-  - Performance report generation
-  - Content calendar reminders
-- [ ] **UI:** "Autopilot Gallery" with one-click setup for common marketing automations
+- *Note: This entire epic (Autopilot Automations & Preset Gallery) has been extracted to Phase 10 to keep the scope of Phase 2 manageable.*
 
 ---
 
@@ -738,20 +729,77 @@ All new features must follow the existing pattern:
 
 ---
 
-## Progress Tracker
+## Phase 8 — Dynamic Custom Fields
 
-| Phase       | Description                    | Status         | Started | Completed |
-| ----------- | ------------------------------ | -------------- | ------- | --------- |
-| **Phase 0** | Foundation & Quick Wins        | ✅ Completed   | Yes     | Yes       |
-| **Phase 1** | Media Review Module            | ✅ Completed   | Yes     | Yes       |
-| **Phase 2** | Marketing & Creative Workflows | 🟡 In Progress | Yes     | —         |
-| **Phase 3** | Rich Text Editor Upgrade       | ⬜ Not Started | —       | —         |
-| **Phase 4** | Project Architecture & RBAC    | ⬜ Not Started | —       | —         |
-| **Phase 5** | Enhanced GitHub Integration    | ⬜ Not Started | —       | —         |
-| **Phase 6** | Communication Layer            | ⬜ Not Started | —       | —         |
-| **Phase 7** | Mobile & Cross-Platform Polish | ⬜ Not Started | —       | —         |
+> **Goal:** Support arbitrary data capture for diverse workflows by letting users define per-type custom fields.
+> **Effort:** 4-6 days
+> **Dependencies:** None
+
+### 8.1 Schema & Backend
+- [ ] **DB Migrations:**
+  - `custom_field_definitions`: `id`, `workspace_id`, `issue_type_id`, `name`, `type` (text, select, date, url, boolean), `options` (JSONB)
+  - `issue_custom_field_values`: `issue_id`, `custom_field_id`, `value` (TEXT or JSONB)
+- [ ] **API:** CRUD endpoints for definitions. Endpoints to upsert field values on issues.
+
+### 8.2 UI Implementation
+- [ ] **Settings UI:** A builder interface to add, remove, and configure custom fields on a per-issue-type basis.
+- [ ] **Issue Form/Detail UI:** Dynamically render inputs (Text area, Date picker, Select dropdown) based on the issue type's custom field definitions.
 
 ---
 
-> **Next Step:** Start with Phase 0 (Multi-Assignee) → then Phase 1 (Media Review) → then Phase 2 (Marketing Workflows).
+## Phase 9 — Project & Issue Templates
+
+> **Goal:** Standardize workflows by letting teams create reusable project structures and issue templates.
+> **Effort:** 5-7 days
+> **Dependencies:** Phase 8 (Custom Fields) is recommended so templates can pre-fill custom data.
+
+### 9.1 Schema & Backend
+- [ ] **DB Migrations:**
+  - `issue_templates`: pre-filled title, description, issue type, custom fields, default assignees.
+  - `project_templates`: pre-configured milestones, issue templates, roles.
+- [ ] **API:** Endpoints to create templates and instantiate real issues/projects from templates.
+
+### 9.2 UI Implementation
+- [ ] **Template Gallery:** A modal or page showing available templates when creating a new Project or Issue.
+- [ ] **Template Builder:** UI to design templates visually.
+
+---
+
+## Phase 10 — Autopilot Automation Presets
+
+> **Goal:** Automate repetitive marketing and operational tasks via predefined background jobs.
+> **Effort:** 7-10 days
+> **Dependencies:** Agent architecture or background worker system (Temporal, Cloudflare Workers, etc.)
+
+### 10.1 Automation Engine
+- [ ] **Cron/Worker System:** Set up a resilient task queue to handle scheduled generation of tasks.
+- [ ] **Preset Logics:** 
+  - Weekly SEO audit report (creates an issue every Monday)
+  - Content calendar reminders (pings channel/inbox 3 days before due date)
+
+### 10.2 UI Implementation
+- [ ] **Autopilot Gallery:** A marketplace-like view allowing users to "enable" or "install" specific automations.
+- [ ] **Configuration UI:** For enabled automations, allow configuring parameters (e.g., "Run every [Monday] at [9am]").
+
+---
+
+## Progress Tracker
+
+| Phase        | Description                    | Status         | Started | Completed |
+| ------------ | ------------------------------ | -------------- | ------- | --------- |
+| **Phase 0**  | Foundation & Quick Wins        | ✅ Completed   | Yes     | Yes       |
+| **Phase 1**  | Media Review Module            | ✅ Completed   | Yes     | Yes       |
+| **Phase 2**  | Marketing & Creative Workflows | ✅ Completed   | Yes     | Yes       |
+| **Phase 3**  | Rich Text Editor Upgrade       | ⬜ Not Started | —       | —         |
+| **Phase 4**  | Project Architecture & RBAC    | ⬜ Not Started | —       | —         |
+| **Phase 5**  | Enhanced GitHub Integration    | ⬜ Not Started | —       | —         |
+| **Phase 6**  | Communication Layer            | ⬜ Not Started | —       | —         |
+| **Phase 7**  | Mobile & Cross-Platform Polish | ⬜ Not Started | —       | —         |
+| **Phase 8**  | Dynamic Custom Fields          | ⬜ Not Started | —       | —         |
+| **Phase 9**  | Project & Issue Templates      | ⬜ Not Started | —       | —         |
+| **Phase 10** | Autopilot Automation Presets   | ⬜ Not Started | —       | —         |
+
+---
+
+> **Next Step:** Start with Phase 4 (Project Architecture).
 > Update this file as phases are completed by checking off items and updating the Progress Tracker.
