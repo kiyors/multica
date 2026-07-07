@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
@@ -40,7 +41,8 @@ type ReviewCommentResponse struct {
 	AssetID    string          `json:"asset_id"`
 	AuthorID   string          `json:"author_id"`
 	Content    string          `json:"content"`
-	Timestamp  *float32        `json:"timestamp"`
+	StartTime  *float32        `json:"start_time,omitempty"`
+	EndTime    *float32        `json:"end_time,omitempty"`
 	Shapes     json.RawMessage `json:"shapes"`
 	Resolved   bool            `json:"resolved"`
 	ResolvedBy *string         `json:"resolved_by"`
@@ -87,7 +89,8 @@ func reviewCommentToResponse(c db.ReviewComment) ReviewCommentResponse {
 		AssetID:    uuidToString(c.AssetID),
 		AuthorID:   uuidToString(c.AuthorID),
 		Content:    c.Content,
-		Timestamp:  float4ToPtr(c.Timestamp),
+		StartTime:  float4ToPtr(c.StartTime),
+		EndTime:    float4ToPtr(c.EndTime),
 		Shapes:     c.Shapes,
 		Resolved:   c.Resolved,
 		ResolvedBy: uuidToPtr(c.ResolvedBy),
@@ -248,7 +251,8 @@ func (h *Handler) ListReviewComments(w http.ResponseWriter, r *http.Request) {
 type CreateReviewCommentRequest struct {
 	AssetID   string          `json:"asset_id"`
 	Content   string          `json:"content"`
-	Timestamp *float32        `json:"timestamp"`
+	StartTime *float32        `json:"start_time"`
+	EndTime   *float32        `json:"end_time"`
 	Shapes    json.RawMessage `json:"shapes"`
 	ParentID  *string         `json:"parent_id"`
 }
@@ -285,16 +289,20 @@ func (h *Handler) CreateReviewComment(w http.ResponseWriter, r *http.Request) {
 		shapes = json.RawMessage(`[]`)
 	}
 
-	var timestamp pgtype.Float4
-	if req.Timestamp != nil {
-		timestamp = pgtype.Float4{Float32: *req.Timestamp, Valid: true}
+	var startTime, endTime pgtype.Float4
+	if req.StartTime != nil {
+		startTime = pgtype.Float4{Float32: *req.StartTime, Valid: true}
+	}
+	if req.EndTime != nil {
+		endTime = pgtype.Float4{Float32: *req.EndTime, Valid: true}
 	}
 
 	comment, err := h.Queries.CreateReviewComment(ctx, db.CreateReviewCommentParams{
 		AssetID:   assetUUID,
 		AuthorID:  requester.ID,
 		Content:   req.Content,
-		Timestamp: timestamp,
+		StartTime: startTime,
+		EndTime:   endTime,
 		Shapes:    shapes,
 		ParentID:  parentUUID,
 	})
@@ -309,11 +317,29 @@ func (h *Handler) CreateReviewComment(w http.ResponseWriter, r *http.Request) {
 		asset, _ := h.Queries.GetReviewAsset(ctx, assetUUID)
 		issue, _ := h.Queries.GetIssue(ctx, asset.IssueID)
 		h.publish(protocol.EventReviewCommentCreated, workspaceID, "member", userID, map[string]any{
-			"comment":      resp,
-			"issue_id":     util.UUIDToString(asset.IssueID),
-			"issue_title":  issue.Title,
-			"issue_status": issue.Status,
+			"comment":           resp,
+			"issue_id":          util.UUIDToString(asset.IssueID),
+			"issue_title":       issue.Title,
+			"issue_status":      issue.Status,
+			"asset_uploaded_by": util.UUIDToString(asset.UploadedBy),
 		})
+
+		// Create a standard comment so it shows up in the issue timeline
+		content := fmt.Sprintf("**Review Comment on %s:**\n\n%s", asset.Name, req.Content)
+		normalComment, err := h.Queries.CreateComment(ctx, db.CreateCommentParams{
+			IssueID:     asset.IssueID,
+			WorkspaceID: asset.WorkspaceID,
+			AuthorType:  "member",
+			AuthorID:    requester.ID,
+			Content:     content,
+			Type:        "comment",
+		})
+		if err == nil {
+			h.triggerTasksForComment(ctx, issue, normalComment, nil, "member", util.UUIDToString(requester.ID), userID, nil)
+			h.publish(protocol.EventCommentCreated, workspaceID, "member", userID, map[string]any{
+				"comment": commentToResponse(normalComment, nil, nil),
+			})
+		}
 	}
 
 	writeJSON(w, http.StatusOK, resp)

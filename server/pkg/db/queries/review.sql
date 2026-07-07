@@ -31,9 +31,9 @@ DELETE FROM review_assets WHERE asset_group_id = $1;
 
 -- name: CreateReviewComment :one
 INSERT INTO review_comments (
-  asset_id, author_id, content, timestamp, shapes, parent_id
+  asset_id, author_id, content, start_time, end_time, shapes, parent_id
 ) VALUES (
-  $1, $2, $3, $4, $5, $6
+  $1, $2, $3, $4, $5, $6, $7
 ) RETURNING *;
 
 -- name: GetReviewComment :one
@@ -43,7 +43,7 @@ SELECT * FROM review_comments WHERE id = $1;
 SELECT * FROM review_comments WHERE asset_id = $1 ORDER BY created_at ASC;
 
 -- name: UpdateReviewComment :one
-UPDATE review_comments SET content = $2, shapes = $3, timestamp = $4, updated_at = now() WHERE id = $1 RETURNING *;
+UPDATE review_comments SET content = $2, shapes = $3, start_time = $4, end_time = $5, updated_at = now() WHERE id = $1 RETURNING *;
 
 -- name: ResolveReviewComment :one
 UPDATE review_comments SET resolved = true, resolved_by = $2, resolved_at = now(), updated_at = now() WHERE id = $1 RETURNING *;

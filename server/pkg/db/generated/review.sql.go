@@ -82,17 +82,18 @@ func (q *Queries) CreateReviewAsset(ctx context.Context, arg CreateReviewAssetPa
 
 const createReviewComment = `-- name: CreateReviewComment :one
 INSERT INTO review_comments (
-  asset_id, author_id, content, timestamp, shapes, parent_id
+  asset_id, author_id, content, start_time, end_time, shapes, parent_id
 ) VALUES (
-  $1, $2, $3, $4, $5, $6
-) RETURNING id, asset_id, author_id, content, timestamp, shapes, resolved, resolved_by, resolved_at, parent_id, created_at, updated_at
+  $1, $2, $3, $4, $5, $6, $7
+) RETURNING id, asset_id, author_id, content, start_time, shapes, resolved, resolved_by, resolved_at, parent_id, created_at, updated_at, end_time
 `
 
 type CreateReviewCommentParams struct {
 	AssetID   pgtype.UUID   `json:"asset_id"`
 	AuthorID  pgtype.UUID   `json:"author_id"`
 	Content   string        `json:"content"`
-	Timestamp pgtype.Float4 `json:"timestamp"`
+	StartTime pgtype.Float4 `json:"start_time"`
+	EndTime   pgtype.Float4 `json:"end_time"`
 	Shapes    []byte        `json:"shapes"`
 	ParentID  pgtype.UUID   `json:"parent_id"`
 }
@@ -102,7 +103,8 @@ func (q *Queries) CreateReviewComment(ctx context.Context, arg CreateReviewComme
 		arg.AssetID,
 		arg.AuthorID,
 		arg.Content,
-		arg.Timestamp,
+		arg.StartTime,
+		arg.EndTime,
 		arg.Shapes,
 		arg.ParentID,
 	)
@@ -112,7 +114,7 @@ func (q *Queries) CreateReviewComment(ctx context.Context, arg CreateReviewComme
 		&i.AssetID,
 		&i.AuthorID,
 		&i.Content,
-		&i.Timestamp,
+		&i.StartTime,
 		&i.Shapes,
 		&i.Resolved,
 		&i.ResolvedBy,
@@ -120,6 +122,7 @@ func (q *Queries) CreateReviewComment(ctx context.Context, arg CreateReviewComme
 		&i.ParentID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.EndTime,
 	)
 	return i, err
 }
@@ -180,7 +183,7 @@ func (q *Queries) GetReviewAsset(ctx context.Context, id pgtype.UUID) (ReviewAss
 }
 
 const getReviewComment = `-- name: GetReviewComment :one
-SELECT id, asset_id, author_id, content, timestamp, shapes, resolved, resolved_by, resolved_at, parent_id, created_at, updated_at FROM review_comments WHERE id = $1
+SELECT id, asset_id, author_id, content, start_time, shapes, resolved, resolved_by, resolved_at, parent_id, created_at, updated_at, end_time FROM review_comments WHERE id = $1
 `
 
 func (q *Queries) GetReviewComment(ctx context.Context, id pgtype.UUID) (ReviewComment, error) {
@@ -191,7 +194,7 @@ func (q *Queries) GetReviewComment(ctx context.Context, id pgtype.UUID) (ReviewC
 		&i.AssetID,
 		&i.AuthorID,
 		&i.Content,
-		&i.Timestamp,
+		&i.StartTime,
 		&i.Shapes,
 		&i.Resolved,
 		&i.ResolvedBy,
@@ -199,6 +202,7 @@ func (q *Queries) GetReviewComment(ctx context.Context, id pgtype.UUID) (ReviewC
 		&i.ParentID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.EndTime,
 	)
 	return i, err
 }
@@ -310,7 +314,7 @@ func (q *Queries) ListReviewAssetsByIssue(ctx context.Context, issueID pgtype.UU
 }
 
 const listReviewCommentsByAsset = `-- name: ListReviewCommentsByAsset :many
-SELECT id, asset_id, author_id, content, timestamp, shapes, resolved, resolved_by, resolved_at, parent_id, created_at, updated_at FROM review_comments WHERE asset_id = $1 ORDER BY created_at ASC
+SELECT id, asset_id, author_id, content, start_time, shapes, resolved, resolved_by, resolved_at, parent_id, created_at, updated_at, end_time FROM review_comments WHERE asset_id = $1 ORDER BY created_at ASC
 `
 
 func (q *Queries) ListReviewCommentsByAsset(ctx context.Context, assetID pgtype.UUID) ([]ReviewComment, error) {
@@ -327,7 +331,7 @@ func (q *Queries) ListReviewCommentsByAsset(ctx context.Context, assetID pgtype.
 			&i.AssetID,
 			&i.AuthorID,
 			&i.Content,
-			&i.Timestamp,
+			&i.StartTime,
 			&i.Shapes,
 			&i.Resolved,
 			&i.ResolvedBy,
@@ -335,6 +339,7 @@ func (q *Queries) ListReviewCommentsByAsset(ctx context.Context, assetID pgtype.
 			&i.ParentID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.EndTime,
 		); err != nil {
 			return nil, err
 		}
@@ -347,7 +352,7 @@ func (q *Queries) ListReviewCommentsByAsset(ctx context.Context, assetID pgtype.
 }
 
 const resolveReviewComment = `-- name: ResolveReviewComment :one
-UPDATE review_comments SET resolved = true, resolved_by = $2, resolved_at = now(), updated_at = now() WHERE id = $1 RETURNING id, asset_id, author_id, content, timestamp, shapes, resolved, resolved_by, resolved_at, parent_id, created_at, updated_at
+UPDATE review_comments SET resolved = true, resolved_by = $2, resolved_at = now(), updated_at = now() WHERE id = $1 RETURNING id, asset_id, author_id, content, start_time, shapes, resolved, resolved_by, resolved_at, parent_id, created_at, updated_at, end_time
 `
 
 type ResolveReviewCommentParams struct {
@@ -363,7 +368,7 @@ func (q *Queries) ResolveReviewComment(ctx context.Context, arg ResolveReviewCom
 		&i.AssetID,
 		&i.AuthorID,
 		&i.Content,
-		&i.Timestamp,
+		&i.StartTime,
 		&i.Shapes,
 		&i.Resolved,
 		&i.ResolvedBy,
@@ -371,12 +376,13 @@ func (q *Queries) ResolveReviewComment(ctx context.Context, arg ResolveReviewCom
 		&i.ParentID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.EndTime,
 	)
 	return i, err
 }
 
 const unresolveReviewComment = `-- name: UnresolveReviewComment :one
-UPDATE review_comments SET resolved = false, resolved_by = NULL, resolved_at = NULL, updated_at = now() WHERE id = $1 RETURNING id, asset_id, author_id, content, timestamp, shapes, resolved, resolved_by, resolved_at, parent_id, created_at, updated_at
+UPDATE review_comments SET resolved = false, resolved_by = NULL, resolved_at = NULL, updated_at = now() WHERE id = $1 RETURNING id, asset_id, author_id, content, start_time, shapes, resolved, resolved_by, resolved_at, parent_id, created_at, updated_at, end_time
 `
 
 func (q *Queries) UnresolveReviewComment(ctx context.Context, id pgtype.UUID) (ReviewComment, error) {
@@ -387,7 +393,7 @@ func (q *Queries) UnresolveReviewComment(ctx context.Context, id pgtype.UUID) (R
 		&i.AssetID,
 		&i.AuthorID,
 		&i.Content,
-		&i.Timestamp,
+		&i.StartTime,
 		&i.Shapes,
 		&i.Resolved,
 		&i.ResolvedBy,
@@ -395,6 +401,7 @@ func (q *Queries) UnresolveReviewComment(ctx context.Context, id pgtype.UUID) (R
 		&i.ParentID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.EndTime,
 	)
 	return i, err
 }
@@ -433,14 +440,15 @@ func (q *Queries) UpdateReviewAssetStatus(ctx context.Context, arg UpdateReviewA
 }
 
 const updateReviewComment = `-- name: UpdateReviewComment :one
-UPDATE review_comments SET content = $2, shapes = $3, timestamp = $4, updated_at = now() WHERE id = $1 RETURNING id, asset_id, author_id, content, timestamp, shapes, resolved, resolved_by, resolved_at, parent_id, created_at, updated_at
+UPDATE review_comments SET content = $2, shapes = $3, start_time = $4, end_time = $5, updated_at = now() WHERE id = $1 RETURNING id, asset_id, author_id, content, start_time, shapes, resolved, resolved_by, resolved_at, parent_id, created_at, updated_at, end_time
 `
 
 type UpdateReviewCommentParams struct {
 	ID        pgtype.UUID   `json:"id"`
 	Content   string        `json:"content"`
 	Shapes    []byte        `json:"shapes"`
-	Timestamp pgtype.Float4 `json:"timestamp"`
+	StartTime pgtype.Float4 `json:"start_time"`
+	EndTime   pgtype.Float4 `json:"end_time"`
 }
 
 func (q *Queries) UpdateReviewComment(ctx context.Context, arg UpdateReviewCommentParams) (ReviewComment, error) {
@@ -448,7 +456,8 @@ func (q *Queries) UpdateReviewComment(ctx context.Context, arg UpdateReviewComme
 		arg.ID,
 		arg.Content,
 		arg.Shapes,
-		arg.Timestamp,
+		arg.StartTime,
+		arg.EndTime,
 	)
 	var i ReviewComment
 	err := row.Scan(
@@ -456,7 +465,7 @@ func (q *Queries) UpdateReviewComment(ctx context.Context, arg UpdateReviewComme
 		&i.AssetID,
 		&i.AuthorID,
 		&i.Content,
-		&i.Timestamp,
+		&i.StartTime,
 		&i.Shapes,
 		&i.Resolved,
 		&i.ResolvedBy,
@@ -464,6 +473,7 @@ func (q *Queries) UpdateReviewComment(ctx context.Context, arg UpdateReviewComme
 		&i.ParentID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.EndTime,
 	)
 	return i, err
 }
