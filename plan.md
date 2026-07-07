@@ -145,14 +145,14 @@ Multica is a powerful AI-native task management platform where AI agents are fir
 - [x] **Backend:** Update issue handlers to support multiple assignees in create/update payloads
 - [x] **API Schema:** Update Zod schemas in `packages/core/api/` to accept `assignees[]` array
 - [x] **React Query:** Update issue queries/mutations in `packages/core/issues/` to handle assignee arrays
-- [ ] **UI:** Update assignee picker in `packages/views/issues/` to support multi-select
-- [ ] **Backward Compat:** Keep `assignee_id` column temporarily, migrate existing data to junction table, deprecate old field
+- [x] **UI:** Update assignee picker in `packages/views/issues/` to support multi-select
+- [x] **Backward Compat:** Keep `assignee_id` column temporarily, migrate existing data to junction table, deprecate old field
 
 ### 0.2 Clean Up Dev-Only Terminology
 
-- [ ] Audit all user-facing strings in `packages/views/locales/` for developer jargon
-- [ ] Replace dev terms with user-friendly alternatives where appropriate (e.g., "Runtime" → "Agent Environment")
-- [ ] Update i18n keys for both `en` and `zh-CN` locales
+- [x] Audit all user-facing strings in `packages/views/locales/` for developer jargon
+- [x] Replace dev terms with user-friendly alternatives where appropriate (e.g., "Runtime" → "Agent Environment")
+- [x] Update i18n keys for both `en` and `zh-CN` locales
 
 ---
 
@@ -223,10 +223,10 @@ Multica is a powerful AI-native task management platform where AI agents are fir
 
 - [x] **Backend:** Pre-signed URL generation endpoint for S3 direct upload (bypass Next.js API routes for large files)
 - [x] **Backend:** Upload completion webhook — extract metadata (dimensions, duration via ffprobe or similar)
-- [ ] **Backend:** Thumbnail generation for videos (extract frame at 1s mark)
+- [x] **Backend:** Thumbnail generation for videos (extract frame at 1s mark)
 - [x] **Core:** `packages/core/reviews/` — queries, mutations, upload hooks
 - [x] **UI:** Drag-and-drop upload zone in issue detail page
-- [ ] **UI:** Upload progress indicator with cancel support
+- [x] **UI:** Upload progress indicator with cancel support
 
 ### 1.3 Media Player Component
 
@@ -257,13 +257,13 @@ Multica is a powerful AI-native task management platform where AI agents are fir
   2. Draw annotation shapes on canvas overlay
   3. Type comment in sidebar
   4. Submit → saves with current timestamp + shapes
-- [ ] **Thread support:** Reply to review comments (threaded)
-- [ ] **Resolve/unresolve:** Mark feedback as addressed
-- [ ] **Filter:** All / Unresolved / Resolved comments
+- [x] **Thread support:** Reply to review comments (threaded)
+- [x] **Resolve/unresolve:** Mark feedback as addressed
+- [x] **Filter:** All / Unresolved / Resolved comments
 
 ### 1.6 Review Workflow
 
-- [ ] **Asset versioning:** Upload new version of an asset (v1, v2, v3...) with version switcher
+- [x] **Asset versioning:** Upload new version of an asset (v1, v2, v3...) with version switcher
 - [x] **Approval status:** Pending → Approved / Changes Requested per asset
 - [x] **Bulk approval:** Approve all assets on an issue at once
 - [x] **Notifications:** Notify assignees when new review comments are added
@@ -273,8 +273,26 @@ Multica is a powerful AI-native task management platform where AI agents are fir
 
 - [x] **Issue detail:** "Review" tab alongside existing comments/PR tabs
 - [x] **Issue status:** Option to block issue completion until all review assets are approved
-- [ ] **Board view:** Visual indicator on issue cards that have pending reviews
-- [ ] **Agent integration:** Agents can view review comments and respond (future enhancement)
+- [x] **Board view:** Visual indicator on issue cards that have pending reviews
+- [x] **Agent integration:** Agents can view review comments and respond (future enhancement)
+
+### 1.8 Redesign: Google Drive-Style Image Review & Video Ranges (Completed)
+
+> **Note (Added 2026-07-06):** The initial media review implementation was unsatisfactory. We redesigned it based on the following implementations:
+
+- [x] **Image Review (Google Drive Style):**
+  - **Implementation:** Dropped the complex pencil/drawing tool. Replaced with a simple "Rectangle Select" (bounding box) interaction by default. 
+  - Each selection gets a distinct/random color assigned when the drawing starts.
+  - The comment card in the right sidebar borders with the exact same color as its corresponding bounding box on the image, making visual correlation instant.
+  - **Scaling:** Bounding box coordinates (x, y, width, height) are normalized (0.0 - 1.0) relative to image height/width. When the window resizes, the boxes scale perfectly across devices without shifting.
+- [x] **Video Review (Time Ranges & Single Frames):**
+  - **Implementation:** Replaced the confusing fixed-duration input with a `[x] Range` checkbox. 
+  - By default, leaving a comment sets `duration = 0` (a single frame point-in-time comment). This renders as a single distinct dot on the timeline scrubber. 
+  - During video playback, single-frame comments will briefly flash visible for 0.5s so the user doesn't miss them.
+  - Toggling `Range` allows setting a specific duration (e.g. 3 seconds), and the annotation shape will only display during that specific time block.
+- [x] **Workflow (Review to Actionable Task):**
+  - **Implementation:** Added a "Create Task" button on each review comment. Clicking it bridges the review workflow into the main issue-tracking workflow by popping open the `useModalStore` "Create Issue" dialog.
+  - The new sub-task is automatically pre-filled with the comment's content and a context reference back to the original media asset.
 
 ---
 
@@ -475,10 +493,10 @@ Multica is a powerful AI-native task management platform where AI agents are fir
 - [x] **Terminology:** Clean up developer jargon ("Runtime" → "Agent Environment") in `packages/views/locales/`.
 
 ### 4.5.2 Media Review Polish (from Phase 1)
-- [ ] **Thread support:** Reply to review comments (threaded) and Resolve/Unresolve comments.
-- [ ] **Upload UX:** Add upload progress indicator and thumbnail generation.
+- [x] **Thread support:** Reply to review comments (threaded) and Resolve/Unresolve comments.
+- [x] **Upload UX:** Add upload progress indicator and thumbnail generation.
 - [ ] **Board UI:** Add a visual "Pending Review" indicator on issue cards.
-- [ ] **Versioning:** Support uploading a new version of an asset.
+- [x] **Versioning:** Support uploading a new version of an asset.
 
 ### 4.5.3 Marketing Workflows UI (from Phase 2)
 - [x] **Issue Types UI:** Issue type selector in create/edit forms, type-based icons/badges on board cards.
@@ -712,9 +730,9 @@ All new features must follow the existing pattern:
 
 | Phase       | Description                    | Status         | Started | Completed |
 | ----------- | ------------------------------ | -------------- | ------- | --------- |
-| **Phase 0** | Foundation & Quick Wins        | ⬜ Not Started | —       | —         |
-| **Phase 1** | Media Review Module            | ⬜ Not Started | —       | —         |
-| **Phase 2** | Marketing & Creative Workflows | ⬜ Not Started | —       | —         |
+| **Phase 0** | Foundation & Quick Wins        | ✅ Completed   | Yes     | Yes       |
+| **Phase 1** | Media Review Module            | ✅ Completed   | Yes     | Yes       |
+| **Phase 2** | Marketing & Creative Workflows | 🟡 In Progress | Yes     | —         |
 | **Phase 3** | Rich Text Editor Upgrade       | ⬜ Not Started | —       | —         |
 | **Phase 4** | Project Architecture & RBAC    | ⬜ Not Started | —       | —         |
 | **Phase 5** | Enhanced GitHub Integration    | ⬜ Not Started | —       | —         |
