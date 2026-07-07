@@ -1,18 +1,27 @@
 "use client";
 
-import { forwardRef } from "react";
+import { forwardRef, useEffect } from "react";
 import { useNavigation } from "./context";
 
 interface AppLinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement> {
   href: string;
+  prefetch?: boolean;
 }
 
 export const AppLink = forwardRef<HTMLAnchorElement, AppLinkProps>(
   function AppLink(
-    { href, children, onClick, onMouseEnter, onFocus, ...props },
+    { href, children, onClick, onMouseEnter, onFocus, prefetch: shouldPrefetch, ...props },
     ref,
   ) {
     const { push, openInNewTab, prefetch } = useNavigation();
+
+    // Eagerly prefetch if `prefetch={true}` is explicitly passed (similar to Next.js <Link prefetch={true}>)
+    // This removes the latency of waiting for a hover/focus event before warming the RSC cache
+    useEffect(() => {
+      if (shouldPrefetch && prefetch) {
+        prefetch(href);
+      }
+    }, [href, shouldPrefetch, prefetch]);
 
     const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
       if (e.metaKey || e.ctrlKey || e.shiftKey) {

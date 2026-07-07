@@ -202,7 +202,7 @@ function SortablePinItem({
       <SidebarMenuButton
         size="sm"
         isActive={isActive}
-        render={<AppLink href={href} draggable={false} />}
+        render={<AppLink href={href} draggable={false} prefetch={true} />}
         onClick={(event) => {
           if (wasDragged.current) {
             wasDragged.current = false;
@@ -547,7 +547,7 @@ export function AppSidebar({ topSlot, searchSlot, headerClassName, headerStyle }
                       <DropdownMenuItem
                         key={ws.id}
                         render={
-                          <AppLink href={paths.workspace(ws.slug).issues()} />
+                          <AppLink href={paths.workspace(ws.slug).issues()} prefetch={true} />
                         }
                       >
                         <WorkspaceAvatar name={ws.name} avatarUrl={ws.avatar_url} size="sm" />
@@ -659,7 +659,7 @@ export function AppSidebar({ topSlot, searchSlot, headerClassName, headerStyle }
                     <SidebarMenuItem key={item.key}>
                       <SidebarMenuButton
                         isActive={isActive}
-                        render={<AppLink href={href} />}
+                        render={<AppLink href={href} prefetch={true} />}
                         className="text-muted-foreground hover:not-data-active:bg-sidebar-accent/70 data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground"
                       >
                         <item.icon />
@@ -723,7 +723,7 @@ export function AppSidebar({ topSlot, searchSlot, headerClassName, headerStyle }
                     <SidebarMenuItem key={item.key}>
                       <SidebarMenuButton
                         isActive={isActive}
-                        render={<AppLink href={href} />}
+                        render={<AppLink href={href} prefetch={true} />}
                         className="text-muted-foreground hover:not-data-active:bg-sidebar-accent/70 data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground"
                       >
                         <item.icon />
@@ -747,7 +747,7 @@ export function AppSidebar({ topSlot, searchSlot, headerClassName, headerStyle }
                     <SidebarMenuItem key={item.key}>
                       <SidebarMenuButton
                         isActive={isActive}
-                        render={<AppLink href={href} />}
+                        render={<AppLink href={href} prefetch={true} />}
                         className="text-muted-foreground hover:not-data-active:bg-sidebar-accent/70 data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground"
                       >
                         <item.icon />

@@ -3,6 +3,14 @@ import { config } from "dotenv";
 import { resolve } from "path";
 import { resolveRemoteApiUrl } from "./config/runtime-urls";
 import { createMDX } from "fumadocs-mdx/next";
+import withPWAInit from "next-pwa";
+
+const withPWA = withPWAInit({
+  dest: "public",
+  disable: process.env.NODE_ENV === "development",
+  register: true,
+  skipWaiting: true,
+});
 
 // Load root .env so REMOTE_API_URL is available to next.config.ts
 config({ path: resolve(__dirname, "../../.env") });
@@ -77,4 +85,4 @@ const nextConfig: NextConfig = {
 // Drop the flag once fumadocs-mdx ships a Turbopack-compatible loader.
 const withMDX = createMDX() as (config: NextConfig) => NextConfig;
 
-export default withMDX(nextConfig);
+export default withPWA(withMDX(nextConfig));

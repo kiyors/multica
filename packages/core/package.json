@@ -130,9 +130,12 @@
   },
   "dependencies": {
     "@formatjs/intl-localematcher": "catalog:",
+    "@tanstack/query-async-storage-persister": "^5.101.2",
     "@tanstack/react-query": "catalog:",
     "@tanstack/react-query-devtools": "^5.96.2",
+    "@tanstack/react-query-persist-client": "^5.101.2",
     "i18next": "catalog:",
+    "idb-keyval": "^6.2.6",
     "posthog-js": "catalog:",
     "react-i18next": "catalog:",
     "yaml": "catalog:",

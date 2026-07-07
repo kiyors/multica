@@ -1,15 +1,31 @@
 "use client";
 
 import { useState } from "react";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
+import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
+import { get, set, del } from "idb-keyval";
 import { createQueryClient } from "./query-client";
 import type { ReactNode } from "react";
 
 export function QueryProvider({ children }: { children: ReactNode }) {
   const [queryClient] = useState(createQueryClient);
+  
+  const [persister] = useState(() => 
+    createAsyncStoragePersister({
+      storage: {
+        getItem: async (key) => await get(key),
+        setItem: async (key, value) => await set(key, value),
+        removeItem: async (key) => await del(key),
+      },
+    })
+  );
+
   return (
-    <QueryClientProvider client={queryClient}>
+    <PersistQueryClientProvider 
+      client={queryClient} 
+      persistOptions={{ persister }}
+    >
       {children}
-    </QueryClientProvider>
+    </PersistQueryClientProvider>
   );
 }
