@@ -14,11 +14,13 @@
  * Web/desktop use a different QueryClient (packages/core/query-client.ts).
  * Mobile maintains its own to keep React Native deps out of shared code.
  */
-import { focusManager, onlineManager, QueryClient } from "@tanstack/react-query";
+import { focusManager, onlineManager, QueryClient, Mutation } from "@tanstack/react-query";
 import { AppState, type AppStateStatus } from "react-native";
 import NetInfo from "@react-native-community/netinfo";
 import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { api } from "@/data/api";
+import type { UpdateIssueRequest, Label } from "@multica/core/types";
 
 export const asyncStoragePersister = createAsyncStoragePersister({
   storage: AsyncStorage,
@@ -38,6 +40,41 @@ export const queryClient = new QueryClient({
   },
 });
 
+
+queryClient.setMutationDefaults(["updateIssue"], {
+  mutationFn: async function (this: Mutation<any, any, any, any>, patch: UpdateIssueRequest) {
+    const issueId = this.options.mutationKey?.[1] as string;
+    return api.updateIssue(issueId, patch);
+  },
+});
+
+queryClient.setMutationDefaults(["attachLabel"], {
+  mutationFn: async function (this: Mutation<any, any, any, any>, { label }: { label: Label }) {
+    const issueId = this.options.mutationKey?.[1] as string;
+    return api.attachLabel(issueId, label.id);
+  },
+});
+
+queryClient.setMutationDefaults(["detachLabel"], {
+  mutationFn: async function (this: Mutation<any, any, any, any>, { labelId }: { labelId: string }) {
+    const issueId = this.options.mutationKey?.[1] as string;
+    return api.detachLabel(issueId, labelId);
+  },
+});
+
+queryClient.setMutationDefaults(["toggleIssueReaction"], {
+  mutationFn: async function (
+    this: Mutation<any, any, any, any>,
+    { emoji, existing }: { emoji: string; existing?: any }
+  ) {
+    const issueId = this.options.mutationKey?.[1] as string;
+    if (existing) {
+      await api.removeIssueReaction(issueId, emoji);
+      return null;
+    }
+    return api.addIssueReaction(issueId, emoji);
+  },
+});
 // ── focusManager ← AppState ──────────────────────────────────────────
 // Foregrounding the app counts as "focus" → triggers refetchOnWindowFocus
 // for any stale queries the user is currently looking at.

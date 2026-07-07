@@ -4,7 +4,8 @@ import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { api } from '@/data/api';
-
+import { router } from 'expo-router';
+import { useWorkspaceStore } from '@/data/workspace-store';
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -44,6 +45,16 @@ export function usePushNotifications() {
     responseListener.current = Notifications.addNotificationResponseReceivedListener(
       (response) => {
         console.log('Notification response received:', response);
+        const url = response.notification.request.content.data?.url as string;
+        if (url) {
+          const match = url.match(/^multica:\/\/issue\/(.+)$/);
+          if (match && match[1]) {
+            const workspaceSlug = useWorkspaceStore.getState().currentWorkspaceSlug;
+            if (workspaceSlug) {
+              router.push(`/${workspaceSlug}/issue/${match[1]}`);
+            }
+          }
+        }
       }
     );
 
