@@ -72,7 +72,7 @@ export function AccountTab() {
     try {
       const result = await upload(file);
       if (!result) return;
-      const updated = await api.updateMe({ avatar_url: result.markdownLink || result.link });
+      const updated = await api.updateMe({ avatar_url: result.link });
       setUser(updated);
       toast.success(t(($) => $.account.toast_avatar_updated));
     } catch (err) {
