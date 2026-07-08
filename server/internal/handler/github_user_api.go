@@ -18,7 +18,7 @@ func (h *Handler) GetGitHubUserRepos(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !user.GithubAccessToken.Valid || user.GithubAccessToken.String == "" {
-		writeError(w, http.StatusUnauthorized, "GitHub account not connected")
+		writeError(w, http.StatusForbidden, "GitHub account not connected")
 		return
 	}
 
@@ -37,6 +37,12 @@ func (h *Handler) GetGitHubUserRepos(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		_, _ = h.Queries.UnlinkGitHubAccount(r.Context(), parseUUID(userID))
+		writeError(w, http.StatusForbidden, "GitHub token expired. Please reconnect your account.")
+		return
+	}
 
 	if resp.StatusCode != http.StatusOK {
 		writeError(w, http.StatusBadGateway, "GitHub returned an error")
@@ -83,7 +89,7 @@ func (h *Handler) CreateGitHubIssue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !user.GithubAccessToken.Valid || user.GithubAccessToken.String == "" {
-		writeError(w, http.StatusUnauthorized, "GitHub account not connected")
+		writeError(w, http.StatusForbidden, "GitHub account not connected")
 		return
 	}
 
@@ -107,6 +113,12 @@ func (h *Handler) CreateGitHubIssue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		_, _ = h.Queries.UnlinkGitHubAccount(r.Context(), parseUUID(userID))
+		writeError(w, http.StatusForbidden, "GitHub token expired. Please reconnect your account.")
+		return
+	}
 
 	if resp.StatusCode != http.StatusCreated {
 		writeError(w, http.StatusBadGateway, "GitHub returned an error")
