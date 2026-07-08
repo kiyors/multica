@@ -91,6 +91,9 @@ type GitHubPullRequestResponse struct {
 	Additions    int32 `json:"additions"`
 	Deletions    int32 `json:"deletions"`
 	ChangedFiles int32 `json:"changed_files"`
+	// Review status computed from the latest review of each reviewer.
+	// One of "approved", "changes_requested", "pending".
+	ReviewStatus string `json:"review_status"`
 }
 
 type GitHubConnectResponse struct {
@@ -149,10 +152,20 @@ func githubPullRequestToResponse(p db.GithubPullRequest) GitHubPullRequestRespon
 		Additions:        p.Additions,
 		Deletions:        p.Deletions,
 		ChangedFiles:     p.ChangedFiles,
+		ReviewStatus:     "pending",
 	}
 }
 
 func issuePullRequestRowToResponse(p db.ListPullRequestsByIssueRow) GitHubPullRequestResponse {
+	var reviewStatus string
+	if p.ReviewsChangesRequested > 0 {
+		reviewStatus = "changes_requested"
+	} else if p.ReviewsApproved > 0 {
+		reviewStatus = "approved"
+	} else {
+		reviewStatus = "pending"
+	}
+
 	return GitHubPullRequestResponse{
 		ID:               uuidToString(p.ID),
 		WorkspaceID:      uuidToString(p.WorkspaceID),
@@ -177,6 +190,7 @@ func issuePullRequestRowToResponse(p db.ListPullRequestsByIssueRow) GitHubPullRe
 		Additions:        p.Additions,
 		Deletions:        p.Deletions,
 		ChangedFiles:     p.ChangedFiles,
+		ReviewStatus:     reviewStatus,
 	}
 }
 
@@ -628,6 +642,8 @@ func (h *Handler) HandleGitHubWebhook(w http.ResponseWriter, r *http.Request) {
 		h.handleInstallationEvent(ctx, body)
 	case "pull_request":
 		h.handlePullRequestEvent(ctx, body)
+	case "pull_request_review":
+		h.handlePullRequestReviewEvent(ctx, body)
 	case "check_suite":
 		h.handleCheckSuiteEvent(ctx, body)
 	default:
@@ -878,7 +894,12 @@ func (h *Handler) handlePullRequestEvent(ctx context.Context, body []byte) {
 	// flag (which itself short-circuits when the master `github_enabled`
 	// switch is off).
 	linkedIssueIDs := make([]string, 0)
-	if h.workspaceAutoLinkPRsEnabled(ctx, wsID) {
+	newlyLinkedIssueIDs := make([]string, 0)
+	terminalIssueIDs := make([]string, 0)
+	var prTerminal string
+
+	flags := h.githubAutomationFlags(ctx, wsID)
+	if flags.autoLinkPRs {
 		idents := extractIdentifiers(p.PullRequest.Title, p.PullRequest.Body, p.PullRequest.Head.Ref)
 		// closingIdents is the subset of identifiers that this PR explicitly
 		// declared via a closing keyword ("Closes/Fixes/Resolves MUL-X").
@@ -912,6 +933,16 @@ func (h *Handler) handlePullRequestEvent(ctx context.Context, body []byte) {
 		// the merge-time close decision.
 		preserveCloseIntent := p.Action != "closed" && (state == "merged" || state == "closed")
 		prefix := h.getIssuePrefix(ctx, wsID)
+
+		existingLinks, err := h.Queries.ListIssueIDsForPullRequest(ctx, pr.ID)
+		if err != nil {
+			slog.Warn("github: list existing links failed", "err", err)
+		}
+		existingLinkMap := make(map[string]bool)
+		for _, id := range existingLinks {
+			existingLinkMap[uuidToString(id)] = true
+		}
+
 		// reevalIssues collects each issue whose link row we just touched so
 		// we can re-run the auto-advance gate against the persisted aggregate
 		// after every link upsert in this event. Driving the gate off
@@ -922,6 +953,7 @@ func (h *Handler) handlePullRequestEvent(ctx context.Context, body []byte) {
 		// keyword, but the earlier link row carries close_intent=true, so
 		// MUL-1 still advances.
 		reevalIssues := make([]db.Issue, 0, len(idents))
+		qualifyingIssues := make([]db.Issue, 0, len(idents))
 		for _, id := range idents {
 			issue, ok := h.lookupIssueByIdentifier(ctx, wsID, prefix, id)
 			if !ok {
@@ -943,8 +975,29 @@ func (h *Handler) handlePullRequestEvent(ctx context.Context, body []byte) {
 				slog.Warn("github: link failed", "err", err)
 				continue
 			}
-			linkedIssueIDs = append(linkedIssueIDs, uuidToString(issue.ID))
+			issueIDStr := uuidToString(issue.ID)
+			linkedIssueIDs = append(linkedIssueIDs, issueIDStr)
 			reevalIssues = append(reevalIssues, issue)
+			if !referenceOnly {
+				qualifyingIssues = append(qualifyingIssues, issue)
+				if !existingLinkMap[issueIDStr] {
+					newlyLinkedIssueIDs = append(newlyLinkedIssueIDs, issueIDStr)
+				}
+			}
+		}
+
+		// A live (non-draft) PR that genuinely works on an issue means the
+		// work is under review — pull the issue forward onto the board.
+		// Only workable statuses move; blocked is a user signal and terminal
+		// states must never be reopened by a PR event. Reference-only body
+		// mentions never qualify (qualifyingIssues excludes them).
+		if state == "open" && flags.autoTransitions {
+			for _, issue := range qualifyingIssues {
+				switch issue.Status {
+				case "backlog", "todo", "in_progress":
+					h.advanceIssueStatus(ctx, issue, workspaceID, "in_review", "github_pr_opened")
+				}
+			}
 		}
 
 		// A terminal PR event (`merged` or `closed`) may be the moment the
@@ -961,7 +1014,7 @@ func (h *Handler) handlePullRequestEvent(ctx context.Context, body []byte) {
 		// also prevents an "all closed-without-merge" sequence from
 		// silently auto-closing the issue — if nothing carrying closing
 		// intent was ever delivered, the user should decide manually.
-		if state == "merged" || state == "closed" {
+		if (state == "merged" || state == "closed") && flags.autoTransitions {
 			for _, issue := range reevalIssues {
 				if issue.Status == "done" || issue.Status == "cancelled" {
 					continue
@@ -972,8 +1025,15 @@ func (h *Handler) handlePullRequestEvent(ctx context.Context, body []byte) {
 					continue
 				}
 				if counts.OpenCount == 0 && counts.MergedWithCloseIntentCount > 0 {
-					h.advanceIssueToDone(ctx, issue, workspaceID)
+					h.advanceIssueStatus(ctx, issue, workspaceID, "done", "github_pr_merged")
 				}
+			}
+		}
+
+		if p.Action == "closed" && (state == "merged" || state == "closed") {
+			prTerminal = state
+			for _, issue := range qualifyingIssues {
+				terminalIssueIDs = append(terminalIssueIDs, uuidToString(issue.ID))
 			}
 		}
 	}
@@ -981,9 +1041,104 @@ func (h *Handler) handlePullRequestEvent(ctx context.Context, body []byte) {
 	// Broadcast PR change to the workspace so any open issue detail page
 	// re-queries its PR list.
 	h.publish(protocol.EventPullRequestUpdated, workspaceID, "system", "", map[string]any{
-		"pull_request":     resp,
-		"linked_issue_ids": linkedIssueIDs,
+		"pull_request":           resp,
+		"linked_issue_ids":       linkedIssueIDs,
+		"newly_linked_issue_ids": newlyLinkedIssueIDs,
+		"pr_terminal":            prTerminal,
+		"terminal_issue_ids":     terminalIssueIDs,
 	})
+}
+
+// ── pull_request_review webhook ────────────────────────────────────────────
+
+type ghPullRequestReviewPayload struct {
+	Action string `json:"action"`
+	Review struct {
+		ID   int64 `json:"id"`
+		User struct {
+			Login string `json:"login"`
+		} `json:"user"`
+		State       string `json:"state"`
+		SubmittedAt string `json:"submitted_at"`
+	} `json:"review"`
+	PullRequest struct {
+		Number int32 `json:"number"`
+	} `json:"pull_request"`
+	Repository struct {
+		Name  string `json:"name"`
+		Owner struct {
+			Login string `json:"login"`
+		} `json:"owner"`
+	} `json:"repository"`
+	Installation struct {
+		ID int64 `json:"id"`
+	} `json:"installation"`
+}
+
+func (h *Handler) handlePullRequestReviewEvent(ctx context.Context, body []byte) {
+	var p ghPullRequestReviewPayload
+	if err := json.Unmarshal(body, &p); err != nil {
+		slog.Warn("github: bad pull_request_review payload", "err", err)
+		return
+	}
+	if p.Installation.ID == 0 {
+		return
+	}
+	insts, err := h.Queries.ListGitHubInstallationsByInstallationID(ctx, p.Installation.ID)
+	if err != nil || len(insts) == 0 {
+		return
+	}
+	inst := insts[0]
+
+	wsID := h.resolveWorkspaceForRepo(ctx, inst.WorkspaceID, inst.AccountLogin, p.Repository.Owner.Login, p.Repository.Name)
+
+	pr, err := h.Queries.GetGitHubPullRequest(ctx, db.GetGitHubPullRequestParams{
+		WorkspaceID: wsID,
+		RepoOwner:   p.Repository.Owner.Login,
+		RepoName:    p.Repository.Name,
+		PrNumber:    p.PullRequest.Number,
+	})
+	if err != nil {
+		if !errors.Is(err, pgx.ErrNoRows) {
+			slog.Warn("github: lookup pr for review failed", "err", err)
+		}
+		return
+	}
+
+	state := strings.ToLower(p.Review.State)
+	// GitHub might omit submitted_at for pending reviews, but we only care about submitted/edited/dismissed
+	submittedAt := parseGHTime(p.Review.SubmittedAt)
+	if !submittedAt.Valid {
+		// Use current time as fallback if missing
+		submittedAt = pgtype.Timestamptz{Time: time.Now(), Valid: true}
+	}
+
+	if err := h.Queries.UpsertPullRequestReview(ctx, db.UpsertPullRequestReviewParams{
+		PrID:          pr.ID,
+		ReviewID:      p.Review.ID,
+		ReviewerLogin: p.Review.User.Login,
+		State:         state,
+		SubmittedAt:   submittedAt,
+	}); err != nil {
+		slog.Warn("github: upsert pr review failed", "err", err)
+		return
+	}
+
+	linkedIssues, err := h.Queries.ListIssueIDsForPullRequest(ctx, pr.ID)
+	if err == nil && len(linkedIssues) > 0 {
+		linkedIssueIDs := make([]string, len(linkedIssues))
+		for i, id := range linkedIssues {
+			linkedIssueIDs[i] = uuidToString(id)
+		}
+		resp := githubPullRequestToResponse(pr)
+		h.publish(protocol.EventPullRequestUpdated, uuidToString(wsID), "system", "", map[string]any{
+			"pull_request":           resp,
+			"linked_issue_ids":       linkedIssueIDs,
+			"newly_linked_issue_ids": []string{},
+			"pr_terminal":            "",
+			"terminal_issue_ids":     []string{},
+		})
+	}
 }
 
 // ── check_suite webhook ────────────────────────────────────────────────────
@@ -1118,6 +1273,51 @@ func (h *Handler) handleCheckSuiteEvent(ctx context.Context, body []byte) {
 		if err == nil {
 			for _, id := range issues {
 				affectedIssues[uuidToString(id)] = struct{}{}
+			}
+
+			// Handle CI Failing label
+			if p.CheckSuite.Conclusion == "failure" || p.CheckSuite.Conclusion == "timed_out" || p.CheckSuite.Conclusion == "action_required" || p.CheckSuite.Conclusion == "startup_failure" || p.CheckSuite.Conclusion == "cancelled" {
+				labelName := "CI Failing"
+				labelColor := "#ef4444" // red
+				label, err := h.Queries.GetLabelByName(ctx, db.GetLabelByNameParams{
+					Name:        labelName,
+					WorkspaceID: wsID,
+				})
+				if err != nil {
+					if errors.Is(err, pgx.ErrNoRows) {
+						label, err = h.Queries.CreateLabel(ctx, db.CreateLabelParams{
+							WorkspaceID: wsID,
+							Name:        labelName,
+							Color:       labelColor,
+						})
+						if err != nil {
+							slog.Warn("github: failed to create CI Failing label", "err", err)
+						}
+					}
+				}
+				if err == nil {
+					for _, issueID := range issues {
+						_ = h.Queries.AttachLabelToIssue(ctx, db.AttachLabelToIssueParams{
+							IssueID:     issueID,
+							LabelID:     label.ID,
+							WorkspaceID: wsID,
+						})
+					}
+				}
+			} else if p.CheckSuite.Conclusion == "success" {
+				label, err := h.Queries.GetLabelByName(ctx, db.GetLabelByNameParams{
+					Name:        "CI Failing",
+					WorkspaceID: wsID,
+				})
+				if err == nil {
+					for _, issueID := range issues {
+						_ = h.Queries.DetachLabelFromIssue(ctx, db.DetachLabelFromIssueParams{
+							IssueID:     issueID,
+							LabelID:     label.ID,
+							WorkspaceID: wsID,
+						})
+					}
+				}
 			}
 		}
 	}
@@ -1380,34 +1580,48 @@ func extractClosingIdentifiers(parts ...string) []string {
 	return out
 }
 
-// lookupIssueByIdentifier looks up an issue in the given workspace by its
-// "PREFIX-NUMBER" identifier. Returns the row + true if the prefix matches
-// workspaceAutoLinkPRsEnabled reports whether the workspace allows the
-// GitHub webhook to create issue ↔ PR link rows. Defaults to true so that
-// workspaces predating RFC MUL-2414 keep the historical "auto-link on"
-// behavior, and short-circuits to false whenever the master GitHub switch
-// is explicitly off — mirroring the precedence used on the client side.
-func (h *Handler) workspaceAutoLinkPRsEnabled(ctx context.Context, workspaceID pgtype.UUID) bool {
-	ws, err := h.Queries.GetWorkspace(ctx, workspaceID)
-	if err != nil || len(ws.Settings) == 0 {
-		return true
-	}
-	var s struct {
-		GitHubEnabled            *bool `json:"github_enabled"`
-		GitHubAutoLinkPRsEnabled *bool `json:"github_auto_link_prs_enabled"`
-	}
-	if err := json.Unmarshal(ws.Settings, &s); err != nil {
-		return true
-	}
-	if s.GitHubEnabled != nil && !*s.GitHubEnabled {
-		return false
-	}
-	if s.GitHubAutoLinkPRsEnabled == nil {
-		return true
-	}
-	return *s.GitHubAutoLinkPRsEnabled
+// githubAutomationFlags holds the per-workspace switches for GitHub webhook
+// side-effects. Both default to true so that workspaces predating RFC
+// MUL-2414 keep the historical "all automation on" behavior, and both
+// short-circuit to false whenever the master GitHub switch is explicitly
+// off — mirroring the precedence used on the client side.
+type githubAutomationFlags struct {
+	// autoLinkPRs allows the webhook to create issue ↔ PR link rows.
+	autoLinkPRs bool
+	// autoTransitions allows linked-PR lifecycle events to change issue
+	// status (open → in_review, merged → done) and CI labels. Implies
+	// nothing about linking; links are recorded regardless.
+	autoTransitions bool
 }
 
+func (h *Handler) githubAutomationFlags(ctx context.Context, workspaceID pgtype.UUID) githubAutomationFlags {
+	flags := githubAutomationFlags{autoLinkPRs: true, autoTransitions: true}
+	ws, err := h.Queries.GetWorkspace(ctx, workspaceID)
+	if err != nil || len(ws.Settings) == 0 {
+		return flags
+	}
+	var s struct {
+		GitHubEnabled                *bool `json:"github_enabled"`
+		GitHubAutoLinkPRsEnabled     *bool `json:"github_auto_link_prs_enabled"`
+		GitHubAutoTransitionsEnabled *bool `json:"github_auto_transitions_enabled"`
+	}
+	if err := json.Unmarshal(ws.Settings, &s); err != nil {
+		return flags
+	}
+	if s.GitHubEnabled != nil && !*s.GitHubEnabled {
+		return githubAutomationFlags{}
+	}
+	if s.GitHubAutoLinkPRsEnabled != nil {
+		flags.autoLinkPRs = *s.GitHubAutoLinkPRsEnabled
+	}
+	if s.GitHubAutoTransitionsEnabled != nil {
+		flags.autoTransitions = *s.GitHubAutoTransitionsEnabled
+	}
+	return flags
+}
+
+// lookupIssueByIdentifier looks up an issue in the given workspace by its
+// "PREFIX-NUMBER" identifier. Returns the row + true if the prefix matches
 // the workspace's configured prefix and the number resolves to a real issue.
 func (h *Handler) lookupIssueByIdentifier(ctx context.Context, workspaceID pgtype.UUID, prefix, identifier string) (db.Issue, bool) {
 	idx := strings.LastIndex(identifier, "-")
@@ -1432,14 +1646,18 @@ func (h *Handler) lookupIssueByIdentifier(ctx context.Context, workspaceID pgtyp
 	return issue, true
 }
 
-func (h *Handler) advanceIssueToDone(ctx context.Context, issue db.Issue, workspaceID string) {
+// advanceIssueStatus moves an issue to newStatus on behalf of a GitHub PR
+// lifecycle event and publishes the same issue:updated shape the HTTP update
+// path emits, so activity/notification listeners fire identically. `source`
+// tags the broadcast so clients can tell webhook-driven transitions apart.
+func (h *Handler) advanceIssueStatus(ctx context.Context, issue db.Issue, workspaceID, newStatus, source string) {
 	updated, err := h.Queries.UpdateIssueStatus(ctx, db.UpdateIssueStatusParams{
 		ID:          issue.ID,
-		Status:      "done",
+		Status:      newStatus,
 		WorkspaceID: issue.WorkspaceID,
 	})
 	if err != nil {
-		slog.Warn("github: advance issue to done failed", "err", err)
+		slog.Warn("github: advance issue status failed", "err", err, "status", newStatus)
 		return
 	}
 
@@ -1449,7 +1667,9 @@ func (h *Handler) advanceIssueToDone(ctx context.Context, issue db.Issue, worksp
 	// it here would leave the parent silent for the dominant completion path.
 	// notifyParentOfChildDone re-checks every guard (prev != done, parent
 	// exists, parent not terminal), so calling it unconditionally is safe.
-	h.notifyParentOfChildDone(ctx, issue, updated)
+	if newStatus == "done" {
+		h.notifyParentOfChildDone(ctx, issue, updated)
+	}
 
 	prefix := h.getIssuePrefix(ctx, issue.WorkspaceID)
 	resp := issueToResponse(updated, prefix)
@@ -1459,7 +1679,7 @@ func (h *Handler) advanceIssueToDone(ctx context.Context, issue db.Issue, worksp
 		"prev_status":    issue.Status,
 		"creator_type":   issue.CreatorType,
 		"creator_id":     uuidToString(issue.CreatorID),
-		"source":         "github_pr_merged",
+		"source":         source,
 	})
 }
 

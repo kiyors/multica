@@ -554,14 +554,16 @@ func TestWebhook_MergedPR_WaitsForOpenSibling(t *testing.T) {
 		t.Fatalf("expected 2 linked PRs, got %d", len(linked))
 	}
 
-	// Merge PR A. Issue must stay in_progress because PR B is still open.
+	// Merge PR A. Issue must not reach done because PR B is still open; it
+	// sits in in_review (the PR-opened auto-move) until the last sibling
+	// resolves.
 	fire(t, "repo-a", 1, true)
 	issueAfterA, err := testHandler.Queries.GetIssue(ctx, parseUUID(created.ID))
 	if err != nil {
 		t.Fatalf("GetIssue: %v", err)
 	}
-	if issueAfterA.Status != "in_progress" {
-		t.Errorf("issue should stay in_progress while sibling PR is open, got %q", issueAfterA.Status)
+	if issueAfterA.Status != "in_review" {
+		t.Errorf("issue should stay in_review while sibling PR is open, got %q", issueAfterA.Status)
 	}
 
 	// Now merge PR B. Issue should advance to done — last sibling resolved.
@@ -675,14 +677,15 @@ func TestWebhook_ClosedSiblingAfterMerge(t *testing.T) {
 	firePullRequestWebhook(t, secret, created.Identifier, installationID, "repo-a", 1, "open")
 	firePullRequestWebhook(t, secret, created.Identifier, installationID, "repo-b", 2, "open")
 
-	// Merge PR A — issue must stay in_progress because PR B is still open.
+	// Merge PR A — issue must not reach done because PR B is still open;
+	// the PR-opened auto-move already parked it in in_review.
 	firePullRequestWebhook(t, secret, created.Identifier, installationID, "repo-a", 1, "merged")
 	intermediate, err := testHandler.Queries.GetIssue(ctx, parseUUID(created.ID))
 	if err != nil {
 		t.Fatalf("GetIssue: %v", err)
 	}
-	if intermediate.Status != "in_progress" {
-		t.Fatalf("issue should stay in_progress while sibling PR open, got %q", intermediate.Status)
+	if intermediate.Status != "in_review" {
+		t.Fatalf("issue should stay in_review while sibling PR open, got %q", intermediate.Status)
 	}
 
 	// Close PR B WITHOUT merging — issue should now advance to done because
@@ -745,12 +748,14 @@ func TestWebhook_AllClosedWithoutMerge(t *testing.T) {
 	firePullRequestWebhook(t, secret, created.Identifier, installationID, "repo-a", 1, "closed")
 	firePullRequestWebhook(t, secret, created.Identifier, installationID, "repo-b", 2, "closed")
 
+	// The opens moved the issue to in_review; closing without merging must
+	// not advance it to done (nothing was delivered — the user decides).
 	final, err := testHandler.Queries.GetIssue(ctx, parseUUID(created.ID))
 	if err != nil {
 		t.Fatalf("GetIssue: %v", err)
 	}
-	if final.Status != "in_progress" {
-		t.Errorf("issue must stay in_progress when no linked PR ever merged, got %q", final.Status)
+	if final.Status != "in_review" {
+		t.Errorf("issue must stay in_review (not done) when no linked PR ever merged, got %q", final.Status)
 	}
 }
 
@@ -1037,7 +1042,7 @@ func TestWebhook_MergedPR_BranchNameDoesNotClose(t *testing.T) {
 func firePRWebhook(t *testing.T, secret string, installationID int64, prNumber int32, title, body, branch, lifecycle string) {
 	t.Helper()
 	var action, state string
-	var merged bool
+	var merged, draft bool
 	var mergedAt, closedAt any
 	switch lifecycle {
 	case "opened":
@@ -1045,6 +1050,9 @@ func firePRWebhook(t *testing.T, secret string, installationID int64, prNumber i
 		mergedAt, closedAt = nil, nil
 	case "edited":
 		action, state, merged = "edited", "open", false
+		mergedAt, closedAt = nil, nil
+	case "draft":
+		action, state, merged, draft = "opened", "open", false, true
 		mergedAt, closedAt = nil, nil
 	case "merged":
 		action, state, merged = "closed", "closed", true
@@ -1066,7 +1074,7 @@ func firePRWebhook(t *testing.T, secret string, installationID int64, prNumber i
 			"title":      title,
 			"body":       body,
 			"state":      state,
-			"draft":      false,
+			"draft":      draft,
 			"merged":     merged,
 			"merged_at":  mergedAt,
 			"closed_at":  closedAt,
@@ -1139,8 +1147,10 @@ func TestWebhook_CloseKeywordRemovedBeforeMergeDoesNotClose(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetIssue after merge: %v", err)
 	}
-	if got.Status != "in_progress" {
-		t.Fatalf("after closing keyword was removed before merge: status = %q, want in_progress", got.Status)
+	// The opened event parked the issue in in_review; with the closing
+	// keyword removed before merge it must NOT advance to done.
+	if got.Status != "in_review" {
+		t.Fatalf("after closing keyword was removed before merge: status = %q, want in_review", got.Status)
 	}
 	counts, err := testHandler.Queries.GetIssuePullRequestCloseAggregate(ctx, parseUUID(created.ID))
 	if err != nil {
@@ -1175,8 +1185,10 @@ func TestWebhook_CloseKeywordRemovedBeforeMergeDoesNotClose(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetIssue after post-merge edit: %v", err)
 	}
-	if got.Status != "in_progress" {
-		t.Errorf("after adding closing keyword post-merge: status = %q, want in_progress", got.Status)
+	// Still in_review from its own opened event — the post-merge edit must
+	// not advance it to done.
+	if got.Status != "in_review" {
+		t.Errorf("after adding closing keyword post-merge: status = %q, want in_review", got.Status)
 	}
 	got, err = testHandler.Queries.GetIssue(ctx, parseUUID(second.ID))
 	if err != nil {
@@ -1245,23 +1257,23 @@ func TestWebhook_LinkOnlySiblingMergeAfterCloseKeywordPR(t *testing.T) {
 	// 2) PR B opens link-only — title prefix mention, no closing keyword.
 	firePRWebhook(t, secret, installationID, 2, created.Identifier+": follow-up cleanup", "", "feat/cleanup", "opened")
 
-	// Sanity: issue is still in_progress (both PRs open).
+	// Sanity: the opens auto-moved the issue to in_review, not done.
 	got, err := testHandler.Queries.GetIssue(ctx, parseUUID(created.ID))
 	if err != nil {
 		t.Fatalf("GetIssue after open: %v", err)
 	}
-	if got.Status != "in_progress" {
-		t.Fatalf("after both PRs opened: status = %q, want in_progress", got.Status)
+	if got.Status != "in_review" {
+		t.Fatalf("after both PRs opened: status = %q, want in_review", got.Status)
 	}
 
-	// 3) PR A merges. PR B still open → issue stays in_progress.
+	// 3) PR A merges. PR B still open → issue must not reach done yet.
 	firePRWebhook(t, secret, installationID, 1, "Implement primary path", "Closes "+created.Identifier, "feat/primary", "merged")
 	got, err = testHandler.Queries.GetIssue(ctx, parseUUID(created.ID))
 	if err != nil {
 		t.Fatalf("GetIssue after A merge: %v", err)
 	}
-	if got.Status != "in_progress" {
-		t.Fatalf("after PR A merged with PR B still open: status = %q, want in_progress", got.Status)
+	if got.Status != "in_review" {
+		t.Fatalf("after PR A merged with PR B still open: status = %q, want in_review", got.Status)
 	}
 
 	// 4) PR B merges (link-only, no closing keyword). The persisted
@@ -1406,13 +1418,14 @@ func TestWebhook_HiddenBodyMentionDoesNotBlockAutoAdvance(t *testing.T) {
 		t.Fatalf("expected only the closing PR to show, got %d rows", len(listed))
 	}
 
-	// Sanity: issue is still in_progress (PR A open).
+	// PR A's open auto-moved the issue to in_review (PR B is reference-only
+	// and would not have moved it on its own).
 	got, err := testHandler.Queries.GetIssue(ctx, parseUUID(created.ID))
 	if err != nil {
 		t.Fatalf("GetIssue after open: %v", err)
 	}
-	if got.Status != "in_progress" {
-		t.Fatalf("after both PRs opened: status = %q, want in_progress", got.Status)
+	if got.Status != "in_review" {
+		t.Fatalf("after both PRs opened: status = %q, want in_review", got.Status)
 	}
 
 	// PR A merges. PR B is still open but reference_only, so it must NOT count
@@ -1650,6 +1663,58 @@ func TestWebhook_CheckSuite_AggregatesAcrossApps(t *testing.T) {
 	if got == nil || *got != "failed" {
 		t.Errorf("expected aggregate failed, got %v (counts: failed=%d passed=%d pending=%d total=%d)",
 			got, rows[0].ChecksFailed, rows[0].ChecksPassed, rows[0].ChecksPending, rows[0].ChecksTotal)
+	}
+}
+
+// TestWebhook_CheckSuite_CIFailingLabel ensures that a failed check_suite adds
+// the "CI Failing" label to linked issues, and a success check_suite removes it.
+func TestWebhook_CheckSuite_CIFailingLabel(t *testing.T) {
+	if testHandler == nil {
+		t.Skip("handler test fixture not initialized (no DB?)")
+	}
+	ctx := context.Background()
+	const secret = "ci-label-secret"
+	created, installationID := setupPRTestIssue(t, ctx, secret)
+
+	head := "label1234567890"
+	firePullRequestWebhookWithHead(t, secret, created.Identifier, installationID, "ci-label-repo", 12, "opened", head, "")
+	
+	// Fail the suite -> should attach label
+	fireCheckSuiteWebhook(t, secret, installationID, "ci-label-repo", []int32{12}, 2001, 8001, head, "failure", "2026-05-01T00:00:00Z")
+
+	labels, err := testHandler.Queries.ListLabelsByIssue(ctx, db.ListLabelsByIssueParams{
+		IssueID:     parseUUID(created.ID),
+		WorkspaceID: parseUUID(testWorkspaceID),
+	})
+	if err != nil {
+		t.Fatalf("ListLabelsByIssue: %v", err)
+	}
+	hasLabel := false
+	for _, l := range labels {
+		if l.Name == "CI Failing" {
+			hasLabel = true
+			break
+		}
+	}
+	if !hasLabel {
+		t.Errorf("expected 'CI Failing' label to be attached on failure, got %v", labels)
+	}
+
+	// Pass the suite -> should detach label
+	fireCheckSuiteWebhook(t, secret, installationID, "ci-label-repo", []int32{12}, 2002, 8002, head, "success", "2026-05-01T00:01:00Z")
+
+	labelsAfter, err := testHandler.Queries.ListLabelsByIssue(ctx, db.ListLabelsByIssueParams{
+		IssueID:     parseUUID(created.ID),
+		WorkspaceID: parseUUID(testWorkspaceID),
+	})
+	if err != nil {
+		t.Fatalf("ListLabelsByIssue: %v", err)
+	}
+	for _, l := range labelsAfter {
+		if l.Name == "CI Failing" {
+			t.Errorf("expected 'CI Failing' label to be detached on success, but it is still attached")
+			break
+		}
 	}
 }
 
@@ -3255,5 +3320,222 @@ func TestWebhook_UninstallDeletesAllBindings(t *testing.T) {
 	}
 	if !seen[testWorkspaceID] || !seen[uuidToString(wsB.ID)] {
 		t.Errorf("deleted broadcasts must cover both workspaces; saw %v", seen)
+	}
+}
+
+// ── Phase 5: PR opened → in_review auto-move ────────────────────────────────
+
+// seedIssueWithInstallation creates an issue in the given status and wires a
+// GitHub installation for webhook attribution. Cleanup drops every row the
+// webhook path can create for the issue.
+func seedIssueWithInstallation(t *testing.T, status string, installationID int64) IssueResponse {
+	t.Helper()
+	ctx := context.Background()
+
+	w := httptest.NewRecorder()
+	req := newRequest("POST", "/api/issues?workspace_id="+testWorkspaceID, map[string]any{
+		"title":  "auto-move seed " + status,
+		"status": status,
+	})
+	testHandler.CreateIssue(w, req)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("CreateIssue: %d %s", w.Code, w.Body.String())
+	}
+	var created IssueResponse
+	json.NewDecoder(w.Body).Decode(&created)
+
+	if _, err := testHandler.Queries.CreateGitHubInstallation(ctx, db.CreateGitHubInstallationParams{
+		WorkspaceID:    parseUUID(testWorkspaceID),
+		InstallationID: installationID,
+		AccountLogin:   "auto-move-acct",
+		AccountType:    "User",
+	}); err != nil {
+		t.Fatalf("CreateGitHubInstallation: %v", err)
+	}
+
+	t.Cleanup(func() {
+		testPool.Exec(ctx, `DELETE FROM issue_pull_request WHERE issue_id = $1`, created.ID)
+		testPool.Exec(ctx, `DELETE FROM github_pull_request WHERE workspace_id = $1`, testWorkspaceID)
+		testPool.Exec(ctx, `DELETE FROM github_installation WHERE workspace_id = $1`, testWorkspaceID)
+		testPool.Exec(ctx, `DELETE FROM activity_log WHERE issue_id = $1`, created.ID)
+		testPool.Exec(ctx, `DELETE FROM issue WHERE id = $1`, created.ID)
+	})
+	return created
+}
+
+func requireIssueStatus(t *testing.T, issueID, want string) {
+	t.Helper()
+	issue, err := testHandler.Queries.GetIssue(context.Background(), parseUUID(issueID))
+	if err != nil {
+		t.Fatalf("GetIssue: %v", err)
+	}
+	if issue.Status != want {
+		t.Errorf("expected issue status %q, got %q", want, issue.Status)
+	}
+}
+
+// A non-draft PR opened with a qualifying reference (title prefix / branch)
+// moves a workable issue into in_review.
+func TestWebhook_OpenedPR_MovesLinkedIssueToInReview(t *testing.T) {
+	if testHandler == nil {
+		t.Skip("handler test fixture not initialized (no DB?)")
+	}
+	secret := "auto-move-secret"
+	t.Setenv("GITHUB_WEBHOOK_SECRET", secret)
+
+	for i, status := range []string{"backlog", "todo", "in_progress"} {
+		created := seedIssueWithInstallation(t, status, int64(66771000+i))
+		firePRWebhook(t, secret, int64(66771000+i), 9100+int32(i), created.Identifier+": add search", "", "feat/search", "opened")
+		requireIssueStatus(t, created.ID, "in_review")
+	}
+}
+
+// Terminal and user-signal statuses must never be stomped by a PR opening.
+func TestWebhook_OpenedPR_DoesNotMoveBlockedOrTerminal(t *testing.T) {
+	if testHandler == nil {
+		t.Skip("handler test fixture not initialized (no DB?)")
+	}
+	secret := "auto-move-secret-2"
+	t.Setenv("GITHUB_WEBHOOK_SECRET", secret)
+
+	for i, status := range []string{"blocked", "done", "cancelled"} {
+		created := seedIssueWithInstallation(t, status, int64(66772000+i))
+		firePRWebhook(t, secret, int64(66772000+i), 9200+int32(i), created.Identifier+": late fix", "", "fix/late", "opened")
+		requireIssueStatus(t, created.ID, status)
+	}
+}
+
+// A draft PR is not "in review" yet — no move until ready_for_review.
+func TestWebhook_OpenedDraftPR_DoesNotMove(t *testing.T) {
+	if testHandler == nil {
+		t.Skip("handler test fixture not initialized (no DB?)")
+	}
+	secret := "auto-move-secret-3"
+	t.Setenv("GITHUB_WEBHOOK_SECRET", secret)
+
+	created := seedIssueWithInstallation(t, "in_progress", 66773000)
+	firePRWebhook(t, secret, 66773000, 9300, created.Identifier+": wip", "", "wip/thing", "draft")
+	requireIssueStatus(t, created.ID, "in_progress")
+}
+
+// A bare body mention ("Related to MUL-1") is a reference-only link and must
+// not drag the issue into in_review.
+func TestWebhook_OpenedPR_ReferenceOnlyMentionDoesNotMove(t *testing.T) {
+	if testHandler == nil {
+		t.Skip("handler test fixture not initialized (no DB?)")
+	}
+	secret := "auto-move-secret-4"
+	t.Setenv("GITHUB_WEBHOOK_SECRET", secret)
+
+	created := seedIssueWithInstallation(t, "in_progress", 66774000)
+	firePRWebhook(t, secret, 66774000, 9400, "Unrelated title", "Related to "+created.Identifier, "feat/unrelated", "opened")
+	requireIssueStatus(t, created.ID, "in_progress")
+}
+
+// github_auto_transitions_enabled=false switches off every status side-effect:
+// no in_review move on open, no done advance on merge. Links still happen.
+func TestWebhook_AutoTransitionsDisabled_NoStatusChanges(t *testing.T) {
+	if testHandler == nil {
+		t.Skip("handler test fixture not initialized (no DB?)")
+	}
+	ctx := context.Background()
+	secret := "auto-move-secret-5"
+	t.Setenv("GITHUB_WEBHOOK_SECRET", secret)
+
+	created := seedIssueWithInstallation(t, "in_progress", 66775000)
+
+	if _, err := testPool.Exec(ctx, `UPDATE workspace
+		SET settings = COALESCE(settings, '{}'::jsonb) || '{"github_auto_transitions_enabled": false}'::jsonb
+		WHERE id = $1`, testWorkspaceID); err != nil {
+		t.Fatalf("set settings: %v", err)
+	}
+	t.Cleanup(func() {
+		testPool.Exec(ctx, `UPDATE workspace
+			SET settings = settings - 'github_auto_transitions_enabled'
+			WHERE id = $1`, testWorkspaceID)
+	})
+
+	firePRWebhook(t, secret, 66775000, 9500, "Fix "+created.Identifier, "", "fix/gated", "opened")
+	requireIssueStatus(t, created.ID, "in_progress")
+
+	firePRWebhook(t, secret, 66775000, 9500, "Fix "+created.Identifier, "", "fix/gated", "merged")
+	requireIssueStatus(t, created.ID, "in_progress")
+
+	// The link itself is not gated by auto-transitions.
+	linked, err := testHandler.Queries.ListPullRequestsByIssue(ctx, parseUUID(created.ID))
+	if err != nil {
+		t.Fatalf("ListPullRequestsByIssue: %v", err)
+	}
+	if len(linked) != 1 {
+		t.Errorf("expected PR still linked with transitions disabled, got %d links", len(linked))
+	}
+}
+
+// The webhook must tell listeners which links are NEW (freshly inserted,
+// qualifying) and when a PR reached its terminal state — that contract is
+// what drives pr_linked / pr_merged / pr_closed timeline entries.
+func TestWebhook_PublishesNewLinksAndTerminalState(t *testing.T) {
+	if testHandler == nil {
+		t.Skip("handler test fixture not initialized (no DB?)")
+	}
+	secret := "pr-activity-secret"
+	t.Setenv("GITHUB_WEBHOOK_SECRET", secret)
+
+	created := seedIssueWithInstallation(t, "in_progress", 66776000)
+
+	type prEvent struct {
+		newlyLinked []string
+		terminal    string
+		terminalIDs []string
+		prNumber    int32
+	}
+	got := make(chan prEvent, 16)
+	testHandler.Bus.Subscribe(protocol.EventPullRequestUpdated, func(e events.Event) {
+		payload, _ := e.Payload.(map[string]any)
+		resp, _ := payload["pull_request"].(GitHubPullRequestResponse)
+		newly, _ := payload["newly_linked_issue_ids"].([]string)
+		terminal, _ := payload["pr_terminal"].(string)
+		terminalIDs, _ := payload["terminal_issue_ids"].([]string)
+		got <- prEvent{newlyLinked: newly, terminal: terminal, terminalIDs: terminalIDs, prNumber: resp.Number}
+	})
+	next := func() prEvent {
+		t.Helper()
+		for {
+			select {
+			case ev := <-got:
+				if ev.prNumber == 9600 {
+					return ev
+				}
+			case <-time.After(2 * time.Second):
+				t.Fatal("no pull_request:updated event observed")
+			}
+		}
+	}
+
+	// 1) First open: the link is new.
+	firePRWebhook(t, secret, 66776000, 9600, "Fix "+created.Identifier, "", "fix/activity", "opened")
+	ev := next()
+	if len(ev.newlyLinked) != 1 || ev.newlyLinked[0] != created.ID {
+		t.Errorf("first open: newly_linked_issue_ids = %v, want [%s]", ev.newlyLinked, created.ID)
+	}
+	if ev.terminal != "" {
+		t.Errorf("first open: pr_terminal = %q, want empty", ev.terminal)
+	}
+
+	// 2) Re-delivery / edit: same link, nothing new.
+	firePRWebhook(t, secret, 66776000, 9600, "Fix "+created.Identifier, "", "fix/activity", "edited")
+	ev = next()
+	if len(ev.newlyLinked) != 0 {
+		t.Errorf("edit: newly_linked_issue_ids = %v, want empty", ev.newlyLinked)
+	}
+
+	// 3) Merge: terminal state + affected issues announced exactly once.
+	firePRWebhook(t, secret, 66776000, 9600, "Fix "+created.Identifier, "", "fix/activity", "merged")
+	ev = next()
+	if ev.terminal != "merged" {
+		t.Errorf("merge: pr_terminal = %q, want merged", ev.terminal)
+	}
+	if len(ev.terminalIDs) != 1 || ev.terminalIDs[0] != created.ID {
+		t.Errorf("merge: terminal_issue_ids = %v, want [%s]", ev.terminalIDs, created.ID)
 	}
 }

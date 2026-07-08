@@ -1,0 +1,2 @@
+ALTER TABLE "user" DROP COLUMN IF EXISTS github_login;
+ALTER TABLE "user" DROP COLUMN IF EXISTS github_id;

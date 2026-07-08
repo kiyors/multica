@@ -58,6 +58,7 @@ export interface GitHubPullRequest {
   additions?: number;
   deletions?: number;
   changed_files?: number;
+  review_status?: "approved" | "changes_requested" | "pending";
 }
 
 export interface ListGitHubInstallationsResponse {

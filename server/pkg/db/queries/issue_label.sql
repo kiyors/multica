@@ -7,6 +7,10 @@ ORDER BY LOWER(name) ASC;
 SELECT * FROM issue_label
 WHERE id = $1 AND workspace_id = $2;
 
+-- name: GetLabelByName :one
+SELECT * FROM issue_label
+WHERE name = $1 AND workspace_id = $2;
+
 -- name: CreateLabel :one
 INSERT INTO issue_label (workspace_id, name, color)
 VALUES ($1, $2, $3)

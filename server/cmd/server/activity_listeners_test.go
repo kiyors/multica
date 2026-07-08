@@ -344,3 +344,127 @@ func TestActivityTaskFailed(t *testing.T) {
 		t.Fatalf("expected action 'task_failed', got %q", activities[0].Action)
 	}
 }
+
+// ── Phase 5: PR lifecycle activities ────────────────────────────────────────
+
+func publishPREvent(bus *events.Bus, extra map[string]any) {
+	payload := map[string]any{
+		"pull_request": handler.GitHubPullRequestResponse{
+			ID:          "pr-row-id",
+			WorkspaceID: testWorkspaceID,
+			RepoOwner:   "acme",
+			RepoName:    "widget",
+			Number:      123,
+			Title:       "Fix the login flow",
+			State:       "open",
+			HtmlURL:     "https://github.com/acme/widget/pull/123",
+		},
+		"linked_issue_ids": []string{},
+	}
+	for k, v := range extra {
+		payload[k] = v
+	}
+	bus.Publish(events.Event{
+		Type:        protocol.EventPullRequestUpdated,
+		WorkspaceID: testWorkspaceID,
+		ActorType:   "system",
+		ActorID:     "",
+		Payload:     payload,
+	})
+}
+
+func TestActivityPullRequestLinked(t *testing.T) {
+	queries := db.New(testPool)
+	bus := events.New()
+	registerActivityListeners(bus, queries)
+
+	issueID := createTestIssue(t, testWorkspaceID, testUserID)
+	t.Cleanup(func() {
+		cleanupActivities(t, issueID)
+		cleanupTestIssue(t, issueID)
+	})
+
+	publishPREvent(bus, map[string]any{
+		"newly_linked_issue_ids": []string{issueID},
+	})
+
+	activities := listActivitiesForIssue(t, queries, issueID)
+	if len(activities) != 1 {
+		t.Fatalf("expected 1 activity, got %d", len(activities))
+	}
+	if activities[0].Action != "pr_linked" {
+		t.Fatalf("expected action 'pr_linked', got %q", activities[0].Action)
+	}
+	var details map[string]string
+	if err := json.Unmarshal(activities[0].Details, &details); err != nil {
+		t.Fatalf("unmarshal details: %v", err)
+	}
+	if details["pr_number"] != "123" {
+		t.Errorf("pr_number = %q, want 123", details["pr_number"])
+	}
+	if details["repo"] != "acme/widget" {
+		t.Errorf("repo = %q, want acme/widget", details["repo"])
+	}
+	if details["url"] != "https://github.com/acme/widget/pull/123" {
+		t.Errorf("url = %q", details["url"])
+	}
+	if details["title"] != "Fix the login flow" {
+		t.Errorf("title = %q", details["title"])
+	}
+}
+
+func TestActivityPullRequestTerminal(t *testing.T) {
+	for _, tc := range []struct {
+		terminal string
+		action   string
+	}{
+		{"merged", "pr_merged"},
+		{"closed", "pr_closed"},
+	} {
+		t.Run(tc.terminal, func(t *testing.T) {
+			queries := db.New(testPool)
+			bus := events.New()
+			registerActivityListeners(bus, queries)
+
+			issueID := createTestIssue(t, testWorkspaceID, testUserID)
+			t.Cleanup(func() {
+				cleanupActivities(t, issueID)
+				cleanupTestIssue(t, issueID)
+			})
+
+			publishPREvent(bus, map[string]any{
+				"pr_terminal":        tc.terminal,
+				"terminal_issue_ids": []string{issueID},
+			})
+
+			activities := listActivitiesForIssue(t, queries, issueID)
+			if len(activities) != 1 {
+				t.Fatalf("expected 1 activity, got %d", len(activities))
+			}
+			if activities[0].Action != tc.action {
+				t.Fatalf("expected action %q, got %q", tc.action, activities[0].Action)
+			}
+		})
+	}
+}
+
+// A plain PR update (sync/edit, no fresh links, not terminal) writes nothing.
+func TestActivityPullRequestUpdated_NoNewLinksNoTerminal(t *testing.T) {
+	queries := db.New(testPool)
+	bus := events.New()
+	registerActivityListeners(bus, queries)
+
+	issueID := createTestIssue(t, testWorkspaceID, testUserID)
+	t.Cleanup(func() {
+		cleanupActivities(t, issueID)
+		cleanupTestIssue(t, issueID)
+	})
+
+	publishPREvent(bus, map[string]any{
+		"linked_issue_ids": []string{issueID},
+	})
+
+	if activities := listActivitiesForIssue(t, queries, issueID); len(activities) != 0 {
+		t.Fatalf("expected 0 activities, got %d", len(activities))
+	}
+}

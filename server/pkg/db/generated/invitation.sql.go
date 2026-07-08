@@ -173,6 +173,20 @@ func (q *Queries) GetPendingInvitationByEmail(ctx context.Context, arg GetPendin
 	return i, err
 }
 
+const hasAnyPendingInvitationByEmail = `-- name: HasAnyPendingInvitationByEmail :one
+SELECT EXISTS (
+    SELECT 1 FROM workspace_invitation
+    WHERE invitee_email = $1 AND status = 'pending' AND expires_at > now()
+)
+`
+
+func (q *Queries) HasAnyPendingInvitationByEmail(ctx context.Context, inviteeEmail string) (bool, error) {
+	row := q.db.QueryRow(ctx, hasAnyPendingInvitationByEmail, inviteeEmail)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const listPendingInvitationsByWorkspace = `-- name: ListPendingInvitationsByWorkspace :many
 SELECT wi.id, wi.workspace_id, wi.inviter_id, wi.invitee_email, wi.invitee_user_id, wi.role, wi.status, wi.created_at, wi.updated_at, wi.expires_at,
        u.name  AS inviter_name,
@@ -308,18 +322,4 @@ WHERE id = $1 AND status = 'pending'
 func (q *Queries) RevokeInvitation(ctx context.Context, id pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, revokeInvitation, id)
 	return err
-}
-
-const hasAnyPendingInvitationByEmail = `-- name: HasAnyPendingInvitationByEmail :one
-SELECT EXISTS (
-    SELECT 1 FROM workspace_invitation
-    WHERE invitee_email = $1 AND status = 'pending' AND expires_at > now()
-)
-`
-
-func (q *Queries) HasAnyPendingInvitationByEmail(ctx context.Context, inviteeEmail string) (bool, error) {
-	row := q.db.QueryRow(ctx, hasAnyPendingInvitationByEmail, inviteeEmail)
-	var exists bool
-	err := row.Scan(&exists)
-	return exists, err
 }

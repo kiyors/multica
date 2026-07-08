@@ -9,6 +9,8 @@ export interface GitHubSettings {
   coAuthor: boolean;
   /** Auto-link issues ↔ PRs from webhook payloads. Implies `enabled`. */
   autoLinkPRs: boolean;
+  /** Auto-transition issue status when PRs are opened/merged. Implies `enabled`. */
+  autoTransitions: boolean;
 }
 
 /**
@@ -25,5 +27,6 @@ export function deriveGitHubSettings(
     prSidebar: enabled && s.github_pr_sidebar_enabled !== false,
     coAuthor: enabled && s.co_authored_by_enabled !== false,
     autoLinkPRs: enabled && s.github_auto_link_prs_enabled !== false,
+    autoTransitions: enabled && s.github_auto_transitions_enabled !== false,
   };
 }

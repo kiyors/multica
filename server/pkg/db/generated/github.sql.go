@@ -512,6 +512,22 @@ checks AS (
             THEN 1 ELSE 0 END)::bigint AS pending
     FROM per_app_latest
     GROUP BY pr_id
+),
+per_reviewer_latest AS (
+    SELECT DISTINCT ON (r.pr_id, r.reviewer_login)
+        r.pr_id, r.state
+    FROM github_pr_review r
+    JOIN issue_prs ip ON ip.id = r.pr_id
+    ORDER BY r.pr_id, r.reviewer_login, r.submitted_at DESC
+),
+reviews AS (
+    SELECT
+        pr_id,
+        SUM(CASE WHEN state = 'approved' THEN 1 ELSE 0 END)::bigint AS approved,
+        SUM(CASE WHEN state = 'changes_requested' THEN 1 ELSE 0 END)::bigint AS changes_requested
+    FROM per_reviewer_latest
+    WHERE state IN ('approved', 'changes_requested')
+    GROUP BY pr_id
 )
 SELECT
     pr.id, pr.workspace_id, pr.installation_id, pr.repo_owner, pr.repo_name,
@@ -523,42 +539,47 @@ SELECT
     COALESCE(c.total, 0)::bigint   AS checks_total,
     COALESCE(c.passed, 0)::bigint  AS checks_passed,
     COALESCE(c.failed, 0)::bigint  AS checks_failed,
-    COALESCE(c.pending, 0)::bigint AS checks_pending
+    COALESCE(c.pending, 0)::bigint AS checks_pending,
+    COALESCE(r.approved, 0)::bigint AS reviews_approved,
+    COALESCE(r.changes_requested, 0)::bigint AS reviews_changes_requested
 FROM github_pull_request pr
 JOIN issue_pull_request ipr ON ipr.pull_request_id = pr.id
 LEFT JOIN checks c ON c.pr_id = pr.id
+LEFT JOIN reviews r ON r.pr_id = pr.id
 WHERE ipr.issue_id = $1 AND NOT ipr.reference_only
 ORDER BY pr.pr_created_at DESC
 `
 
 type ListPullRequestsByIssueRow struct {
-	ID              pgtype.UUID        `json:"id"`
-	WorkspaceID     pgtype.UUID        `json:"workspace_id"`
-	InstallationID  int64              `json:"installation_id"`
-	RepoOwner       string             `json:"repo_owner"`
-	RepoName        string             `json:"repo_name"`
-	PrNumber        int32              `json:"pr_number"`
-	Title           string             `json:"title"`
-	State           string             `json:"state"`
-	HtmlUrl         string             `json:"html_url"`
-	Branch          pgtype.Text        `json:"branch"`
-	AuthorLogin     pgtype.Text        `json:"author_login"`
-	AuthorAvatarUrl pgtype.Text        `json:"author_avatar_url"`
-	MergedAt        pgtype.Timestamptz `json:"merged_at"`
-	ClosedAt        pgtype.Timestamptz `json:"closed_at"`
-	PrCreatedAt     pgtype.Timestamptz `json:"pr_created_at"`
-	PrUpdatedAt     pgtype.Timestamptz `json:"pr_updated_at"`
-	HeadSha         string             `json:"head_sha"`
-	MergeableState  pgtype.Text        `json:"mergeable_state"`
-	Additions       int32              `json:"additions"`
-	Deletions       int32              `json:"deletions"`
-	ChangedFiles    int32              `json:"changed_files"`
-	CreatedAt       pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
-	ChecksTotal     int64              `json:"checks_total"`
-	ChecksPassed    int64              `json:"checks_passed"`
-	ChecksFailed    int64              `json:"checks_failed"`
-	ChecksPending   int64              `json:"checks_pending"`
+	ID                      pgtype.UUID        `json:"id"`
+	WorkspaceID             pgtype.UUID        `json:"workspace_id"`
+	InstallationID          int64              `json:"installation_id"`
+	RepoOwner               string             `json:"repo_owner"`
+	RepoName                string             `json:"repo_name"`
+	PrNumber                int32              `json:"pr_number"`
+	Title                   string             `json:"title"`
+	State                   string             `json:"state"`
+	HtmlUrl                 string             `json:"html_url"`
+	Branch                  pgtype.Text        `json:"branch"`
+	AuthorLogin             pgtype.Text        `json:"author_login"`
+	AuthorAvatarUrl         pgtype.Text        `json:"author_avatar_url"`
+	MergedAt                pgtype.Timestamptz `json:"merged_at"`
+	ClosedAt                pgtype.Timestamptz `json:"closed_at"`
+	PrCreatedAt             pgtype.Timestamptz `json:"pr_created_at"`
+	PrUpdatedAt             pgtype.Timestamptz `json:"pr_updated_at"`
+	HeadSha                 string             `json:"head_sha"`
+	MergeableState          pgtype.Text        `json:"mergeable_state"`
+	Additions               int32              `json:"additions"`
+	Deletions               int32              `json:"deletions"`
+	ChangedFiles            int32              `json:"changed_files"`
+	CreatedAt               pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt               pgtype.Timestamptz `json:"updated_at"`
+	ChecksTotal             int64              `json:"checks_total"`
+	ChecksPassed            int64              `json:"checks_passed"`
+	ChecksFailed            int64              `json:"checks_failed"`
+	ChecksPending           int64              `json:"checks_pending"`
+	ReviewsApproved         int64              `json:"reviews_approved"`
+	ReviewsChangesRequested int64              `json:"reviews_changes_requested"`
 }
 
 // Returns the issue's linked PRs with the aggregated check-suite counts for
@@ -609,6 +630,8 @@ func (q *Queries) ListPullRequestsByIssue(ctx context.Context, issueID pgtype.UU
 			&i.ChecksPassed,
 			&i.ChecksFailed,
 			&i.ChecksPending,
+			&i.ReviewsApproved,
+			&i.ReviewsChangesRequested,
 		); err != nil {
 			return nil, err
 		}
@@ -964,6 +987,40 @@ func (q *Queries) UpsertPullRequestCheckSuite(ctx context.Context, arg UpsertPul
 		arg.Status,
 		arg.UpdatedAt,
 		arg.Conclusion,
+	)
+	return err
+}
+
+const upsertPullRequestReview = `-- name: UpsertPullRequestReview :exec
+
+INSERT INTO github_pr_review (
+    pr_id, review_id, reviewer_login, state, submitted_at
+) VALUES (
+    $1, $2, $3, $4, $5
+)
+ON CONFLICT (pr_id, review_id) DO UPDATE SET
+    state = EXCLUDED.state,
+    submitted_at = EXCLUDED.submitted_at
+`
+
+type UpsertPullRequestReviewParams struct {
+	PrID          pgtype.UUID        `json:"pr_id"`
+	ReviewID      int64              `json:"review_id"`
+	ReviewerLogin string             `json:"reviewer_login"`
+	State         string             `json:"state"`
+	SubmittedAt   pgtype.Timestamptz `json:"submitted_at"`
+}
+
+// =====================
+// GitHub Pull Request Review
+// =====================
+func (q *Queries) UpsertPullRequestReview(ctx context.Context, arg UpsertPullRequestReviewParams) error {
+	_, err := q.db.Exec(ctx, upsertPullRequestReview,
+		arg.PrID,
+		arg.ReviewID,
+		arg.ReviewerLogin,
+		arg.State,
+		arg.SubmittedAt,
 	)
 	return err
 }

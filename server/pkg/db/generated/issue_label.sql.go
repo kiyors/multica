@@ -135,6 +135,30 @@ func (q *Queries) GetLabel(ctx context.Context, arg GetLabelParams) (IssueLabel,
 	return i, err
 }
 
+const getLabelByName = `-- name: GetLabelByName :one
+SELECT id, workspace_id, name, color, created_at, updated_at FROM issue_label
+WHERE name = $1 AND workspace_id = $2
+`
+
+type GetLabelByNameParams struct {
+	Name        string      `json:"name"`
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+}
+
+func (q *Queries) GetLabelByName(ctx context.Context, arg GetLabelByNameParams) (IssueLabel, error) {
+	row := q.db.QueryRow(ctx, getLabelByName, arg.Name, arg.WorkspaceID)
+	var i IssueLabel
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.Name,
+		&i.Color,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const listLabels = `-- name: ListLabels :many
 SELECT id, workspace_id, name, color, created_at, updated_at FROM issue_label
 WHERE workspace_id = $1

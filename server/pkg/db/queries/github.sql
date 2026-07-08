@@ -169,6 +169,22 @@ checks AS (
             THEN 1 ELSE 0 END)::bigint AS pending
     FROM per_app_latest
     GROUP BY pr_id
+),
+per_reviewer_latest AS (
+    SELECT DISTINCT ON (r.pr_id, r.reviewer_login)
+        r.pr_id, r.state
+    FROM github_pr_review r
+    JOIN issue_prs ip ON ip.id = r.pr_id
+    ORDER BY r.pr_id, r.reviewer_login, r.submitted_at DESC
+),
+reviews AS (
+    SELECT
+        pr_id,
+        SUM(CASE WHEN state = 'approved' THEN 1 ELSE 0 END)::bigint AS approved,
+        SUM(CASE WHEN state = 'changes_requested' THEN 1 ELSE 0 END)::bigint AS changes_requested
+    FROM per_reviewer_latest
+    WHERE state IN ('approved', 'changes_requested')
+    GROUP BY pr_id
 )
 SELECT
     pr.id, pr.workspace_id, pr.installation_id, pr.repo_owner, pr.repo_name,
@@ -180,10 +196,13 @@ SELECT
     COALESCE(c.total, 0)::bigint   AS checks_total,
     COALESCE(c.passed, 0)::bigint  AS checks_passed,
     COALESCE(c.failed, 0)::bigint  AS checks_failed,
-    COALESCE(c.pending, 0)::bigint AS checks_pending
+    COALESCE(c.pending, 0)::bigint AS checks_pending,
+    COALESCE(r.approved, 0)::bigint AS reviews_approved,
+    COALESCE(r.changes_requested, 0)::bigint AS reviews_changes_requested
 FROM github_pull_request pr
 JOIN issue_pull_request ipr ON ipr.pull_request_id = pr.id
 LEFT JOIN checks c ON c.pr_id = pr.id
+LEFT JOIN reviews r ON r.pr_id = pr.id
 WHERE ipr.issue_id = sqlc.arg('issue_id') AND NOT ipr.reference_only
 ORDER BY pr.pr_created_at DESC;
 
@@ -254,6 +273,20 @@ ON CONFLICT (pr_id, suite_id) DO UPDATE SET
     status     = EXCLUDED.status,
     updated_at = EXCLUDED.updated_at
 WHERE EXCLUDED.updated_at >= github_pull_request_check_suite.updated_at;
+
+-- =====================
+-- GitHub Pull Request Review
+-- =====================
+
+-- name: UpsertPullRequestReview :exec
+INSERT INTO github_pr_review (
+    pr_id, review_id, reviewer_login, state, submitted_at
+) VALUES (
+    $1, $2, $3, $4, $5
+)
+ON CONFLICT (pr_id, review_id) DO UPDATE SET
+    state = EXCLUDED.state,
+    submitted_at = EXCLUDED.submitted_at;
 
 -- =====================
 -- GitHub pending check_suite (out-of-order arrival stash)

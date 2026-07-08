@@ -80,6 +80,25 @@ export function AccountTab() {
     }
   };
 
+  const handleConnectGitHub = async () => {
+    try {
+      const { url } = await api.getGitHubUserConnectUrl();
+      window.location.href = url;
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t(($) => $.account.toast_profile_failed));
+    }
+  };
+
+  const handleDisconnectGitHub = async () => {
+    try {
+      const updated = await api.disconnectGitHubUser();
+      setUser(updated);
+      toast.success(t(($) => $.account.toast_profile_updated));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t(($) => $.account.toast_profile_failed));
+    }
+  };
+
   return (
     <div className="space-y-8">
       <section className="space-y-4">
@@ -173,6 +192,29 @@ export function AccountTab() {
               >
                 <Save className="h-3 w-3" />
                 {profileSaving ? t(($) => $.account.saving) : t(($) => $.account.save)}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="text-sm font-semibold">{t(($) => $.account.section_connected_accounts || "Connected Accounts")}</h2>
+        <Card>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-sm font-medium leading-none">GitHub</p>
+                <p className="text-sm text-muted-foreground">
+                  {user?.github_login ? `@${user.github_login}` : (t(($) => $.account.github_not_connected) || "Not connected")}
+                </p>
+              </div>
+              <Button
+                variant={user?.github_login ? "outline" : "default"}
+                size="sm"
+                onClick={user?.github_login ? handleDisconnectGitHub : handleConnectGitHub}
+              >
+                {user?.github_login ? (t(($) => $.account.disconnect) || "Disconnect") : (t(($) => $.account.connect) || "Connect")}
               </Button>
             </div>
           </CardContent>

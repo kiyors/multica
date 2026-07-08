@@ -52,7 +52,11 @@
     "toast_avatar_updated": "아바타를 업데이트했습니다",
     "toast_avatar_failed": "아바타를 업로드하지 못했습니다",
     "toast_profile_updated": "프로필을 업데이트했습니다",
-    "toast_profile_failed": "프로필을 업데이트하지 못했습니다"
+    "toast_profile_failed": "프로필을 업데이트하지 못했습니다",
+    "section_connected_accounts": "Connected Accounts",
+    "github_not_connected": "Not connected",
+    "connect": "Connect",
+    "disconnect": "Disconnect"
   },
   "notifications": {
     "title": "인박스 알림",
@@ -220,7 +224,9 @@
     "feature_co_author_description_prefix": "에이전트가 작성한 커밋에",
     "feature_co_author_description_suffix": "을(를) 추가합니다.",
     "feature_auto_link_label": "이슈와 PR 자동 연결",
-    "feature_auto_link_description": "PR 제목, 본문, 브랜치 이름을 이슈 식별자와 대조해 자동으로 연결합니다.",
+    "feature_auto_link_description": "PR 제목, 본문, 브랜치 이름을 이슈 ID와 일치시켜 자동으로 연결합니다.",
+    "feature_auto_transitions_label": "이슈 상태 자동 전환",
+    "feature_auto_transitions_description": "PR을 열면 이슈를 '리뷰 중'으로, 병합하면 '완료'로 이동합니다.",
     "section_repositories": "저장소",
     "repositories_shortcut_label": "저장소 URL은 저장소 탭에 있습니다",
     "repositories_shortcut_link": "저장소 관리 →",

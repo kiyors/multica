@@ -35,7 +35,10 @@ func TestSignupGating(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			h := newTestHandler(tt.cfg)
-			err := h.checkSignupAllowed(tt.email, tt.isNew)
+			// No pending invitation: the invitation lookup scans ErrNoRows,
+			// which the handler treats as "no invite" (hasInvite=false).
+			h.Queries = db.New(&mockDB{getUserErr: pgx.ErrNoRows})
+			err := h.checkSignupAllowed(context.Background(), tt.email, tt.isNew)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("got err=%v wantErr=%v", err, tt.wantErr)
 			}

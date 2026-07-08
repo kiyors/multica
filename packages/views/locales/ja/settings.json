@@ -52,7 +52,11 @@
     "toast_avatar_updated": "アバターを更新しました",
     "toast_avatar_failed": "アバターをアップロードできませんでした",
     "toast_profile_updated": "プロフィールを更新しました",
-    "toast_profile_failed": "プロフィールを更新できませんでした"
+    "toast_profile_failed": "プロフィールを更新できませんでした",
+    "section_connected_accounts": "Connected Accounts",
+    "github_not_connected": "Not connected",
+    "connect": "Connect",
+    "disconnect": "Disconnect"
   },
   "notifications": {
     "title": "インボックス通知",
@@ -220,7 +224,9 @@
     "feature_co_author_description_prefix": "エージェントが作成したコミットに",
     "feature_co_author_description_suffix": "を追加します。",
     "feature_auto_link_label": "イシューと PR を自動リンク",
-    "feature_auto_link_description": "PR のタイトル、本文、ブランチ名をイシュー識別子と照合し、自動でリンクを作成します。",
+    "feature_auto_link_description": "PR のタイトル、本文、ブランチ名とイシュー ID を照合し、リンクを自動で作成します。",
+    "feature_auto_transitions_label": "イシューステータスの自動遷移",
+    "feature_auto_transitions_description": "PRを開いた時にイシューを「レビュー中」に、マージした時に「完了」に移動します。",
     "section_repositories": "リポジトリ",
     "repositories_shortcut_label": "リポジトリ URL はリポジトリタブにあります",
     "repositories_shortcut_link": "リポジトリを管理 →",

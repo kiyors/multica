@@ -3,8 +3,10 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/multica-ai/multica/server/internal/events"
 	"github.com/multica-ai/multica/server/internal/handler"
 	"github.com/multica-ai/multica/server/internal/util"
@@ -236,6 +238,60 @@ func registerActivityListeners(bus *events.Bus, queries *db.Queries) {
 					"issue_id", issue.ID, "error", err)
 			} else {
 				publishActivityEvent(bus, e, activity)
+			}
+		}
+	})
+
+	// pull_request:updated — record PR lifecycle entries on linked issues.
+	// "System comments" from the Phase 5 spec are modeled as activities, not
+	// comment rows: PR events are machine-generated timeline facts, exactly
+	// like status_changed, and must not pollute the human comment thread.
+	bus.Subscribe(protocol.EventPullRequestUpdated, func(e events.Event) {
+		payload, ok := e.Payload.(map[string]any)
+		if !ok {
+			return
+		}
+		pr, ok := payload["pull_request"].(handler.GitHubPullRequestResponse)
+		if !ok {
+			return
+		}
+		details, _ := json.Marshal(map[string]string{
+			"pr_number": fmt.Sprintf("%d", pr.Number),
+			"repo":      pr.RepoOwner + "/" + pr.RepoName,
+			"title":     pr.Title,
+			"url":       pr.HtmlURL,
+		})
+
+		record := func(issueIDs []string, action string) {
+			for _, issueID := range issueIDs {
+				activity, err := queries.CreateActivity(ctx, db.CreateActivityParams{
+					WorkspaceID: parseUUID(pr.WorkspaceID),
+					IssueID:     parseUUID(issueID),
+					ActorType:   util.StrToText("system"),
+					ActorID:     pgtype.UUID{},
+					Action:      action,
+					Details:     details,
+				})
+				if err != nil {
+					slog.Error("activity: failed to record pr event",
+						"issue_id", issueID, "action", action, "error", err)
+					continue
+				}
+				publishActivityEvent(bus, e, activity)
+			}
+		}
+
+		if ids, _ := payload["newly_linked_issue_ids"].([]string); len(ids) > 0 {
+			record(ids, "pr_linked")
+		}
+		// pr_terminal is only set on the single action=="closed" delivery, so
+		// terminal entries are written exactly once per PR.
+		if terminal, _ := payload["pr_terminal"].(string); terminal == "merged" || terminal == "closed" {
+			ids, _ := payload["terminal_issue_ids"].([]string)
+			if terminal == "merged" {
+				record(ids, "pr_merged")
+			} else {
+				record(ids, "pr_closed")
 			}
 		}
 	})
