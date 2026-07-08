@@ -2807,8 +2807,12 @@ export class ApiClient {
     });
   }
 
-  async listChannelMessages(workspaceId: string, channelId: string): Promise<ChannelMessage[]> {
-    return this.fetch(`/api/channels/${channelId}/messages`, {
+  async listChannelMessages(workspaceId: string, channelId: string, cursor?: string, limit?: number): Promise<ChannelMessage[]> {
+    const params = new URLSearchParams();
+    if (cursor) params.append("cursor", cursor);
+    if (limit) params.append("limit", limit.toString());
+    const query = params.toString() ? `?${params.toString()}` : "";
+    return this.fetch(`/api/channels/${channelId}/messages${query}`, {
       method: "GET",
       headers: { "X-Workspace-ID": workspaceId },
     });

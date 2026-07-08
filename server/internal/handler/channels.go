@@ -3,11 +3,13 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/internal/util"
+	db "github.com/multica-ai/multica/server/pkg/db/generated"
 )
 
 type ChannelResponse struct {
@@ -296,10 +298,24 @@ func (h *Handler) ListChannelMessages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	limit := int32(50)
+	if l := r.URL.Query().Get("limit"); l != "" {
+		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 && parsed <= 100 {
+			limit = int32(parsed)
+		}
+	}
+
+	var cursor pgtype.Timestamptz
+	if c := r.URL.Query().Get("cursor"); c != "" {
+		if t, err := time.Parse(time.RFC3339, c); err == nil {
+			cursor = pgtype.Timestamptz{Time: t, Valid: true}
+		}
+	}
+
 	messages, err := h.Queries.ListChannelMessages(r.Context(), db.ListChannelMessagesParams{
 		ChannelID: channelID,
-		Limit:     50,
-		Offset:    0,
+		Cursor:    cursor,
+		Limit:     limit,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to list messages")
@@ -360,9 +376,13 @@ func (h *Handler) CreateChannelMessage(w http.ResponseWriter, r *http.Request) {
 	resp := channelMessageToResponse(m)
 
 	// Dispatch real-time event
-	h.publish("channel_message_created", h.resolveWorkspaceID(r), "member", util.UUIDToString(member.UserID), resp)
+	h.publish("channel:message_created", h.resolveWorkspaceID(r), "member", util.UUIDToString(member.UserID), resp)
 
 	writeJSON(w, http.StatusCreated, resp)
+}
+
+type UpdateChannelMessageRequest struct {
+	Content string `json:"content"`
 }
 
 func (h *Handler) UpdateChannelMessage(w http.ResponseWriter, r *http.Request) {
@@ -370,10 +390,9 @@ func (h *Handler) UpdateChannelMessage(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	// Verify author or admin...
 
-	var req struct {
-		Content string `json:"content"`
-	}
+	var req UpdateChannelMessageRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request")
 		return
@@ -387,10 +406,8 @@ func (h *Handler) UpdateChannelMessage(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to update message")
 		return
 	}
-
 	resp := channelMessageToResponse(m)
-	h.publish("channel_message_updated", h.resolveWorkspaceID(r), "member", util.UUIDToString(m.AuthorID), resp)
-
+	h.publish("channel:message_updated", h.resolveWorkspaceID(r), "member", util.UUIDToString(m.AuthorID), resp)
 	writeJSON(w, http.StatusOK, resp)
 }
 
@@ -404,8 +421,6 @@ func (h *Handler) DeleteChannelMessage(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to delete message")
 		return
 	}
-
-	h.publish("channel_message_deleted", h.resolveWorkspaceID(r), "member", "", map[string]string{"id": util.UUIDToString(messageID)})
-
+	h.publish("channel:message_deleted", h.resolveWorkspaceID(r), "member", "", map[string]string{"id": util.UUIDToString(messageID)})
 	writeJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
 }

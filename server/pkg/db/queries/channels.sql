@@ -56,9 +56,9 @@ SELECT * FROM channel_messages WHERE id = $1 LIMIT 1;
 
 -- name: ListChannelMessages :many
 SELECT * FROM channel_messages
-WHERE channel_id = $1 AND parent_id IS NULL
+WHERE channel_id = $1 AND parent_id IS NULL AND (sqlc.narg('cursor')::timestamptz IS NULL OR created_at < sqlc.narg('cursor')::timestamptz)
 ORDER BY created_at DESC
-LIMIT $2 OFFSET $3;
+LIMIT $2;
 
 -- name: ListChannelMessageReplies :many
 SELECT * FROM channel_messages
