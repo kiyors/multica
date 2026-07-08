@@ -21,8 +21,20 @@ import (
 func registerActivityListeners(bus *events.Bus, queries *db.Queries) {
 	ctx := context.Background()
 
+	async := func(f func()) {
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					slog.Error("panic in async activity listener", "recovered", r)
+				}
+			}()
+			f()
+		}()
+	}
+
 	// issue:created — record "created" activity
 	bus.Subscribe(protocol.EventIssueCreated, func(e events.Event) {
+		async(func() {
 		payload, ok := e.Payload.(map[string]any)
 		if !ok {
 			return
@@ -47,10 +59,12 @@ func registerActivityListeners(bus *events.Bus, queries *db.Queries) {
 		}
 
 		publishActivityEvent(bus, e, activity)
+		})
 	})
 
 	// issue:updated — record specific changes as separate activities
 	bus.Subscribe(protocol.EventIssueUpdated, func(e events.Event) {
+		async(func() {
 		payload, ok := e.Payload.(map[string]any)
 		if !ok {
 			return
@@ -240,6 +254,7 @@ func registerActivityListeners(bus *events.Bus, queries *db.Queries) {
 				publishActivityEvent(bus, e, activity)
 			}
 		}
+		})
 	})
 
 	// pull_request:updated — record PR lifecycle entries on linked issues.
@@ -247,6 +262,7 @@ func registerActivityListeners(bus *events.Bus, queries *db.Queries) {
 	// comment rows: PR events are machine-generated timeline facts, exactly
 	// like status_changed, and must not pollute the human comment thread.
 	bus.Subscribe(protocol.EventPullRequestUpdated, func(e events.Event) {
+		async(func() {
 		payload, ok := e.Payload.(map[string]any)
 		if !ok {
 			return
@@ -308,16 +324,21 @@ func registerActivityListeners(bus *events.Bus, queries *db.Queries) {
 				record(ids, "pr_closed")
 			}
 		}
+		})
 	})
 
 	// task:completed — record "task_completed" activity
 	bus.Subscribe(protocol.EventTaskCompleted, func(e events.Event) {
-		handleTaskActivity(ctx, bus, queries, e, "task_completed")
+		async(func() {
+			handleTaskActivity(ctx, bus, queries, e, "task_completed")
+		})
 	})
 
 	// task:failed — record "task_failed" activity
 	bus.Subscribe(protocol.EventTaskFailed, func(e events.Event) {
-		handleTaskActivity(ctx, bus, queries, e, "task_failed")
+		async(func() {
+			handleTaskActivity(ctx, bus, queries, e, "task_failed")
+		})
 	})
 }
 
