@@ -44,7 +44,7 @@ export function useChannelMessages(workspaceId?: string, channelId?: string) {
   return useInfiniteQuery({
     queryKey: channelKeys.messages(channelId!),
     queryFn: ({ pageParam }) => api.listChannelMessages(workspaceId!, channelId!, pageParam as string | undefined, 50),
-    getNextPageParam: (lastPage) => lastPage.length === 50 ? lastPage[lastPage.length - 1].created_at : undefined,
+    getNextPageParam: (lastPage) => lastPage.length === 50 ? lastPage[lastPage.length - 1]?.created_at : undefined,
     initialPageParam: undefined as string | undefined,
     enabled: !!workspaceId && !!channelId,
   });
