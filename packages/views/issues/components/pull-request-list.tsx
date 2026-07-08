@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useWorkspaceId } from "@multica/core";
+import { memberListOptions } from "@multica/core/workspace";
 import {
   CheckCircle2,
   CircleDashed,
@@ -27,6 +29,7 @@ import type {
   GitHubPullRequestState,
 } from "@multica/core/types";
 import { cn } from "@multica/ui/lib/utils";
+import { Avatar, AvatarFallback, AvatarImage } from "@multica/ui/components/ui/avatar";
 import { useT } from "../../i18n";
 
 type IssuesT = ReturnType<typeof useT<"issues">>["t"];
@@ -106,6 +109,12 @@ export function PullRequestList({ issueId }: { issueId: string }) {
 
 function PullRequestRow({ pr }: { pr: GitHubPullRequest }) {
   const { t } = useT("issues");
+  const wsId = useWorkspaceId();
+  const { data: members } = useQuery(memberListOptions(wsId));
+  const member = members?.find(
+    (m) => m.github_login && m.github_login === pr.author_login
+  );
+
   const cfg = STATE_ICON[pr.state] ?? { icon: GitPullRequest, className: "" };
   const StateIcon = cfg.icon;
   const kind = derivePullRequestStatusKind({
@@ -146,10 +155,37 @@ function PullRequestRow({ pr }: { pr: GitHubPullRequest }) {
         <p className="text-xs font-medium leading-snug truncate group-hover:text-foreground">
           {pr.title}
         </p>
-        <p className="text-[11px] text-muted-foreground truncate">
-          {pr.repo_owner}/{pr.repo_name}#{pr.number} · {stateLabel}
-          {pr.author_login ? ` · @${pr.author_login}` : null}
-        </p>
+        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground truncate mt-0.5">
+          <span>{pr.repo_owner}/{pr.repo_name}#{pr.number} · {stateLabel}</span>
+          {pr.author_login && (
+            <>
+              <span aria-hidden="true">·</span>
+              <div className="flex items-center gap-1">
+                {member ? (
+                  <>
+                    <Avatar className="h-3.5 w-3.5">
+                      <AvatarImage src={member.avatar_url ?? undefined} />
+                      <AvatarFallback className="text-[7px]">
+                        {getInitials(member.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="truncate">{member.name}</span>
+                  </>
+                ) : (
+                  <>
+                    <Avatar className="h-3.5 w-3.5">
+                      <AvatarImage src={pr.author_avatar_url ?? undefined} />
+                      <AvatarFallback className="text-[7px]">
+                        {getInitials(pr.author_login)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="truncate">@{pr.author_login}</span>
+                  </>
+                )}
+              </div>
+            </>
+          )}
+        </div>
         <PullRequestRowDetails
           pr={pr}
           segments={segments}
@@ -348,4 +384,15 @@ function useStatusText(kind: PullRequestStatusKind): string {
     case "unknown":
       return t(($) => $.detail.pull_request_card_status_unknown);
   }
+}
+
+function getInitials(name: string | null | undefined): string {
+  if (!name) return "";
+  const trimmed = name.trim();
+  if (!trimmed) return "";
+  const parts = trimmed.split(/\s+/);
+  if (parts.length === 1) return (parts[0]?.substring(0, 2) ?? "").toUpperCase();
+  const first = parts[0]?.[0] ?? "";
+  const last = parts[parts.length - 1]?.[0] ?? "";
+  return (first + last).toUpperCase();
 }
