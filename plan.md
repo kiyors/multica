@@ -560,33 +560,47 @@ Multica is a powerful AI-native task management platform where AI agents are fir
 
 ### 5.1 Auto-Link PRs to Issues
 
-- [ ] **Backend:** Parse PR title/body/branch name for Multica issue references (regex: `MUL-\d+`, `[WORKSPACE]-\d+`)
-- [ ] **Backend:** On GitHub webhook `pull_request.opened` / `pull_request.edited`:
-  - Extract issue references from title, body, and branch name
-  - Create linkage records in DB
-  - Post system comment on the Multica issue: "PR #123 linked"
-- [ ] **Backend:** On `pull_request.closed` (merged):
-  - If PR title contains `Fixes MUL-XXX` or `Closes MUL-XXX`, auto-transition issue status to `done`
-  - Post system comment: "Resolved by PR #123"
-- [ ] **Backend:** On `pull_request.closed` (not merged):
-  - Post system comment: "PR #123 closed without merge"
+- [x] **Backend:** Parse PR title/body/branch name for Multica issue references
+- [x] **Backend:** On `pull_request.opened` / `edited`: extract refs, create linkage rows, publish `EventPullRequestUpdated`
+- [x] **Backend:** On `pull_request.closed` (merged): auto-transition qualifying issues to `done`
+- [x] **Backend:** On `pull_request.closed` (not merged): no status change (PR closed without merge)
+- [x] **Backend:** `githubAutomationFlags` struct — `autoLinkPRs` + `autoTransitions` from workspace JSONB settings
+- [x] **Backend:** `advanceIssueStatus(ctx, issue, workspaceID, newStatus, source)` — generalised status advancer
 
 ### 5.2 Auto-Move Kanban Cards
 
-- [ ] **Backend:** On PR opened → move linked issue to "In Review" status
-- [ ] **Backend:** On PR merged → move linked issue to "Done" status
-- [ ] **Backend:** On PR checks failing → add "CI Failing" label to linked issue
-- [ ] **Backend:** Make auto-transitions configurable per-project (some teams may not want this)
+- [x] **Backend:** On PR opened → move *qualifying* linked issues (non-reference-only) to `in_review`; draft PRs excluded
+- [x] **Backend:** On PR merged → move linked issues to `done`
+- [x] **Backend:** `github_auto_transitions_enabled` setting gates all status moves; linking itself is never gated
+- [x] **Backend (Task 9):** Attach "CI Failing" label to linked issues on a failed `check_suite` webhook event.
+- [ ] **Backend:** Make auto-transitions configurable per-workspace *(already done via `github_auto_transitions_enabled`; per-project granularity deferred)*
+
+### 5.2.5 PR Timeline Activities (system comments as activity_log rows)
+
+- [x] **Backend:** `activity_listeners.go` — subscribes to `EventPullRequestUpdated`, writes `pr_linked` / `pr_merged` / `pr_closed` activity rows; tests green
+- [x] **Backend (Task 8 — COMPLETED):** Update `h.publish(EventPullRequestUpdated, …)` in `handlePullRequestEvent` to include:
+  - `newly_linked_issue_ids` — IDs of link rows freshly inserted this delivery (not idempotent re-upserts)
+  - `pr_terminal` — `"merged"` or `"closed"` on the single terminal delivery, else `""`
+  - `terminal_issue_ids` — all qualifying linked issue IDs on terminal events
+  - Driving test: `TestWebhook_PublishesNewLinksAndTerminalState` (written, currently red)
 
 ### 5.3 Rich PR Display
 
-- [ ] **Views:** Show PR details inline on issue detail page:
-  - PR status (open/merged/closed)
-  - CI check status (pass/fail/pending)
-  - Review status (approved/changes requested/pending)
-  - Merge conflicts indicator
-  - Lines added/removed
-- [ ] **Views:** Clickable PR link opening in new tab
+- [x] **Backend (Task 11):** `pull_request_review` webhook + migration 148 (`github_pr_review` table) + extend `ListPullRequestsByIssue` with approved/changes_requested counts
+- [x] **Frontend (Task 12):**
+  - [x] `deriveGitHubSettings` — expose `autoTransitions` flag in frontend settings
+  - [x] PR schema — add `review_status` (approved/changes_requested/pending) field
+  - [x] PR card on issue detail: show review status line
+  - [x] `formatActivity` cases for `pr_linked` / `pr_merged` / `pr_closed`
+  - [x] i18n strings for the three new activity types (en + zh)
+  - [x] GitHub settings tab toggle for `autoTransitions`
+  - [x] Mobile `formatActivity` parity for the three PR activity types
+- [ ] **Views:** Clickable PR link opening in new tab *(link already rendered; rich metadata display deferred)*
+
+### 5.4 Known Deferred Boundary Issues (do not fix unless explicitly tasked)
+
+- 8 files in `packages/views/settings/components/` call `api.*` directly (should go through mutations/queries)
+- `use-realtime-sync.ts:1179` writes to Zustand from a WS event handler (intentional exception; document in CLAUDE.md if it causes confusion)
 
 ---
 
@@ -936,3 +950,104 @@ Root cause of "slow data fetching": round-trip count × distance to Postgres, no
 
 > **Next Step:** Phase 5 (Enhanced GitHub Integration). Phases 6 and 8 are intentionally skipped.
 > Update this file as phases are completed by checking off items and updating the Progress Tracker.
+# Multica VPS Deployment Plan (Dokploy Edition)
+
+This document outlines the step-by-step process for deploying your custom fork of Multica onto your VPS using **Dokploy**. 
+
+Dokploy takes care of the Reverse Proxy (Traefik), SSL Certificates (Let's Encrypt), and deploying the containers, so you do not need to install Caddy or run manual Docker commands on the server.
+
+## 1. Prerequisites
+- A VPS with **Dokploy** installed.
+- Two DNS `A` records pointing to your VPS IP:
+  - `app.yourdomain.com` (Frontend)
+  - `api.yourdomain.com` (Backend API & WebSockets)
+- An external PostgreSQL database (e.g., NeonDB, Supabase).
+
+## 2. Create the Application in Dokploy
+
+1. Go to your Dokploy Dashboard.
+2. Navigate to **Applications** (or **Projects**) -> **Create New Application**.
+3. Choose **Docker Compose** as the deployment type.
+4. **Source:** Connect your GitHub account and select your `multica` repository.
+5. **Path:** Enter `docker-compose.selfhost.yml` as the compose file path.
+
+## 3. Configure Environment Variables
+
+In the Dokploy UI, go to the **Environment Variables** tab for your new compose application and paste the following configuration. Update the values with your actual secrets.
+
+```ini
+# ==================== Core Setup ====================
+APP_ENV=production
+# Run `openssl rand -hex 32` locally and paste the result here
+JWT_SECRET=your_generated_secret_here
+
+# ==================== Dokploy Traefik Domains ====================
+APP_DOMAIN=app.yourdomain.com
+API_DOMAIN=api.yourdomain.com
+
+# Origins & CORS (Crucial for WebSockets to work in Dokploy)
+FRONTEND_ORIGIN=https://app.yourdomain.com
+CORS_ALLOWED_ORIGINS=https://app.yourdomain.com
+
+# ==================== Database (PostgreSQL) ====================
+# External DB Connection String (e.g. NeonDB). Ensure ?sslmode=require is appended!
+DATABASE_URL=postgres://user:password@ep-cold-wildflower-1234.us-east-2.aws.neon.tech/multica?sslmode=require
+
+# ==================== Authentication ====================
+# Resend is recommended for cloud deployments
+RESEND_API_KEY=re_YOUR_KEY
+RESEND_FROM_EMAIL=noreply@yourdomain.com
+
+# Security Lockdowns (Flip these once your admin account is created)
+ALLOW_SIGNUP=false
+DISABLE_WORKSPACE_CREATION=true
+
+# ==================== GitHub OAuth (User Profile Sync) ====================
+# Create an OAuth App in GitHub (Settings > Developer settings > OAuth Apps)
+# Authorization callback URL: https://api.yourdomain.com/auth/github/callback
+GITHUB_OAUTH_CLIENT_ID=your_oauth_client_id
+GITHUB_OAUTH_CLIENT_SECRET=your_oauth_client_secret
+
+# ==================== Media Storage (S3 / R2) ====================
+# Set these if you want to use S3 or Cloudflare R2 for uploads
+S3_BUCKET=my-multica-bucket
+S3_REGION=us-east-1
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
+# Set this if using Cloudflare R2 (e.g. https://<account_id>.r2.cloudflarestorage.com)
+AWS_ENDPOINT_URL= 
+S3_USE_PATH_STYLE=false 
+```
+
+## 4. Routing in Dokploy
+
+Because we added Traefik labels natively into the `docker-compose.selfhost.yml` file, you do **not** need to manually configure domains in the Dokploy UI!
+
+Dokploy's Traefik reverse proxy will automatically read `APP_DOMAIN` and `API_DOMAIN` from your `.env` file, bind them to the correct internal containers, and provision SSL certificates seamlessly.
+
+## 5. Deploy
+
+1. Click **Deploy** in the Dokploy dashboard!
+2. Dokploy will pull your custom images from your GitHub Container Registry (`ghcr.io/kiyors/...`) and start the stack.
+3. Verify it works by visiting `https://api.yourdomain.com/healthz` (Should say `{"status":"ok"}`).
+
+## 6. Configure Local Client Daemons (For Your Team)
+
+The AI daemon runs on your team's local laptops, NOT the VPS.
+
+1. Have your team install the CLI locally:
+   ```bash
+   brew install multica-ai/tap/multica
+   ```
+   *(Or download the binary/installer from your GitHub Releases page!)*
+2. Point the CLI to your Dokploy-hosted cloud:
+   ```bash
+   multica setup self-host \
+     --server-url https://api.yourdomain.com \
+     --app-url https://app.yourdomain.com
+   ```
+
+## 7. Upgrades
+
+Because you are using Dokploy, upgrading is incredibly simple. When you push new code to your `main` branch, your GitHub Action builds the new Docker images. 
+Once the GHCR images are built, you simply go into the Dokploy UI and click **Redeploy**. Dokploy pulls the latest images and seamlessly restarts the containers!

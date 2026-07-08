@@ -277,6 +277,12 @@ function formatActivity(
           return t(($) => $.activity.squad_leader_evaluated);
       }
     }
+    case "pr_linked":
+      return t(($) => $.activity.pr_linked, { repo: details.repo ?? "?", pr_number: details.pr_number ?? "?" });
+    case "pr_merged":
+      return t(($) => $.activity.pr_merged, { repo: details.repo ?? "?", pr_number: details.pr_number ?? "?" });
+    case "pr_closed":
+      return t(($) => $.activity.pr_closed, { repo: details.repo ?? "?", pr_number: details.pr_number ?? "?" });
     default:
       return entry.action ?? "";
   }

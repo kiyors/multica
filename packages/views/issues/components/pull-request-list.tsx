@@ -197,6 +197,21 @@ function PullRequestRowDetails({
       {showStats ? <PullRequestStats pr={pr} /> : null}
       <PullRequestProgressStrip segments={segments} />
       <span className="truncate">{statusText}</span>
+      {pr.review_status && (
+        <span className="flex items-center gap-x-2">
+          <span aria-hidden="true">·</span>
+          <span
+            className={cn(
+              pr.review_status === "approved" && "text-emerald-600 dark:text-emerald-400",
+              pr.review_status === "changes_requested" && "text-rose-600 dark:text-rose-400"
+            )}
+          >
+            {pr.review_status === "approved" && t(($) => $.detail.pull_request_review_approved)}
+            {pr.review_status === "changes_requested" && t(($) => $.detail.pull_request_review_changes_requested)}
+            {pr.review_status === "pending" && t(($) => $.detail.pull_request_review_pending)}
+          </span>
+        </span>
+      )}
       {showChecksBadge ? <PullRequestBadge badge={checksBadge} /> : null}
       {showConflictsBadge ? <PullRequestBadge badge={conflictsBadge} /> : null}
     </div>

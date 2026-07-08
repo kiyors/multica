@@ -122,6 +122,12 @@ export function formatActivity(
           return "evaluated the squad trigger";
       }
     }
+    case "pr_linked":
+      return `linked pull request ${details.repo ?? "?"}#${details.pr_number ?? "?"}`;
+    case "pr_merged":
+      return `merged pull request ${details.repo ?? "?"}#${details.pr_number ?? "?"}`;
+    case "pr_closed":
+      return `closed pull request ${details.repo ?? "?"}#${details.pr_number ?? "?"}`;
     default:
       return entry.action ?? "";
   }
