@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api";
 import { useAuthStore } from "../auth";
-import type { Channel, ChannelMessage, ChannelMember } from "../types";
+import type { ChannelMessage } from "../types";
 
 export const channelKeys = {
   all: ["channels"] as const,
@@ -70,7 +70,7 @@ export function useCreateChannelMessage(workspaceId?: string, channelId?: string
       }
       return { previous };
     },
-    onError: (err, variables, context) => {
+    onError: (_err, _variables, context) => {
       if (context?.previous) {
         qc.setQueryData(channelKeys.messages(channelId!), context.previous);
       }

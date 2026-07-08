@@ -146,6 +146,12 @@ import type {
   ProjectMember,
   Milestone,
   ProjectDocument,
+  Channel,
+  CreateChannelRequest,
+  UpdateChannelRequest,
+  ChannelMember,
+  ChannelMessage,
+  CreateChannelMessageRequest,
 } from "../types";
 import type { OnboardingCompletionPath } from "../onboarding/types";
 import type { CreateFeedbackResponse, FeedbackKind } from "../feedback/types";

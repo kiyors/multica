@@ -40,7 +40,7 @@ DELETE FROM channel_members WHERE channel_id = $1 AND member_id = $2;
 -- name: ListChannelMembers :many
 SELECT m.*, cm.joined_at
 FROM channel_members cm
-JOIN members m ON m.id = cm.member_id
+JOIN member m ON m.id = cm.member_id
 WHERE cm.channel_id = $1;
 
 -- name: CreateChannelMessage :one
