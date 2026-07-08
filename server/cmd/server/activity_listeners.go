@@ -262,13 +262,27 @@ func registerActivityListeners(bus *events.Bus, queries *db.Queries) {
 			"url":       pr.HtmlURL,
 		})
 
+		var actorType string = "system"
+		var actorID pgtype.UUID
+
+		if pr.AuthorLogin != nil && *pr.AuthorLogin != "" {
+			member, err := queries.GetMemberByGithubLoginAndWorkspace(ctx, db.GetMemberByGithubLoginAndWorkspaceParams{
+				WorkspaceID: parseUUID(pr.WorkspaceID),
+				GithubLogin: util.StrToText(*pr.AuthorLogin),
+			})
+			if err == nil {
+				actorType = "member"
+				actorID = parseUUID(util.UUIDToString(member.UserID))
+			}
+		}
+
 		record := func(issueIDs []string, action string) {
 			for _, issueID := range issueIDs {
 				activity, err := queries.CreateActivity(ctx, db.CreateActivityParams{
 					WorkspaceID: parseUUID(pr.WorkspaceID),
 					IssueID:     parseUUID(issueID),
-					ActorType:   util.StrToText("system"),
-					ActorID:     pgtype.UUID{},
+					ActorType:   util.StrToText(actorType),
+					ActorID:     actorID,
 					Action:      action,
 					Details:     details,
 				})

@@ -63,6 +63,49 @@ func (q *Queries) GetMember(ctx context.Context, id pgtype.UUID) (Member, error)
 	return i, err
 }
 
+const getMemberByGithubLoginAndWorkspace = `-- name: GetMemberByGithubLoginAndWorkspace :one
+SELECT m.id, m.workspace_id, m.user_id, m.role, m.created_at,
+       u.name as user_name, u.email as user_email, u.avatar_url as user_avatar_url, u.github_login as user_github_login
+FROM member m
+JOIN "user" u ON u.id = m.user_id
+WHERE m.workspace_id = $1 AND u.github_login = $2
+LIMIT 1
+`
+
+type GetMemberByGithubLoginAndWorkspaceParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	GithubLogin pgtype.Text `json:"github_login"`
+}
+
+type GetMemberByGithubLoginAndWorkspaceRow struct {
+	ID              pgtype.UUID        `json:"id"`
+	WorkspaceID     pgtype.UUID        `json:"workspace_id"`
+	UserID          pgtype.UUID        `json:"user_id"`
+	Role            string             `json:"role"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UserName        string             `json:"user_name"`
+	UserEmail       string             `json:"user_email"`
+	UserAvatarUrl   pgtype.Text        `json:"user_avatar_url"`
+	UserGithubLogin pgtype.Text        `json:"user_github_login"`
+}
+
+func (q *Queries) GetMemberByGithubLoginAndWorkspace(ctx context.Context, arg GetMemberByGithubLoginAndWorkspaceParams) (GetMemberByGithubLoginAndWorkspaceRow, error) {
+	row := q.db.QueryRow(ctx, getMemberByGithubLoginAndWorkspace, arg.WorkspaceID, arg.GithubLogin)
+	var i GetMemberByGithubLoginAndWorkspaceRow
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.UserID,
+		&i.Role,
+		&i.CreatedAt,
+		&i.UserName,
+		&i.UserEmail,
+		&i.UserAvatarUrl,
+		&i.UserGithubLogin,
+	)
+	return i, err
+}
+
 const getMemberByUserAndWorkspace = `-- name: GetMemberByUserAndWorkspace :one
 SELECT id, workspace_id, user_id, role, created_at FROM member
 WHERE user_id = $1 AND workspace_id = $2

@@ -41,3 +41,11 @@ SELECT sqlc.embed(w), sqlc.embed(m)
 FROM workspace w
 JOIN member m ON m.workspace_id = w.id AND m.user_id = $2
 WHERE w.slug = $1;
+
+-- name: GetMemberByGithubLoginAndWorkspace :one
+SELECT m.id, m.workspace_id, m.user_id, m.role, m.created_at,
+       u.name as user_name, u.email as user_email, u.avatar_url as user_avatar_url, u.github_login as user_github_login
+FROM member m
+JOIN "user" u ON u.id = m.user_id
+WHERE m.workspace_id = $1 AND u.github_login = $2
+LIMIT 1;
