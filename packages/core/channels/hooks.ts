@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { api } from "../api";
 import { useAuthStore } from "../auth";
 import type { ChannelMessage } from "../types";
@@ -41,9 +41,11 @@ export function useCreateChannel(workspaceId?: string) {
 }
 
 export function useChannelMessages(workspaceId?: string, channelId?: string) {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: channelKeys.messages(channelId!),
-    queryFn: () => api.listChannelMessages(workspaceId!, channelId!),
+    queryFn: ({ pageParam }) => api.listChannelMessages(workspaceId!, channelId!, pageParam as string | undefined, 50),
+    getNextPageParam: (lastPage) => lastPage.length === 50 ? lastPage[lastPage.length - 1].created_at : undefined,
+    initialPageParam: undefined as string | undefined,
     enabled: !!workspaceId && !!channelId,
   });
 }
@@ -55,7 +57,7 @@ export function useCreateChannelMessage(workspaceId?: string, channelId?: string
       api.createChannelMessage(workspaceId!, channelId!, { content }),
     onMutate: async (content) => {
       await qc.cancelQueries({ queryKey: channelKeys.messages(channelId!) });
-      const previous = qc.getQueryData<ChannelMessage[]>(channelKeys.messages(channelId!));
+      const previous = qc.getQueryData<any>(channelKeys.messages(channelId!));
       const user = useAuthStore.getState().user;
 
       if (previous && user) {
@@ -66,7 +68,14 @@ export function useCreateChannelMessage(workspaceId?: string, channelId?: string
           content,
           created_at: new Date().toISOString(),
         };
-        qc.setQueryData<ChannelMessage[]>(channelKeys.messages(channelId!), [optimisticMsg, ...previous]);
+        
+        qc.setQueryData(channelKeys.messages(channelId!), (old: any) => {
+          if (!old || !old.pages) return old;
+          return {
+            ...old,
+            pages: [[optimisticMsg, ...old.pages[0]], ...old.pages.slice(1)],
+          };
+        });
       }
       return { previous };
     },

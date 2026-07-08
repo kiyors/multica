@@ -46,6 +46,7 @@ import {
 } from "../platform/system-notification";
 import type { Workspace } from "../types/workspace";
 import { chatKeys, mergeTaskMessagesBySeq } from "../chat/queries";
+import { channelKeys } from "../channels/hooks";
 import { useChatStore } from "../chat";
 import { resolvePostAuthDestination, useHasOnboarded } from "../paths";
 import type {
@@ -478,6 +479,12 @@ export function useRealtimeSync(
           qc.invalidateQueries({ queryKey: issueKeys.all(wsId) });
         }
       },
+      channel: () => {
+        const wsId = getCurrentWsId();
+        if (wsId) {
+          qc.invalidateQueries({ queryKey: channelKeys.all });
+        }
+      },
       label: () => {
         // label:created/updated/deleted — also refresh issues, since each
         // issue carries a denormalized snapshot of its labels (rename/recolor
@@ -601,6 +608,7 @@ export function useRealtimeSync(
       "issue_reaction:added", "issue_reaction:removed",
       "subscriber:added", "subscriber:removed",
       "daemon:heartbeat",
+      "channel:message_created", "channel:message_updated", "channel:message_deleted",
       // Chat events are handled explicitly below; do not double-invalidate.
       "chat:message", "chat:done", "chat:session_read", "chat:session_deleted",
       "chat:session_updated",
@@ -1182,6 +1190,29 @@ export function useRealtimeSync(
       }
     });
 
+    const unsubChannelMessageCreated = ws.on("channel:message_created", (p) => {
+      const msg = p as import("../types").ChannelMessage;
+      qc.setQueryData(channelKeys.messages(msg.channel_id), (old: any) => {
+        if (!old || !old.pages) return old;
+        // Avoid duplicate from optimistic update
+        if (old.pages[0]?.some((m: any) => m.id === msg.id)) return old;
+        return {
+          ...old,
+          pages: [[msg, ...old.pages[0]], ...old.pages.slice(1)],
+        };
+      });
+    });
+
+    const unsubChannelMessageUpdated = ws.on("channel:message_updated", (p) => {
+      const msg = p as import("../types").ChannelMessage;
+      qc.invalidateQueries({ queryKey: channelKeys.messages(msg.channel_id) });
+    });
+
+    const unsubChannelMessageDeleted = ws.on("channel:message_deleted", (p) => {
+      // For deletion, just invalidate the whole list to be safe
+      qc.invalidateQueries({ queryKey: channelKeys.all });
+    });
+
     return () => {
       unsubAny();
       unsubIssueUpdated();
@@ -1228,6 +1259,9 @@ export function useRealtimeSync(
       unsubChatSessionRead();
       unsubChatSessionDeleted();
       unsubChatSessionUpdated();
+      unsubChannelMessageCreated();
+      unsubChannelMessageUpdated();
+      unsubChannelMessageDeleted();
       if (aggregateRefreshTimer) clearTimeout(aggregateRefreshTimer);
       timers.forEach(clearTimeout);
       timers.clear();
