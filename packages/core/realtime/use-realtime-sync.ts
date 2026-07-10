@@ -1208,7 +1208,7 @@ export function useRealtimeSync(
       qc.invalidateQueries({ queryKey: channelKeys.messages(msg.channel_id) });
     });
 
-    const unsubChannelMessageDeleted = ws.on("channel:message_deleted", (p) => {
+    const unsubChannelMessageDeleted = ws.on("channel:message_deleted", () => {
       // For deletion, just invalidate the whole list to be safe
       qc.invalidateQueries({ queryKey: channelKeys.all });
     });

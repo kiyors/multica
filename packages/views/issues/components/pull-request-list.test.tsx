@@ -22,6 +22,14 @@ vi.mock("@multica/core/github/queries", async () => {
   };
 });
 
+vi.mock("@multica/core/hooks", async () => {
+  const actual = await vi.importActual<typeof import("@multica/core/hooks")>("@multica/core/hooks");
+  return {
+    ...actual,
+    useWorkspaceId: () => "ws-1",
+  };
+});
+
 import { PullRequestList } from "./pull-request-list";
 
 let mockPRs: GitHubPullRequest[] = [];
