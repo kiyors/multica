@@ -34,6 +34,15 @@
     "accept_failed": "招待を承認できませんでした",
     "decline_failed": "招待を辞退できませんでした"
   },
+  "profile": {
+    "title": "チームに自己紹介しましょう",
+    "description": "この情報はプロフィールに表示され、チームメイトがコメントの投稿者を確認するために使われます。",
+    "name_label": "名前",
+    "email_label": "メールアドレス",
+    "department_label": "部署または役割",
+    "department_placeholder": "例：マーケティング、デザイン、エンジニアリング",
+    "required": "参加する前に名前と部署または役割を入力してください。"
+  },
   "batch": {
     "log_out": "ログアウト",
     "empty_title": "保留中の招待はありません",

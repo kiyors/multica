@@ -43,6 +43,8 @@
     "section_profile": "프로필",
     "click_avatar_hint": "클릭해서 아바타 업로드",
     "name_label": "이름",
+    "email_label": "이메일",
+    "email_hint": "로그인 이메일은 인증 제공업체에서 관리합니다.",
     "profile_description_label": "내 소개",
     "profile_description_hint": "나를 대신해 작업하는 에이전트에게 공유됩니다. 역할, 기술 스택, 선호 방식, 새 협업자에게 첫날 알려줄 만한 내용을 적어 주세요.",
     "profile_description_placeholder": "예: Go와 Postgres를 쓰는 백엔드 엔지니어. 간결한 PR과 변경사항에 맞춘 테스트를 선호합니다.",

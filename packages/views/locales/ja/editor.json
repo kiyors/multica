@@ -67,6 +67,7 @@
     "copy_code": "コードをコピー",
     "show_preview": "プレビューを表示",
     "show_source": "ソースを表示",
+    "select_language": "コード言語を選択",
     "fullscreen": "全画面"
   },
   "file_card": {

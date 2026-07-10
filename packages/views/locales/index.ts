@@ -100,37 +100,39 @@ import jaUi from "./ja/ui.json";
 import jaSquads from "./ja/squads.json";
 import jaBilling from "./ja/billing.json";
 
+const enResources: LocaleResources = {
+  common: enCommon,
+  auth: enAuth,
+  settings: enSettings,
+  issues: enIssues,
+  agents: enAgents,
+  editor: enEditor,
+  onboarding: enOnboarding,
+  invite: enInvite,
+  labels: enLabels,
+  members: enMembers,
+  "my-issues": enMyIssues,
+  search: enSearch,
+  inbox: enInbox,
+  workspace: enWorkspace,
+  projects: enProjects,
+  autopilots: enAutopilots,
+  skills: enSkills,
+  chat: enChat,
+  modals: enModals,
+  runtimes: enRuntimes,
+  layout: enLayout,
+  usage: enUsage,
+  ui: enUi,
+  squads: enSquads,
+  billing: enBilling,
+};
+
 // Single source of truth for the resource bundle. Both apps (web layout +
 // desktop App.tsx) import from here so adding a locale or namespace happens
 // in exactly one place.
 export const RESOURCES: Record<SupportedLocale, LocaleResources> = {
-  en: {
-    common: enCommon,
-    auth: enAuth,
-    settings: enSettings,
-    issues: enIssues,
-    agents: enAgents,
-    editor: enEditor,
-    onboarding: enOnboarding,
-    invite: enInvite,
-    labels: enLabels,
-    members: enMembers,
-    "my-issues": enMyIssues,
-    search: enSearch,
-    inbox: enInbox,
-    workspace: enWorkspace,
-    projects: enProjects,
-    autopilots: enAutopilots,
-    skills: enSkills,
-    chat: enChat,
-    modals: enModals,
-    runtimes: enRuntimes,
-    layout: enLayout,
-    usage: enUsage,
-    ui: enUi,
-    squads: enSquads,
-    billing: enBilling,
-  },
+  en: enResources,
   "zh-Hans": {
     common: zhHansCommon,
     auth: zhHansAuth,
@@ -213,53 +215,59 @@ export const RESOURCES: Record<SupportedLocale, LocaleResources> = {
     billing: jaBilling,
   },
   "en-marketing": {
+    ...enResources,
     issues: {
+      ...enIssues,
       page: {
+        ...enIssues.page,
         breadcrumb_title: "Tasks",
         empty_title: "No tasks yet",
-        empty_hint: "Create a task to get started."
+        empty_hint: "Create a task to get started.",
       },
       filters: {
+        ...enIssues.filters,
         issue_count_one: "{{count}} task",
-        issue_count_other: "{{count}} tasks"
-      }
-    },
-    common: {
-      issue_title: "Task",
-      create_issue: "Create task"
+        issue_count_other: "{{count}} tasks",
+      },
     },
     layout: {
-      navigation: {
-        issues: "Tasks"
+      ...enLayout,
+      nav: {
+        ...enLayout.nav,
+        issues: "Tasks",
       },
-      quick_add: {
-        issue: "New task"
-      }
-    }
+      sidebar: {
+        ...enLayout.sidebar,
+        new_issue: "New Task",
+      },
+    },
   },
   "en-creative": {
+    ...enResources,
     issues: {
+      ...enIssues,
       page: {
+        ...enIssues.page,
         breadcrumb_title: "Assets",
         empty_title: "No assets yet",
-        empty_hint: "Create an asset to get started."
+        empty_hint: "Create an asset to get started.",
       },
       filters: {
+        ...enIssues.filters,
         issue_count_one: "{{count}} asset",
-        issue_count_other: "{{count}} assets"
-      }
-    },
-    common: {
-      issue_title: "Asset",
-      create_issue: "Create asset"
+        issue_count_other: "{{count}} assets",
+      },
     },
     layout: {
-      navigation: {
-        issues: "Assets"
+      ...enLayout,
+      nav: {
+        ...enLayout.nav,
+        issues: "Assets",
       },
-      quick_add: {
-        issue: "New asset"
-      }
-    }
-  }
+      sidebar: {
+        ...enLayout.sidebar,
+        new_issue: "New Asset",
+      },
+    },
+  },
 };

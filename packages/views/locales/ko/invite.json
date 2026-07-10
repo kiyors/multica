@@ -34,6 +34,15 @@
     "accept_failed": "초대를 수락하지 못했습니다",
     "decline_failed": "초대를 거절하지 못했습니다"
   },
+  "profile": {
+    "title": "팀에 자신을 소개하세요",
+    "description": "이 정보는 프로필에 표시되며 팀원이 댓글 작성자를 확인하는 데 사용됩니다.",
+    "name_label": "이름",
+    "email_label": "이메일",
+    "department_label": "부서 또는 역할",
+    "department_placeholder": "예: 마케팅, 디자인, 엔지니어링",
+    "required": "참가하기 전에 이름과 부서 또는 역할을 입력하세요."
+  },
   "batch": {
     "log_out": "로그아웃",
     "empty_title": "대기 중인 초대가 없습니다",

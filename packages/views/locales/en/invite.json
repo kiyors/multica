@@ -34,6 +34,15 @@
     "accept_failed": "Failed to accept invitation",
     "decline_failed": "Failed to decline invitation"
   },
+  "profile": {
+    "title": "Tell your team who you are",
+    "description": "These details appear on your profile and help teammates identify your comments.",
+    "name_label": "Name",
+    "email_label": "Email",
+    "department_label": "Department or role",
+    "department_placeholder": "e.g. Marketing, Design, Engineering",
+    "required": "Enter your name and department or role before joining."
+  },
   "batch": {
     "log_out": "Log out",
     "empty_title": "No pending invitations",

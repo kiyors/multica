@@ -43,6 +43,8 @@
     "section_profile": "Profile",
     "click_avatar_hint": "Click to upload avatar",
     "name_label": "Name",
+    "email_label": "Email",
+    "email_hint": "Your sign-in email is managed by your authentication provider.",
     "profile_description_label": "About you",
     "profile_description_hint": "Shared with agents working on your behalf — role, stack, preferences, anything you'd tell a new collaborator on day one.",
     "profile_description_placeholder": "e.g. Backend engineer (Go + Postgres). Prefer terse PRs and tests alongside the change.",

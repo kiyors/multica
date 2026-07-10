@@ -43,6 +43,8 @@
     "section_profile": "个人资料",
     "click_avatar_hint": "点击上传头像",
     "name_label": "姓名",
+    "email_label": "邮箱",
+    "email_hint": "登录邮箱由你的身份验证服务提供商管理。",
     "profile_description_label": "关于你",
     "profile_description_hint": "与代表您工作的 Agent 共享 — 角色、技术栈、偏好，以及您在第一天会告诉新协作者的任何内容。",
     "profile_description_placeholder": "例如：后端工程师 (Go + Postgres)。偏好简洁的 PR 并随附测试代码。",

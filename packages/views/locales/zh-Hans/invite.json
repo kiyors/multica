@@ -34,6 +34,15 @@
     "accept_failed": "接受邀请失败",
     "decline_failed": "拒绝邀请失败"
   },
+  "profile": {
+    "title": "向团队介绍你自己",
+    "description": "这些信息会显示在你的个人资料中，并帮助队友识别你的评论。",
+    "name_label": "姓名",
+    "email_label": "邮箱",
+    "department_label": "部门或职位",
+    "department_placeholder": "例如：市场、设计、工程",
+    "required": "加入前请填写姓名和部门或职位。"
+  },
   "batch": {
     "log_out": "退出登录",
     "empty_title": "没有待处理的邀请",
