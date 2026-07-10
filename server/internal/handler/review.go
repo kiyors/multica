@@ -909,6 +909,34 @@ func (h *Handler) CreateGuestReviewComment(w http.ResponseWriter, r *http.Reques
 	writeJSON(w, http.StatusCreated, reviewCommentToResponse(comment))
 }
 
+func (h *Handler) UpdateGuestReviewStatus(w http.ResponseWriter, r *http.Request) {
+	asset, ok := h.guestReviewAsset(w, r)
+	if !ok {
+		return
+	}
+	var req UpdateReviewAssetStatusRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+	if req.Status != "pending" && req.Status != "approved" && req.Status != "changes_requested" {
+		writeError(w, http.StatusBadRequest, "invalid status")
+		return
+	}
+
+	updated, err := h.Queries.UpdateReviewAssetStatus(r.Context(), db.UpdateReviewAssetStatusParams{
+		ID:     asset.ID,
+		Status: req.Status,
+	})
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to update status")
+		return
+	}
+
+	h.publish(protocol.EventReviewAssetUpdated, asset.WorkspaceID.String(), "system", "", reviewAssetToResponse(updated))
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (h *Handler) DeleteReviewComment(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	commentUUID, ok := parseUUIDOrBadRequest(w, chi.URLParam(r, "commentId"), "commentId")

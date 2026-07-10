@@ -715,6 +715,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 	// capability token rather than a Multica account session.
 	r.With(guestReviewRL).Get("/api/guest/reviews/{token}", h.GetGuestReview)
 	r.With(guestReviewRL).Post("/api/guest/reviews/{token}/comments", h.CreateGuestReviewComment)
+	r.With(guestReviewRL).Put("/api/guest/reviews/{token}/status", h.UpdateGuestReviewStatus)
 
 	// Composio OAuth callback (MUL-3843). NOT under the Auth group on purpose:
 	// Composio 302-redirects the user's browser here at the end of the OAuth

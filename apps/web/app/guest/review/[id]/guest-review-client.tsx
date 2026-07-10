@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
-import { ChevronLeft, ChevronRight, Loader2, MessageSquare, Send } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, MessageSquare, Send, ThumbsUp, AlertCircle } from "lucide-react";
 import { MediaReviewPlayer } from "@multica/views/reviews";
-import type { GuestReview, ReviewComment } from "@multica/core/types";
+import type { GuestReview, ReviewComment, ReviewAssetStatus } from "@multica/core/types";
 
 const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "";
 
@@ -14,6 +14,7 @@ export function GuestReviewClient({ token }: { token: string }) {
   const [content, setContent] = useState("");
   const [pageIndex, setPageIndex] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [sentiment, setSentiment] = useState<ReviewAssetStatus>("pending");
 
   const load = useCallback(async () => {
     const response = await fetch(`${apiBase}/api/guest/reviews/${encodeURIComponent(token)}`, { cache: "no-store" });
@@ -43,8 +44,23 @@ export function GuestReviewClient({ token }: { token: string }) {
       });
       if (!response.ok) throw new Error("Unable to post your feedback.");
       const comment = await response.json() as ReviewComment;
-      setReview((current) => current ? { ...current, comments: [...current.comments, comment] } : current);
+      
+      let updatedReview = { ...review!, comments: [...review!.comments, comment] };
+      
+      if (sentiment !== "pending") {
+        const statusResp = await fetch(`${apiBase}/api/guest/reviews/${encodeURIComponent(token)}/status`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: sentiment }),
+        });
+        if (statusResp.ok) {
+           updatedReview.asset = { ...updatedReview.asset, status: sentiment };
+        }
+      }
+      
+      setReview(updatedReview);
       setContent("");
+      setSentiment("pending");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Unable to post your feedback.");
     } finally {
@@ -78,6 +94,14 @@ export function GuestReviewClient({ token }: { token: string }) {
         <form className="space-y-3 border-t border-border p-4" onSubmit={submitComment}>
           {error && <p className="text-xs text-destructive">{error}</p>}
           <input value={guestName} onChange={(event) => setGuestName(event.target.value)} maxLength={80} required placeholder="Your name" className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm" />
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setSentiment(sentiment === "approved" ? "pending" : "approved")} className={`flex flex-1 items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-xs font-medium transition-colors ${sentiment === "approved" ? "border-green-500 bg-green-50 text-green-700" : "border-border bg-background hover:bg-accent"}`}>
+              <ThumbsUp className="h-3.5 w-3.5" /> Like it
+            </button>
+            <button type="button" onClick={() => setSentiment(sentiment === "changes_requested" ? "pending" : "changes_requested")} className={`flex flex-1 items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-xs font-medium transition-colors ${sentiment === "changes_requested" ? "border-amber-500 bg-amber-50 text-amber-700" : "border-border bg-background hover:bg-accent"}`}>
+              <AlertCircle className="h-3.5 w-3.5" /> Changes needed
+            </button>
+          </div>
           <textarea value={content} onChange={(event) => setContent(event.target.value)} maxLength={5000} required placeholder="Leave feedback…" className="min-h-24 w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm" />
           <button disabled={submitting} className="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"><Send className="h-4 w-4" />{submitting ? "Sending…" : "Send feedback"}</button>
         </form>
