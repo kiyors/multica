@@ -21,6 +21,10 @@ vi.mock("@multica/core/workspace", () => ({
   useActorName: () => ({ getActorName: () => "Test User" })
 }));
 
+vi.mock("@multica/core/permissions", () => ({
+  useCurrentMember: () => ({ member: { id: "user1" } })
+}));
+
 vi.mock("@multica/core/reviews", () => ({
   useCreateReviewComment: () => ({ mutate: vi.fn(), isPending: false }),
   useResolveReviewComment: () => ({ mutate: vi.fn() }),

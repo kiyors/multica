@@ -51,7 +51,7 @@ export const useIssueDraftStore = create<IssueDraftStore>()(
       setDraft: (patch) =>
         set((s) => ({ draft: { ...s.draft, ...patch } })),
       clearDraft: () =>
-        set((s) => ({
+        set(() => ({
           draft: {
             ...EMPTY_DRAFT,
           },

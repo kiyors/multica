@@ -131,7 +131,7 @@ function CommentMarker({
   const markerRef = useRef<HTMLDivElement>(null);
   const [tooltipPos, setTooltipPos] = useState<{ left: number; top: number } | null>(null);
   const { getActorName } = useActorName();
-  const authorName = getActorName("member", comment.author_id) || "Unknown";
+  const authorName = getActorName("member", comment.author_id || "") || "Unknown";
 
   useEffect(() => {
     if (!isHovered || !markerRef.current) {
@@ -165,7 +165,7 @@ function CommentMarker({
         )}
         style={{ backgroundColor: color }}
       >
-        <ActorAvatar actorType="member" actorId={comment.author_id} size={16} />
+        <ActorAvatar actorType="member" actorId={comment.author_id || ""} size={16} />
       </div>
 
       {isHovered && tooltipPos && createPortal(
@@ -182,7 +182,7 @@ function CommentMarker({
         >
           <div className="bg-popover border border-border rounded-lg shadow-2xl p-3">
             <div className="flex items-center gap-2 mb-1.5">
-              <ActorAvatar actorType="member" actorId={comment.author_id} size={16} />
+              <ActorAvatar actorType="member" actorId={comment.author_id || ""} size={16} />
               <span className="text-xs font-medium text-popover-foreground truncate">{authorName}</span>
               {comment.start_time !== null && comment.start_time !== undefined && (
                 <span className="ml-auto text-[10px] font-mono text-primary bg-primary/10 px-1.5 py-0.5 rounded">

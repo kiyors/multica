@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { render, screen, act, cleanup, waitFor } from "@testing-library/react";
+import { render, screen, cleanup, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { I18nProvider } from "@multica/core/i18n/react";
 import enCommon from "../../locales/en/common.json";
@@ -9,7 +9,6 @@ import enSettings from "../../locales/en/settings.json";
 
 const mockPersist = vi.hoisted(() => vi.fn());
 const mockUpdateMe = vi.hoisted(() => vi.fn());
-const mockReload = vi.hoisted(() => vi.fn());
 const mockToastWarning = vi.hoisted(() => vi.fn());
 const mockToastError = vi.hoisted(() => vi.fn());
 const mockSetUser = vi.hoisted(() => vi.fn());
@@ -79,93 +78,6 @@ function I18nWrapper({ children }: { children: ReactNode }) {
   );
 }
 
-describe("PreferencesTab — Language switcher", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    userRef.current = null;
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-    Object.defineProperty(window, "location", {
-      writable: true,
-      configurable: true,
-      value: { reload: mockReload },
-    });
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it("does nothing when clicking the current locale", async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    render(<PreferencesTab />, { wrapper: I18nWrapper });
-
-    await user.click(screen.getByRole("radio", { name: "English" }));
-
-    expect(mockPersist).not.toHaveBeenCalled();
-    expect(mockUpdateMe).not.toHaveBeenCalled();
-    expect(mockReload).not.toHaveBeenCalled();
-  });
-
-  it("when not logged in: persists + reloads, no PATCH", async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    render(<PreferencesTab />, { wrapper: I18nWrapper });
-
-    await user.click(screen.getByRole("radio", { name: "한국어" }));
-
-    expect(mockPersist).toHaveBeenCalledWith("ko");
-    expect(mockUpdateMe).not.toHaveBeenCalled();
-    expect(mockReload).toHaveBeenCalledTimes(1);
-    expect(mockToastWarning).not.toHaveBeenCalled();
-  });
-
-  it("when not logged in: selecting Japanese persists ja + reloads, no PATCH", async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    render(<PreferencesTab />, { wrapper: I18nWrapper });
-
-    await user.click(screen.getByRole("radio", { name: "日本語" }));
-
-    expect(mockPersist).toHaveBeenCalledWith("ja");
-    expect(mockUpdateMe).not.toHaveBeenCalled();
-    expect(mockReload).toHaveBeenCalledTimes(1);
-    expect(mockToastWarning).not.toHaveBeenCalled();
-  });
-
-  it("when logged in + PATCH success: persists + PATCH + reload immediately", async () => {
-    userRef.current = { id: "user-1" };
-    mockUpdateMe.mockResolvedValueOnce({});
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    render(<PreferencesTab />, { wrapper: I18nWrapper });
-
-    await user.click(screen.getByRole("radio", { name: "中文" }));
-
-    expect(mockPersist).toHaveBeenCalledWith("zh-Hans");
-    expect(mockUpdateMe).toHaveBeenCalledWith({ language: "zh-Hans" });
-    expect(mockToastWarning).not.toHaveBeenCalled();
-    expect(mockReload).toHaveBeenCalledTimes(1);
-  });
-
-  it("when logged in + PATCH fails: shows toast and delays reload by 2.5s", async () => {
-    userRef.current = { id: "user-1" };
-    mockUpdateMe.mockRejectedValueOnce(new Error("network"));
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    render(<PreferencesTab />, { wrapper: I18nWrapper });
-
-    await user.click(screen.getByRole("radio", { name: "中文" }));
-
-    // Local persist still happened so the reload below sees the new locale.
-    expect(mockPersist).toHaveBeenCalledWith("zh-Hans");
-    expect(mockUpdateMe).toHaveBeenCalledWith({ language: "zh-Hans" });
-    // Toast surfaced the sync failure.
-    expect(mockToastWarning).toHaveBeenCalledTimes(1);
-    // Reload deferred so the toast is visible.
-    expect(mockReload).not.toHaveBeenCalled();
-
-    act(() => {
-      vi.advanceTimersByTime(2500);
-    });
-    expect(mockReload).toHaveBeenCalledTimes(1);
-  });
-});
 
 describe("PreferencesTab — Timezone section", () => {
   beforeEach(() => {

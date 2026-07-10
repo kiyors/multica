@@ -109,7 +109,7 @@ function LoginPageContent() {
           setDesktopError(
             err instanceof Error
               ? err.message
-              : t(($) => $.desktop_handoff.prepare_failed),
+              : t(($) => $.web.desktop_handoff.prepare_failed),
           );
         });
       return;
@@ -175,7 +175,7 @@ function LoginPageContent() {
           <Card className="w-full max-w-sm">
             <CardHeader className="text-center">
               <CardTitle className="text-2xl">
-                {t(($) => $.desktop_handoff.failed_title)}
+                {t(($) => $.web.desktop_handoff.failed_title)}
               </CardTitle>
               <CardDescription>{desktopError}</CardDescription>
             </CardHeader>
@@ -188,12 +188,12 @@ function LoginPageContent() {
         <Card className="w-full max-w-sm">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl">
-              {t(($) => $.desktop_handoff.opening_title)}
+              {t(($) => $.web.desktop_handoff.opening_title)}
             </CardTitle>
             <CardDescription>
               {desktopToken
-                ? t(($) => $.desktop_handoff.opening_description)
-                : t(($) => $.desktop_handoff.preparing)}
+                ? t(($) => $.web.desktop_handoff.opening_description)
+                : t(($) => $.web.desktop_handoff.preparing)}
             </CardDescription>
           </CardHeader>
           <CardContent className="flex justify-center">
@@ -204,7 +204,7 @@ function LoginPageContent() {
                   window.location.href = `multica://auth/callback?token=${encodeURIComponent(desktopToken)}`;
                 }}
               >
-                {t(($) => $.desktop_handoff.open_button)}
+                {t(($) => $.web.desktop_handoff.open_button)}
               </Button>
             ) : (
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -235,12 +235,12 @@ function LoginPageContent() {
       onTokenObtained={setLoggedInCookie}
       extra={
         <span className="text-xs text-muted-foreground">
-          {t(($) => $.prefer_desktop)}{" "}
+          {t(($) => $.web.prefer_desktop)}{" "}
           <Link
             href="/download"
             className="font-medium text-foreground underline decoration-foreground/30 underline-offset-4 hover:decoration-foreground/70"
           >
-            {t(($) => $.download)}
+            {t(($) => $.web.download)}
           </Link>
         </span>
       }

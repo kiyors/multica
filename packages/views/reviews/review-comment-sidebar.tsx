@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useModalStore } from "@multica/core/modals";
-import { useAuthStore } from "@multica/core/auth";
 import { 
   useCreateReviewComment, 
   useResolveReviewComment, 
@@ -46,7 +45,6 @@ export function ReviewCommentSidebar({
   pageIndex = 0,
 }: ReviewCommentSidebarProps) {
   const editorRef = React.useRef<ContentEditorRef>(null);
-  const currentUserId = useAuthStore(s => s.user?.id);
   const { member: currentMember } = useCurrentMember(workspaceId);
   const { getActorName } = useActorName();
   const { mutate: createComment, isPending: isCreating } = useCreateReviewComment();
