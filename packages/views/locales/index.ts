@@ -214,4 +214,6 @@ export const RESOURCES: Record<SupportedLocale, LocaleResources> = {
     squads: jaSquads,
     billing: jaBilling,
   },
+  "en-marketing": enResources,
+  "en-creative": enResources,
 };

@@ -35,13 +35,6 @@ export function UserLocaleSync() {
       // Let's assume ANY role that isn't software development might want Tasks, but wait, the prompt says "Depending on the FIRST role the user selects, change the terminology..."
       // I will just apply it for marketing and creative and marketing_team. Wait, if it says "change the terminology from Issues to Tasks" maybe for ANY role that is not engineer?
       // Let's just apply it dynamically.
-      const terminologyMap: Record<string, "Tasks" | "Assets"> = {
-        marketing: "Tasks",
-        marketing_team: "Tasks",
-        creative: "Assets", // Assuming creative was Assets as before
-        designer: "Tasks",
-        founder: "Tasks",
-      };
       // Actually, prompt says: "change the terminology from 'Issues' to 'Tasks', 'My issues' to 'My tasks', and 'New issues' to 'New task'."
       // So I will just use "Tasks" for all of them if they are not engineer.
       const term = firstRole !== "engineer" ? "Tasks" : "Issues";

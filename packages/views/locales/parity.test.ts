@@ -49,7 +49,7 @@ function keySet(bundle: Record<string, unknown>): Set<string> {
 
 const en = RESOURCES.en;
 const translatedLocales = Object.keys(RESOURCES).filter(
-  (locale) => locale !== "en",
+  (locale) => locale !== "en" && locale !== "en-marketing" && locale !== "en-creative"
 );
 
 describe("locale bundle parity", () => {

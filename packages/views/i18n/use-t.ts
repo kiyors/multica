@@ -5,19 +5,14 @@
 import "./resources-types";
 
 import { useTranslation } from "react-i18next";
-import { useCallback, useMemo } from "react";
-import { useAuthStore } from "@multica/core/auth";
+import { useCallback } from "react";
+import type { FlatNamespace } from "i18next";
 
-export function useT(ns?: string) {
+export function useT<
+  Ns extends FlatNamespace | readonly [FlatNamespace, ...FlatNamespace[]]
+>(ns?: Ns) {
   const { t, i18n } = useTranslation(ns);
-  const user = useAuthStore((s) => s.user);
-
-  const roleRaw = user?.onboarding_questionnaire?.role;
-  const firstRole = Array.isArray(roleRaw) ? roleRaw[0] : (typeof roleRaw === "string" ? roleRaw : undefined);
-
-  // If first role is anything other than engineer/product (e.g. creative, marketing, operations)
-  // we use "Tasks" terminology instead of "Issues"
-  const useTasks = firstRole && !["engineer", "product"].includes(firstRole);
+  const useTasks = typeof i18n.language === "string" && ["en-marketing", "en-creative"].includes(i18n.language);
 
   const customT = useCallback(
     (...args: any[]) => {
