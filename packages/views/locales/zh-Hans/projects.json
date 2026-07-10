@@ -151,10 +151,10 @@
     "title": "Document",
     "new_page": "新建页面",
     "new_folder": "新建文件夹",
-    "empty": "暂无 Wiki 页面。创建页面或文件夹即可开始。",
+    "empty": "暂无文档。创建文档或文件夹即可开始。",
     "export_markdown": "导出 .md",
     "item_count_other": "此文件夹中有 {{count}} 个项目。",
-    "select_empty": "选择 Wiki 页面或新建一个。",
+    "select_empty": "选择文档或新建一个。",
     "new_page_inside": "在其中新建页面",
     "new_folder_inside": "在其中新建文件夹",
     "delete": "删除"

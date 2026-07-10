@@ -151,10 +151,10 @@
     "title": "Document",
     "new_page": "新しいページ",
     "new_folder": "新しいフォルダ",
-    "empty": "Wiki ページはまだありません。ページまたはフォルダを作成してください。",
+    "empty": "ドキュメントはまだありません。ドキュメントまたはフォルダを作成してください。",
     "export_markdown": ".md をエクスポート",
     "item_count_other": "このフォルダには {{count}} 件あります。",
-    "select_empty": "Wiki ページを選択するか、新しく作成してください。",
+    "select_empty": "ドキュメントを選択するか、新しく作成してください。",
     "new_page_inside": "中に新しいページ",
     "new_folder_inside": "中に新しいフォルダ",
     "delete": "削除"

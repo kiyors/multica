@@ -325,7 +325,7 @@ describe("project collaboration response schemas", () => {
     expect(milestone?.member_ids).toEqual([]);
   });
 
-  it("defaults legacy wiki documents to pages", () => {
+  it("defaults legacy document documents to pages", () => {
     const [document] = ProjectDocumentListSchema.parse([{
       id: "document-1",
       project_id: "project-1",

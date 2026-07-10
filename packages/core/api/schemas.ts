@@ -155,6 +155,11 @@ const TimelineEntrySchema = z.object({
   reactions: z.array(ReactionSchema).optional(),
   attachments: z.array(AttachmentSchema).optional(),
   source_task_id: z.string().nullable().optional(),
+  review_asset_id: z.string().nullable().optional(),
+  review_comment_id: z.string().nullable().optional(),
+  review_page_index: z.number().nullable().optional(),
+  review_start_time: z.number().nullable().optional(),
+  review_end_time: z.number().nullable().optional(),
   coalesced_count: z.number().optional(),
 }).loose();
 
@@ -232,6 +237,11 @@ export const CommentSchema = z.object({
   created_at: z.string(),
   updated_at: z.string(),
   source_task_id: z.string().nullable().optional(),
+  review_asset_id: z.string().nullable().optional(),
+  review_comment_id: z.string().nullable().optional(),
+  review_page_index: z.number().nullable().optional(),
+  review_start_time: z.number().nullable().optional(),
+  review_end_time: z.number().nullable().optional(),
 }).loose();
 
 export const CommentsListSchema = z.array(CommentSchema);

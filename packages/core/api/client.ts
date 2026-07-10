@@ -2470,11 +2470,19 @@ export class ApiClient {
     end_time?: number;
     shapes?: any;
     parent_id?: string;
+    page_index?: number;
   }): Promise<ReviewComment> {
     return this.fetch(`/api/issues/${issueId}/reviews/comments`, {
       method: "POST",
       headers: { "X-Workspace-ID": workspaceId },
       body: JSON.stringify(payload),
+    });
+  }
+
+  async createGuestReviewLink(workspaceId: string, issueId: string, assetId: string): Promise<{ token: string }> {
+    return this.fetch(`/api/issues/${issueId}/reviews/assets/${assetId}/guest-link`, {
+      method: "POST",
+      headers: { "X-Workspace-ID": workspaceId },
     });
   }
 
@@ -2490,6 +2498,7 @@ export class ApiClient {
     shapes?: any;
     start_time?: number;
     end_time?: number;
+    page_index?: number;
   }): Promise<ReviewComment> {
     return this.fetch(`/api/issues/${issueId}/reviews/comments/${commentId}`, {
       method: "PATCH",

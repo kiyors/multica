@@ -12,6 +12,7 @@ export interface MediaReviewPlayerProps {
   selectedCommentId?: string;
   onSelectComment?: (id: string) => void;
   onDrawingShapeChange?: (shape: any) => void;
+  pageIndex?: number;
 }
 
 export interface MediaReviewPlayerRef {
@@ -29,7 +30,7 @@ export function isReviewCommentVisible(
   selectedCommentId?: string,
 ): boolean {
   if (comment.id === selectedCommentId) return true;
-  if (assetType === "image") return true;
+  if (assetType === "image" || assetType === "pdf") return true;
   if (
     comment.start_time === null ||
     comment.start_time === undefined ||
@@ -45,7 +46,7 @@ export function isReviewCommentVisible(
 }
 
 export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPlayerProps>(
-  ({ asset, onTimeUpdate, comments, selectedCommentId, onSelectComment, onDrawingShapeChange }, ref) => {
+  ({ asset, onTimeUpdate, comments, selectedCommentId, onSelectComment, onDrawingShapeChange, pageIndex = 0 }, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const mediaRef = useRef<HTMLVideoElement | HTMLImageElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -203,7 +204,7 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
     setIsDrawing(false);
   };
 
-  const visibleComments = (comments || []).filter((comment) =>
+  const visibleComments = (comments || []).filter((comment) => (comment.page_index ?? 0) === pageIndex).filter((comment) =>
     isReviewCommentVisible(
       comment,
       asset.asset_type,
@@ -283,7 +284,13 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
         tabIndex={0}
         onKeyDown={handleKeyDown}
       >
-        {asset.asset_type === "video" ? (
+        {asset.asset_type === "pdf" ? (
+          <iframe
+            title={asset.name}
+            src={`${asset.src_url}#page=${pageIndex + 1}&view=Fit`}
+            className="absolute inset-0 h-full w-full border-0 bg-white"
+          />
+        ) : asset.asset_type === "video" ? (
           <video
             ref={mediaRef as React.RefObject<HTMLVideoElement>}
             src={asset.src_url.endsWith('.m3u8') ? undefined : asset.src_url}

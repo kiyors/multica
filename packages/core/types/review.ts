@@ -1,5 +1,5 @@
 export type ReviewAssetStatus = "pending" | "approved" | "changes_requested";
-export type ReviewAssetType = "video" | "image";
+export type ReviewAssetType = "video" | "image" | "pdf";
 
 export interface ReviewAsset {
   id: string;
@@ -34,10 +34,12 @@ export interface AnnotationShape {
 export interface ReviewComment {
   id: string;
   asset_id: string;
-  author_id: string;
+  author_id?: string;
+  guest_name?: string;
   content: string;
   start_time?: number;
   end_time?: number;
+  page_index?: number;
   shapes: AnnotationShape[];
   resolved: boolean;
   resolved_by?: string;
@@ -45,4 +47,9 @@ export interface ReviewComment {
   parent_id?: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface GuestReview {
+  asset: ReviewAsset;
+  comments: ReviewComment[];
 }

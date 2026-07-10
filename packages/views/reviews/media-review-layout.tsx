@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Trash2, Share2, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Trash2, Share2, X } from "lucide-react";
 import { toast } from "sonner";
 import type { ReviewAsset } from "@multica/core/types";
 import {
@@ -13,7 +13,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@multica/ui/components/ui/alert-dialog";
-import { useUpdateReviewAssetStatus, useReviewAssetUpload, useDeleteReviewAsset, useDeleteReviewAssetGroup } from "@multica/core/reviews/mutations";
+import { useUpdateReviewAssetStatus, useReviewAssetUpload, useDeleteReviewAsset, useDeleteReviewAssetGroup, useCreateGuestReviewLink } from "@multica/core/reviews/mutations";
 import { listReviewAssetsOptions, listReviewCommentsOptions } from "@multica/core/reviews/queries";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@multica/ui/components/ui/select";
 import { MediaReviewPlayer, type MediaReviewPlayerRef } from "./media-review-player";
@@ -27,13 +27,27 @@ interface MediaReviewLayoutProps {
   asset: ReviewAsset;
   onAssetChange?: (asset: ReviewAsset) => void;
   onClose?: () => void;
+  initialCommentId?: string;
+  initialPageIndex?: number;
+  initialTime?: number;
 }
 
-export function MediaReviewLayout({ workspaceId, asset, onAssetChange, onClose }: MediaReviewLayoutProps) {
+export function MediaReviewLayout({ workspaceId, asset, onAssetChange, onClose, initialCommentId, initialPageIndex = 0, initialTime }: MediaReviewLayoutProps) {
   const playerRef = useRef<MediaReviewPlayerRef>(null);
   const [currentTime, setCurrentTime] = useState(0);
-  const [selectedCommentId, setSelectedCommentId] = useState<string | undefined>();
+  const [selectedCommentId, setSelectedCommentId] = useState<string | undefined>(initialCommentId);
   const [drawingShape, setDrawingShape] = useState<any>(null);
+  const [pageIndex, setPageIndex] = useState(initialPageIndex);
+
+  useEffect(() => {
+    setSelectedCommentId(initialCommentId);
+    setPageIndex(initialPageIndex);
+    if (initialTime != null) {
+      const frame = requestAnimationFrame(() => playerRef.current?.seek(initialTime));
+      return () => cancelAnimationFrame(frame);
+    }
+    return undefined;
+  }, [asset.id, initialCommentId, initialPageIndex, initialTime]);
 
   const { data: allAssets } = useQuery(listReviewAssetsOptions(workspaceId, asset.issue_id));
   const { data: comments, isLoading: commentsLoading } = useQuery(listReviewCommentsOptions(workspaceId, asset.issue_id, asset.id));
@@ -41,6 +55,7 @@ export function MediaReviewLayout({ workspaceId, asset, onAssetChange, onClose }
   const uploadAsset = useReviewAssetUpload();
   const deleteAsset = useDeleteReviewAsset();
   const deleteGroup = useDeleteReviewAssetGroup();
+  const createGuestLink = useCreateGuestReviewLink();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadPhase, setUploadPhase] = useState<UploadPhase | null>(null);
@@ -152,6 +167,13 @@ export function MediaReviewLayout({ workspaceId, asset, onAssetChange, onClose }
       <div className="h-14 border-b border-border bg-muted/20 flex items-center justify-between px-4 text-foreground">
         <div className="flex items-center gap-4">
           <div className="font-medium text-sm">{asset.name}</div>
+          {asset.asset_type === "pdf" && (
+            <div className="flex items-center gap-1">
+              <button className="rounded p-1 hover:bg-muted" aria-label="Previous page" disabled={pageIndex === 0} onClick={() => setPageIndex((value) => Math.max(0, value - 1))}><ChevronLeft className="h-4 w-4" /></button>
+              <span className="min-w-14 text-center text-xs">Page {pageIndex + 1}</span>
+              <button className="rounded p-1 hover:bg-muted" aria-label="Next page" onClick={() => setPageIndex((value) => value + 1)}><ChevronRight className="h-4 w-4" /></button>
+            </div>
+          )}
           
           <div className="flex items-center gap-2">
             <Select value={asset.id} onValueChange={handleVersionChange}>
@@ -178,14 +200,23 @@ export function MediaReviewLayout({ workspaceId, asset, onAssetChange, onClose }
             {/* Guest Share */}
             <button
               onClick={() => {
-                navigator.clipboard.writeText(`${window.location.origin}/guest/review/${asset.id}`);
-                toast.success("Guest share link copied to clipboard");
+                createGuestLink.mutate(
+                  { workspaceId, issueId: asset.issue_id, assetId: asset.id },
+                  {
+                    onSuccess: async ({ token }) => {
+                      await navigator.clipboard.writeText(`${window.location.origin}/guest/review/${token}`);
+                      toast.success("Guest share link copied to clipboard");
+                    },
+                    onError: () => toast.error("Failed to create guest share link"),
+                  },
+                );
               }}
+              disabled={createGuestLink.isPending}
               title="Share with guests"
               className="text-xs px-2 py-1 bg-muted hover:bg-muted/80 rounded border border-border text-foreground flex items-center gap-1"
             >
               <Share2 className="w-3 h-3" />
-              Share
+              {createGuestLink.isPending ? "Creating…" : "Share"}
             </button>
 
             {/* Delete current version */}
@@ -202,7 +233,7 @@ export function MediaReviewLayout({ workspaceId, asset, onAssetChange, onClose }
               type="file" 
               ref={fileInputRef} 
               className="hidden" 
-              accept="video/*,image/*" 
+              accept="video/*,image/*,application/pdf"
               onChange={handleFileChange} 
             />
           </div>
@@ -270,6 +301,7 @@ export function MediaReviewLayout({ workspaceId, asset, onAssetChange, onClose }
             selectedCommentId={selectedCommentId}
             onSelectComment={setSelectedCommentId}
             onDrawingShapeChange={setDrawingShape}
+            pageIndex={pageIndex}
           />
         </ResizablePanel>
         
@@ -289,6 +321,7 @@ export function MediaReviewLayout({ workspaceId, asset, onAssetChange, onClose }
             getCanvasShapes={getCanvasShapes}
             clearCanvasShapes={clearCanvasShapes}
             drawingShape={drawingShape}
+            pageIndex={pageIndex}
           />
         </ResizablePanel>
       </ResizablePanelGroup>

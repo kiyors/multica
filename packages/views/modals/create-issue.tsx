@@ -197,7 +197,6 @@ export function ManualCreatePanel({
   const draft = useIssueDraftStore((s) => s.draft);
   const setDraft = useIssueDraftStore((s) => s.setDraft);
   const clearDraft = useIssueDraftStore((s) => s.clearDraft);
-  const setLastAssignees = useIssueDraftStore((s) => s.setLastAssignees);
   const setLastMode = useCreateModeStore((s) => s.setLastMode);
   const keepOpen = useQuickCreateStore((s) => s.keepOpen);
   const setKeepOpen = useQuickCreateStore((s) => s.setKeepOpen);
@@ -448,11 +447,6 @@ export function ManualCreatePanel({
         }
       }
 
-      if (keepOpen) {
-        setLastAssignees(assignees);
-      } else {
-        setLastAssignees([]);
-      }
       setLastMode("manual");
       clearDraft();
       // The old post-create "agent paused in Backlog" blocking panel is gone —

@@ -27,6 +27,7 @@ interface ReviewCommentSidebarProps {
   selectedCommentId?: string;
   onSelectComment?: (id: string) => void;
   drawingShape?: any;
+  pageIndex?: number;
 }
 
 export function ReviewCommentSidebar({
@@ -42,6 +43,7 @@ export function ReviewCommentSidebar({
   selectedCommentId,
   onSelectComment,
   drawingShape,
+  pageIndex = 0,
 }: ReviewCommentSidebarProps) {
   const editorRef = React.useRef<ContentEditorRef>(null);
   const currentUserId = useAuthStore(s => s.user?.id);
@@ -91,6 +93,7 @@ export function ReviewCommentSidebar({
       end_time: finalEndTime !== null ? finalEndTime : undefined,
       shapes: getCanvasShapes() || [],
       parentId: replyingTo || undefined,
+      pageIndex,
     });
 
     // Optimistically clear the form so the user can immediately type another comment
@@ -121,7 +124,7 @@ export function ReviewCommentSidebar({
         {isLoading ? (
           <div className="text-muted-foreground text-sm">Loading comments...</div>
         ) : (() => {
-          const parents = comments?.filter(c => !c.parent_id) || [];
+          const parents = comments?.filter(c => !c.parent_id && (c.page_index ?? 0) === pageIndex) || [];
           
           let filteredParents = parents;
           if (filter === "resolved") {
@@ -164,11 +167,14 @@ export function ReviewCommentSidebar({
                   }}
                   onClick={() => onSelectComment?.(comment.id)}
                 >
+                  {comment.is_pending && (
+                    <div className="absolute inset-0 bg-background/50 rounded-md z-10 pointer-events-none animate-pulse" />
+                  )}
                   <div>
                     <div className="flex flex-col gap-1 mb-2">
                       <div className="flex justify-between items-center">
                         <span className="font-semibold text-[13px] text-foreground leading-none">
-                          {getActorName("member", comment.author_id)}
+                          {comment.guest_name ?? (comment.author_id ? getActorName("member", comment.author_id) : "Guest")}
                         </span>
                         {comment.resolved && <span className="text-[11px] text-green-500 font-medium leading-none">Resolved</span>}
                       </div>
@@ -219,7 +225,7 @@ export function ReviewCommentSidebar({
                           <button 
                             onClick={(e) => {
                               e.stopPropagation();
-                              updateComment({ workspaceId, issueId: asset.issue_id, commentId: comment.id, assetId: asset.id, content: editContent });
+                              updateComment({ workspaceId, issueId: asset.issue_id, commentId: comment.id, assetId: asset.id, content: editContent, pageIndex });
                               setEditingCommentId(null);
                             }} 
                             className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded"
@@ -308,7 +314,7 @@ export function ReviewCommentSidebar({
                     {replies.map(reply => (
                       <div key={reply.id} className="bg-muted p-2 rounded border border-border text-sm">
                          <div className="font-medium text-xs text-foreground mb-1">
-                           {getActorName("member", reply.author_id)}
+                           {reply.guest_name ?? (reply.author_id ? getActorName("member", reply.author_id) : "Guest")}
                          </div>
                          {editingCommentId === reply.id ? (
                             <div className="flex flex-col gap-2 mt-1">

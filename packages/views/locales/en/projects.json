@@ -152,11 +152,11 @@
     "title": "Document",
     "new_page": "New page",
     "new_folder": "New folder",
-    "empty": "No wiki pages yet. Create a page or folder to get started.",
+    "empty": "No documents yet. Create a document or folder to get started.",
     "export_markdown": "Export .md",
     "item_count_one": "{{count}} item in this folder.",
     "item_count_other": "{{count}} items in this folder.",
-    "select_empty": "Select a wiki page or create a new one.",
+    "select_empty": "Select a document or create a new one.",
     "new_page_inside": "New page inside",
     "new_folder_inside": "New folder inside",
     "delete": "Delete"

@@ -11,6 +11,7 @@ interface CreateReviewCommentParams {
   end_time?: number;
   shapes?: any;
   parentId?: string;
+  pageIndex?: number;
 }
 
 export function useCreateReviewComment() {
@@ -25,13 +26,58 @@ export function useCreateReviewComment() {
         end_time: params.end_time,
         shapes: params.shapes,
         parent_id: params.parentId,
+        page_index: params.pageIndex ?? 0,
       });
     },
-    onSuccess: (_newComment, variables) => {
+    onMutate: async (variables) => {
+      const queryKey = reviewKeys.comments(variables.workspaceId, variables.assetId);
+      await queryClient.cancelQueries({ queryKey });
+
+      const previousComments = queryClient.getQueryData<any[]>(queryKey);
+
+      queryClient.setQueryData<any[]>(queryKey, (old = []) => {
+        const optimisticComment = {
+          id: `pending-${Date.now()}`,
+          asset_id: variables.assetId,
+          content: variables.content,
+          start_time: variables.start_time ?? null,
+          end_time: variables.end_time ?? null,
+          shapes: variables.shapes ?? [],
+          parent_id: variables.parentId ?? null,
+          page_index: variables.pageIndex ?? 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          is_resolved: false,
+          is_pending: true,
+          // Since we don't have the current user here, the UI will fall back
+          // gracefully if author is missing, or we could inject it if we had it.
+          author: null,
+        };
+        return [...old, optimisticComment];
+      });
+
+      return { previousComments };
+    },
+    onError: (_err, variables, context) => {
+      if (context?.previousComments) {
+        queryClient.setQueryData(
+          reviewKeys.comments(variables.workspaceId, variables.assetId),
+          context.previousComments
+        );
+      }
+    },
+    onSettled: (_data, _error, variables) => {
       queryClient.invalidateQueries({
         queryKey: reviewKeys.comments(variables.workspaceId, variables.assetId),
       });
     },
+  });
+}
+
+export function useCreateGuestReviewLink() {
+  return useMutation({
+    mutationFn: async (params: { workspaceId: string; issueId: string; assetId: string }) =>
+      await api.createGuestReviewLink(params.workspaceId, params.issueId, params.assetId),
   });
 }
 
@@ -69,12 +115,13 @@ export function useUpdateReviewComment() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (params: { workspaceId: string; issueId: string; commentId: string; assetId: string; content: string; shapes?: any; start_time?: number; end_time?: number; }) => {
+    mutationFn: async (params: { workspaceId: string; issueId: string; commentId: string; assetId: string; content: string; shapes?: any; start_time?: number; end_time?: number; pageIndex?: number; }) => {
       return await api.updateReviewComment(params.workspaceId, params.issueId, params.commentId, {
         content: params.content,
         shapes: params.shapes,
         start_time: params.start_time,
         end_time: params.end_time,
+        page_index: params.pageIndex ?? 0,
       });
     },
     onSuccess: (_updatedComment, variables) => {

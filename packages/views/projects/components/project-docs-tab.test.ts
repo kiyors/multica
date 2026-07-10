@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { ProjectDocument } from "@multica/core/types";
 import { projectDocumentMarkdown, safeMarkdownFilename } from "./project-docs-tab";
 
-describe("project wiki Markdown export", () => {
+describe("project document Markdown export", () => {
   it("preserves fenced-code language metadata", () => {
     const document = {
       id: "doc-1",

@@ -27,6 +27,11 @@ export interface TimelineEntry {
   resolved_by_type?: CommentAuthorType | null;
   resolved_by_id?: string | null;
   source_task_id?: string | null;
+  review_asset_id?: string | null;
+  review_comment_id?: string | null;
+  review_page_index?: number | null;
+  review_start_time?: number | null;
+  review_end_time?: number | null;
   /** Set by frontend coalescing when consecutive identical activities are merged. */
   coalesced_count?: number;
 }

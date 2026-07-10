@@ -728,6 +728,10 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
   // Issue navigation — read from TQ list cache
   const wsId = useWorkspaceId();
   const reviewAssetId = router.searchParams.get("review");
+  const reviewCommentId = router.searchParams.get("reviewComment") ?? undefined;
+  const reviewPageIndex = Math.max(0, Number.parseInt(router.searchParams.get("reviewPage") ?? "0", 10) || 0);
+  const parsedReviewTime = Number.parseFloat(router.searchParams.get("reviewTime") ?? "");
+  const reviewTime = Number.isFinite(parsedReviewTime) ? parsedReviewTime : undefined;
   const { data: reviewAssets } = useQuery({
     ...listReviewAssetsOptions(wsId, id),
     enabled: !!reviewAssetId, // Only fetch at top level if there's a URL param
@@ -757,10 +761,26 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
       newParams.set("review", asset.id);
     } else {
       newParams.delete("review");
+      newParams.delete("reviewComment");
+      newParams.delete("reviewPage");
+      newParams.delete("reviewTime");
     }
     const searchStr = newParams.toString();
     const newUrl = `${window.location.pathname}${searchStr ? `?${searchStr}` : ""}`;
     router.replace(newUrl, { scroll: false });
+  }, [router]);
+
+  const handleOpenReviewFromTimeline = useCallback((entry: TimelineEntry) => {
+    if (!entry.review_asset_id) return;
+    const newParams = new URLSearchParams(window.location.search);
+    newParams.set("review", entry.review_asset_id);
+    if (entry.review_comment_id) newParams.set("reviewComment", entry.review_comment_id);
+    else newParams.delete("reviewComment");
+    if (entry.review_page_index != null) newParams.set("reviewPage", String(entry.review_page_index));
+    else newParams.delete("reviewPage");
+    if (entry.review_start_time != null) newParams.set("reviewTime", String(entry.review_start_time));
+    else newParams.delete("reviewTime");
+    router.replace(`${window.location.pathname}?${newParams.toString()}`, { scroll: false });
   }, [router]);
 
   const { data: members = [] } = useQuery(memberListOptions(wsId));
@@ -1809,6 +1829,7 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
             expandedResolvedIds={expandedResolved}
             onResolvedExpandChange={toggleResolvedExpand}
             highlightedCommentId={highlightedId}
+            onOpenReview={handleOpenReviewFromTimeline}
           />
         </div>
       );
@@ -2351,6 +2372,9 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
               asset={reviewAsset}
               onAssetChange={handleReviewAssetChange}
               onClose={() => handleReviewAssetChange(null)}
+              initialCommentId={reviewCommentId}
+              initialPageIndex={reviewPageIndex}
+              initialTime={reviewTime}
             />
           )}
         </DialogContent>

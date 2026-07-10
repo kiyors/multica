@@ -57,6 +57,11 @@ function commentToTimelineEntry(c: Comment): TimelineEntry {
     resolved_by_type: c.resolved_by_type,
     resolved_by_id: c.resolved_by_id,
     source_task_id: c.source_task_id,
+    review_asset_id: c.review_asset_id,
+    review_comment_id: c.review_comment_id,
+    review_page_index: c.review_page_index,
+    review_start_time: c.review_start_time,
+    review_end_time: c.review_end_time,
   };
 }
 

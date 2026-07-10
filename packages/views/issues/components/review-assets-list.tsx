@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, Video, Image as ImageIcon, Check, Clock, AlertCircle, Trash2 } from "lucide-react";
+import { Plus, Video, Image as ImageIcon, FileText, Check, Clock, AlertCircle, Trash2 } from "lucide-react";
 import type { ReviewAsset } from "@multica/core/types";
 import { listReviewAssetsOptions } from "@multica/core/reviews/queries";
 import { useBulkApproveReviewAssets, useDeleteReviewAssetGroup, useReviewAssetUpload } from "@multica/core/reviews/mutations";
@@ -89,7 +89,7 @@ export function ReviewAssetsList({ workspaceId, issueId, onOpenAsset }: ReviewAs
   if (latestAssets.length === 0 && !uploadAsset.isSuccess) {
     return (
       <div className="mt-8">
-        <input type="file" ref={fileInputRef} className="hidden" accept="video/*,image/*" onChange={handleFileChange} />
+        <input type="file" ref={fileInputRef} className="hidden" accept="video/*,image/*,application/pdf" onChange={handleFileChange} />
 
         {showUploadShowcase ? (
           <UploadShowcase
@@ -142,7 +142,7 @@ export function ReviewAssetsList({ workspaceId, issueId, onOpenAsset }: ReviewAs
             <Plus className="w-4 h-4 mr-2" />
             Upload Asset
           </Button>
-          <input type="file" ref={fileInputRef} className="hidden" accept="video/*,image/*" onChange={handleFileChange} />
+          <input type="file" ref={fileInputRef} className="hidden" accept="video/*,image/*,application/pdf" onChange={handleFileChange} />
         </div>
       </div>
       {/* Upload showcase above the grid while uploading */}
@@ -178,6 +178,8 @@ export function ReviewAssetsList({ workspaceId, issueId, onOpenAsset }: ReviewAs
             <div className="relative aspect-video bg-muted rounded flex items-center justify-center overflow-hidden">
               {asset.asset_type === "image" ? (
                 <img src={asset.thumbnail_url || asset.src_url} alt={asset.name} className="object-cover w-full h-full" />
+              ) : asset.asset_type === "pdf" ? (
+                <FileText className="h-10 w-10 text-muted-foreground" />
               ) : asset.thumbnail_url ? (
                 <img src={asset.thumbnail_url} alt={asset.name} className="object-cover w-full h-full" />
               ) : asset.src_url ? (

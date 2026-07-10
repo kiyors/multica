@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { CheckCircle2, ChevronRight, ListChevronsDownUp, Copy, Loader2, MoreHorizontal, Pencil, RotateCcw, Trash2 } from "lucide-react";
+import { CheckCircle2, ChevronRight, ListChevronsDownUp, Copy, ExternalLink, Loader2, MoreHorizontal, Pencil, RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@multica/ui/components/ui/card";
 import { Button } from "@multica/ui/components/ui/button";
@@ -127,6 +127,30 @@ interface CommentCardProps {
   onResolvedExpandChange?: (rootId: string, expand: boolean) => void;
   /** ID of the comment to highlight (flash animation). */
   highlightedCommentId?: string | null;
+  /** Open a linked media-review comment at its stored page/frame. */
+  onOpenReview?: (entry: TimelineEntry) => void;
+}
+
+function ReviewDeepLinkButton({
+  entry,
+  onOpenReview,
+  className,
+}: {
+  entry: TimelineEntry;
+  onOpenReview: (entry: TimelineEntry) => void;
+  className?: string;
+}) {
+  const location = entry.review_start_time != null
+    ? ` at ${Math.floor(entry.review_start_time / 60)}:${Math.floor(entry.review_start_time % 60).toString().padStart(2, "0")}`
+    : entry.review_page_index != null
+      ? ` on page ${entry.review_page_index + 1}`
+      : "";
+  return (
+    <Button type="button" size="sm" variant="outline" className={className} onClick={() => onOpenReview(entry)}>
+      <ExternalLink className="h-3.5 w-3.5" />
+      Open media review{location}
+    </Button>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -484,6 +508,7 @@ function CommentRow({
   onDelete,
   onToggleReaction,
   onResolveToggle,
+  onOpenReview,
 }: {
   issueId: string;
   entry: TimelineEntry;
@@ -497,6 +522,7 @@ function CommentRow({
   onDelete: (commentId: string) => void;
   onToggleReaction: (commentId: string, emoji: string) => void;
   onResolveToggle?: (commentId: string, resolved: boolean) => void;
+  onOpenReview?: (entry: TimelineEntry) => void;
 }) {
   const { t } = useT("issues");
   const timeAgo = useTimeAgo();
@@ -671,6 +697,9 @@ function CommentRow({
           <div className="pl-12 pr-4 pt-1 text-sm leading-relaxed text-foreground/85">
             <ReadonlyContent content={entry.content ?? ""} attachments={entry.attachments} />
           </div>
+          {entry.review_asset_id && onOpenReview && (
+            <ReviewDeepLinkButton entry={entry} onOpenReview={onOpenReview} className="ml-12 mt-2" />
+          )}
           <AttachmentList attachments={entry.attachments} content={entry.content} className="mt-1.5 pl-12 pr-4" />
           {retryableAgentFailureComment(entry) && (
             <TaskCommentRetryButton
@@ -711,6 +740,7 @@ function CommentCardImpl({
   expandedResolvedIds,
   onResolvedExpandChange,
   highlightedCommentId,
+  onOpenReview,
 }: CommentCardProps) {
   const { t } = useT("issues");
   const timeAgo = useTimeAgo();
@@ -961,6 +991,9 @@ function CommentCardImpl({
                 <div className="pl-10 text-sm leading-relaxed text-foreground/85">
                   <ReadonlyContent content={entry.content ?? ""} attachments={entry.attachments} />
                 </div>
+                {entry.review_asset_id && onOpenReview && (
+                  <ReviewDeepLinkButton entry={entry} onOpenReview={onOpenReview} className="ml-10 mt-2" />
+                )}
                 <AttachmentList attachments={entry.attachments} content={entry.content} className="mt-1.5 pl-10" />
                 {retryableAgentFailureComment(entry) && (
                   <TaskCommentRetryButton
@@ -1017,6 +1050,7 @@ function CommentCardImpl({
                     onDelete={onDelete}
                     onToggleReaction={onToggleReaction}
                     onResolveToggle={onResolveToggle}
+                    onOpenReview={onOpenReview}
                   />
                 </div>
               )}
@@ -1056,6 +1090,7 @@ function CommentCardImpl({
                     onDelete={onDelete}
                     onToggleReaction={onToggleReaction}
                     onResolveToggle={onResolveToggle}
+                    onOpenReview={onOpenReview}
                   />
                 </div>
               ))}

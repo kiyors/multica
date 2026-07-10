@@ -151,10 +151,10 @@
     "title": "Document",
     "new_page": "새 페이지",
     "new_folder": "새 폴더",
-    "empty": "Wiki 페이지가 없습니다. 페이지나 폴더를 만들어 시작하세요.",
+    "empty": "문서가 없습니다. 문서나 폴더를 만들어 시작하세요.",
     "export_markdown": ".md 내보내기",
     "item_count_other": "이 폴더에 {{count}}개 항목이 있습니다.",
-    "select_empty": "Wiki 페이지를 선택하거나 새로 만드세요.",
+    "select_empty": "문서를 선택하거나 새로 만드세요.",
     "new_page_inside": "내부에 새 페이지",
     "new_folder_inside": "내부에 새 폴더",
     "delete": "삭제"

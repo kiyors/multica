@@ -40,8 +40,7 @@
     "unread_overflow": "99+",
     "discord_card": {
       "title": "Discord に参加",
-      "description": "チームや他のユーザーと交流しましょう。",
-      "dismiss": "閉じる"
+      "description": "チームや他のユーザーと交流しましょう。"
     }
   }
 }

@@ -42,7 +42,11 @@ export function StepRole({
     { slug: "founder", icon: <Rocket className="h-4 w-4" />, label: t(($) => $.questions.role.founder) },
     { slug: "marketing", icon: <Megaphone className="h-4 w-4" />, label: t(($) => $.questions.role.marketing) },
     { slug: "creative", icon: <Palette className="h-4 w-4" />, label: t(($) => $.questions.role.creative) },
+    { slug: "graphic_designer", icon: <Palette className="h-4 w-4" />, label: t(($) => $.questions.role.graphic_designer) },
     { slug: "marketing_team", icon: <Megaphone className="h-4 w-4" />, label: t(($) => $.questions.role.marketing_team) },
+    { slug: "social_media", icon: <Megaphone className="h-4 w-4" />, label: t(($) => $.questions.role.social_media) },
+    { slug: "video_writer", icon: <PenLine className="h-4 w-4" />, label: t(($) => $.questions.role.video_writer) },
+    { slug: "videographer", icon: <Rocket className="h-4 w-4" />, label: t(($) => $.questions.role.videographer) },
     { slug: "writer", icon: <PenLine className="h-4 w-4" />, label: t(($) => $.questions.role.writer) },
     { slug: "research", icon: <Search className="h-4 w-4" />, label: t(($) => $.questions.role.research) },
     { slug: "ops", icon: <Settings2 className="h-4 w-4" />, label: t(($) => $.questions.role.ops) },
@@ -50,12 +54,15 @@ export function StepRole({
     { slug: "other", icon: <MoreHorizontal className="h-4 w-4" />, label: t(($) => $.questions.role.other), isOther: true },
   ];
 
-  // Role stays single-select — the agent template recommender treats
-  // role as the primary identity signal; allowing several would force
-  // the recommender to pick a tiebreaker the user never expressed.
-  const selectedSlug =
-    answers.role ?? (answers.role_other ? "other" : null);
-  const selected: readonly string[] = selectedSlug ? [selectedSlug] : [];
+  let selectedSlugs: string[] = [];
+  if (Array.isArray(answers.role)) {
+    selectedSlugs = [...answers.role];
+  } else if (answers.role) {
+    selectedSlugs = [answers.role];
+  }
+  if (answers.role_other && !selectedSlugs.includes("other")) {
+    selectedSlugs.push("other");
+  }
 
   return (
     <StepQuestion
@@ -64,20 +71,28 @@ export function StepRole({
       eyebrow={t(($) => $.questions.eyebrow_about_you)}
       question={t(($) => $.questions.role.question)}
       options={options}
-      selectedSlugs={selected}
+      selectedSlugs={selectedSlugs}
       otherValue={answers.role_other ?? ""}
       onOtherChange={(v) => onChange({ role_other: v })}
       otherPlaceholder={t(($) => $.questions.role.other_placeholder)}
+      multiSelect={true}
       onAnswer={(slug) => {
-        if (slug === "other") {
-          onChange({ role: "other", role_skipped: false });
+        let newSlugs = [...selectedSlugs];
+        if (newSlugs.includes(slug)) {
+          newSlugs = newSlugs.filter((s) => s !== slug);
         } else {
-          onChange({
-            role: slug as Role,
-            role_other: null,
-            role_skipped: false,
-          });
+          if (newSlugs.length >= 3) return; // max 3
+          newSlugs.push(slug);
         }
+
+        const hasOther = newSlugs.includes("other");
+        const roles = newSlugs.filter((s) => s !== "other") as Role[];
+
+        onChange({
+          role: roles.length > 0 ? (roles.length === 1 ? roles[0] : roles) : null,
+          role_other: hasOther ? answers.role_other : null,
+          role_skipped: false,
+        });
       }}
       onAdvance={onAdvance}
       onSkip={() => {

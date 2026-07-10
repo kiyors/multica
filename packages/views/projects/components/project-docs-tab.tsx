@@ -139,7 +139,7 @@ export function ProjectDocsTab({ projectId }: { projectId: string }) {
 
   const removeDocument = (document: ProjectDocument) => {
     const suffix = document.document_type === "folder"
-      ? " Pages inside it will be moved to the wiki root."
+      ? " Pages inside it will be moved to the document root."
       : "";
     if (!window.confirm(`Delete “${document.title}”?${suffix}`)) return;
     deleteMutation.mutate(document.id, {
@@ -157,7 +157,7 @@ export function ProjectDocsTab({ projectId }: { projectId: string }) {
           <DropdownMenu>
             <DropdownMenuTrigger
               render={
-                <Button variant="ghost" size="icon-sm" disabled={createMutation.isPending} title="Add wiki item">
+                <Button variant="ghost" size="icon-sm" disabled={createMutation.isPending} title="Add document">
                   <Plus className="h-4 w-4" />
                 </Button>
               }

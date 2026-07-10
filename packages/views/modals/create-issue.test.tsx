@@ -23,7 +23,6 @@ const mockPush = vi.hoisted(() => vi.fn());
 const mockCreateIssue = vi.hoisted(() => vi.fn());
 const mockSetDraft = vi.hoisted(() => vi.fn());
 const mockClearDraft = vi.hoisted(() => vi.fn());
-const mockSetLastAssignees = vi.hoisted(() => vi.fn());
 const mockSetKeepOpen = vi.hoisted(() => vi.fn());
 const mockToastCustom = vi.hoisted(() => vi.fn());
 const mockToastDismiss = vi.hoisted(() => vi.fn());
@@ -60,12 +59,8 @@ const mockDraftStore = {
       created_at: string;
     }>,
   },
-  lastAssignees: [] as { type: "agent" | "squad" | "member"; id: string }[],
-  lastAssigneeType: undefined as "agent" | "squad" | "member" | undefined,
-  lastAssigneeId: undefined as string | undefined,
   setDraft: mockSetDraft,
   clearDraft: mockClearDraft,
-  setLastAssignees: mockSetLastAssignees,
 };
 
 const mockQuickCreateStore = {
@@ -397,8 +392,8 @@ describe("CreateIssueModal", () => {
         status: "todo",
         priority: "none",
         assignees: [],
-        assigneeType: mockDraftStore.lastAssigneeType,
-        assigneeId: mockDraftStore.lastAssigneeId,
+        assigneeType: undefined,
+        assigneeId: undefined,
         startDate: null,
         dueDate: null,
         labelIds: [],
@@ -459,7 +454,6 @@ describe("CreateIssueModal", () => {
       });
     });
 
-    expect(mockSetLastAssignees).toHaveBeenCalledWith([]);
     expect(mockClearDraft).toHaveBeenCalled();
     expect(onClose).toHaveBeenCalled();
     expect(mockToastCustom).toHaveBeenCalledTimes(1);
