@@ -32,6 +32,7 @@ vi.mock("../../i18n", () => ({
           copy_code: "Copy code",
           show_preview: "Show preview",
           show_source: "Show source",
+          select_language: "Select code language",
         },
       }),
   }),
@@ -40,11 +41,13 @@ vi.mock("../../i18n", () => ({
 import { CodeBlockView } from "./code-block-view";
 
 function makeProps(language: string, text: string) {
+  const updateAttributes = vi.fn();
   return {
     node: {
       attrs: { language },
       textContent: text,
     },
+    updateAttributes,
   } as unknown as Parameters<typeof CodeBlockView>[0];
 }
 
@@ -94,5 +97,16 @@ describe("CodeBlockView — html language toggle", () => {
     expect(screen.queryByTitle("Show source")).toBeNull();
     expect(screen.queryByTitle("Show preview")).toBeNull();
     expect(document.querySelector("iframe")).toBeNull();
+  });
+
+  it("updates the fenced-code language from the code block header", () => {
+    const props = makeProps("", "const value = 1;");
+    render(<CodeBlockView {...props} />);
+
+    fireEvent.change(screen.getByLabelText("Select code language"), {
+      target: { value: "typescript" },
+    });
+
+    expect(props.updateAttributes).toHaveBeenCalledWith({ language: "typescript" });
   });
 });

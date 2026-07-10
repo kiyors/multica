@@ -8,8 +8,23 @@ import { useQuery } from "@tanstack/react-query";
 import { ActorAvatar } from "../../common/actor-avatar";
 import { Button } from "@multica/ui/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@multica/ui/components/ui/select";
+import type { MemberWithUser, ProjectMember } from "@multica/core/types";
+import { useT } from "../../i18n";
+
+export function getUnaddedWorkspaceMembers(
+  workspaceMembers: MemberWithUser[],
+  projectMembers: ProjectMember[],
+): MemberWithUser[] {
+  return workspaceMembers.filter(
+    (workspaceMember) =>
+      !projectMembers.some(
+        (projectMember) => projectMember.member_id === workspaceMember.id,
+      ),
+  );
+}
 
 export function ProjectMembersTab({ projectId }: { projectId: string }) {
+  const { t } = useT("projects");
   const { data: projectMembers = [] } = useProjectMembers(projectId);
   const wsId = useWorkspaceId();
   const { data: workspaceMembers = [] } = useQuery(memberListOptions(wsId));
@@ -26,23 +41,23 @@ export function ProjectMembersTab({ projectId }: { projectId: string }) {
     });
   };
 
-  const unaddedMembers = workspaceMembers.filter(wm => !projectMembers.some(pm => pm.member_id === wm.user_id));
+  const unaddedMembers = getUnaddedWorkspaceMembers(workspaceMembers, projectMembers);
 
   return (
     <div className="p-6 space-y-6 max-w-3xl">
       <div className="flex flex-col gap-1">
-        <h3 className="font-medium">Project Members</h3>
-        <p className="text-sm text-muted-foreground">Manage who has access to this project and their roles.</p>
+        <h3 className="font-medium">{t(($) => $.members.title)}</h3>
+        <p className="text-sm text-muted-foreground">{t(($) => $.members.description)}</p>
       </div>
 
       <div className="flex items-center gap-2">
         <Select value={selectedMember} onValueChange={(val) => setSelectedMember(val || "")}>
           <SelectTrigger className="w-[250px]">
-            <SelectValue placeholder="Select a workspace member..." />
+            <SelectValue placeholder={t(($) => $.members.select_placeholder)} />
           </SelectTrigger>
           <SelectContent>
             {unaddedMembers.map(m => (
-              <SelectItem key={m.user_id} value={m.user_id}>
+              <SelectItem key={m.id} value={m.id}>
                 <div className="flex items-center gap-2">
                   <ActorAvatar actorType="member" actorId={m.user_id} size={16} />
                   <span>{m.name}</span>
@@ -51,18 +66,18 @@ export function ProjectMembersTab({ projectId }: { projectId: string }) {
             ))}
           </SelectContent>
         </Select>
-        <Button onClick={handleAdd} disabled={!selectedMember || addMut.isPending}>Add to Project</Button>
+        <Button onClick={handleAdd} disabled={!selectedMember || addMut.isPending}>{t(($) => $.members.add)}</Button>
       </div>
 
       <div className="border rounded-md divide-y">
         {projectMembers.map((pm) => {
-          const m = workspaceMembers.find(w => w.user_id === pm.member_id);
+          const m = workspaceMembers.find((workspaceMember) => workspaceMember.id === pm.member_id);
           return (
             <div key={pm.member_id} className="flex items-center justify-between p-4">
               <div className="flex items-center gap-3">
-                <ActorAvatar actorType="member" actorId={pm.member_id} size={32} />
+                <ActorAvatar actorType="member" actorId={m?.user_id ?? pm.member_id} size={32} />
                 <div className="flex flex-col">
-                  <span className="text-sm font-medium">{m?.name || "Unknown"}</span>
+                  <span className="text-sm font-medium">{m?.name || t(($) => $.members.unknown)}</span>
                   <span className="text-xs text-muted-foreground">{m?.email}</span>
                 </div>
               </div>
@@ -75,9 +90,9 @@ export function ProjectMembersTab({ projectId }: { projectId: string }) {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="editor">Editor</SelectItem>
-                    <SelectItem value="viewer">Viewer</SelectItem>
+                    <SelectItem value="admin">{t(($) => $.members.roles.admin)}</SelectItem>
+                    <SelectItem value="editor">{t(($) => $.members.roles.editor)}</SelectItem>
+                    <SelectItem value="viewer">{t(($) => $.members.roles.viewer)}</SelectItem>
                   </SelectContent>
                 </Select>
                 <Button 
@@ -86,7 +101,7 @@ export function ProjectMembersTab({ projectId }: { projectId: string }) {
                   className="text-destructive"
                   onClick={() => removeMut.mutate(pm.member_id)}
                 >
-                  Remove
+                  {t(($) => $.members.remove)}
                 </Button>
               </div>
             </div>
@@ -94,7 +109,7 @@ export function ProjectMembersTab({ projectId }: { projectId: string }) {
         })}
         {projectMembers.length === 0 && (
           <div className="p-8 text-center text-sm text-muted-foreground">
-            No members have been added to this project yet.
+            {t(($) => $.members.empty)}
           </div>
         )}
       </div>

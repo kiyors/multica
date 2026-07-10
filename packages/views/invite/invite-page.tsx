@@ -21,6 +21,10 @@ import { Button } from "@multica/ui/components/ui/button";
 import { Card, CardContent } from "@multica/ui/components/ui/card";
 import { Skeleton } from "@multica/ui/components/ui/skeleton";
 import { ArrowLeft, LogOut, Users, Check, X } from "lucide-react";
+import {
+  InviteeProfileFields,
+  inviteeProfileDescription,
+} from "../invitations/invitee-profile-fields";
 
 export interface InvitePageProps {
   invitationId: string;
@@ -48,6 +52,9 @@ export function InvitePage({ invitationId, onBack }: InvitePageProps) {
   const [declining, setDeclining] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<"accepted" | "declined" | null>(null);
+  const currentUser = useAuthStore((state) => state.user);
+  const [profileName, setProfileName] = useState(currentUser?.name ?? "");
+  const [department, setDepartment] = useState("");
 
   const { data: invitation, isLoading, error: fetchError } = useQuery({
     queryKey: ["invitation", invitationId],
@@ -61,9 +68,22 @@ export function InvitePage({ invitationId, onBack }: InvitePageProps) {
   const fallbackDest = resolvePostAuthDestination(wsList, hasOnboarded);
 
   const handleAccept = async () => {
+    if (!hasOnboarded && (!profileName.trim() || !department.trim())) {
+      setError(t(($) => $.profile.required));
+      return;
+    }
     setAccepting(true);
     setError(null);
     try {
+      if (!hasOnboarded) {
+        await api.updateMe({
+          name: profileName.trim(),
+          profile_description: inviteeProfileDescription(department),
+        });
+        await api.patchOnboarding({
+          questionnaire: { source: [], source_other: null, source_skipped: true },
+        });
+      }
       await api.acceptInvitation(invitationId);
       // Belt to the backend's braces: AcceptInvitation already sets
       // onboarded_at inside the same transaction, but explicitly calling
@@ -205,6 +225,16 @@ export function InvitePage({ invitationId, onBack }: InvitePageProps) {
                 : t(($) => $.main.invited_role_member)}
             </p>
           </div>
+
+          {!hasOnboarded ? (
+            <InviteeProfileFields
+              name={profileName}
+              email={currentUser?.email ?? invitation.invitee_email}
+              department={department}
+              onNameChange={setProfileName}
+              onDepartmentChange={setDepartment}
+            />
+          ) : null}
 
           {isAlreadyHandled ? (
             <div className="text-sm text-muted-foreground">

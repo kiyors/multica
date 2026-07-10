@@ -30,7 +30,29 @@ function useDebouncedValue<T>(value: T, delayMs: number): T {
   return debounced;
 }
 
-function CodeBlockView({ node }: NodeViewProps) {
+const CODE_LANGUAGES = [
+  ["", "Plain text"],
+  ["typescript", "TypeScript"],
+  ["javascript", "JavaScript"],
+  ["tsx", "TSX"],
+  ["jsx", "JSX"],
+  ["python", "Python"],
+  ["go", "Go"],
+  ["rust", "Rust"],
+  ["java", "Java"],
+  ["kotlin", "Kotlin"],
+  ["swift", "Swift"],
+  ["sql", "SQL"],
+  ["json", "JSON"],
+  ["yaml", "YAML"],
+  ["bash", "Shell"],
+  ["html", "HTML"],
+  ["css", "CSS"],
+  ["markdown", "Markdown"],
+  ["mermaid", "Mermaid"],
+] as const;
+
+function CodeBlockView({ node, updateAttributes }: NodeViewProps) {
   const { t } = useT("editor");
   const [copied, setCopied] = useState(false);
   // HTML blocks default to "preview"; the user can flip to "source" to
@@ -90,11 +112,17 @@ function CodeBlockView({ node }: NodeViewProps) {
         contentEditable={false}
         className="code-block-header absolute top-0 right-0 z-10 flex items-center gap-1.5 px-2 py-1.5 opacity-0 transition-opacity group-hover/code:opacity-100"
       >
-        {language && (
-          <span className="text-xs text-muted-foreground select-none">
-            {language}
-          </span>
-        )}
+        <select
+          value={language}
+          onChange={(event) => updateAttributes({ language: event.target.value || null })}
+          className="h-6 max-w-32 rounded border border-border bg-background px-1.5 text-xs text-muted-foreground outline-none hover:text-foreground focus:ring-1 focus:ring-ring"
+          aria-label={t(($) => $.code_block.select_language)}
+          title={t(($) => $.code_block.select_language)}
+        >
+          {CODE_LANGUAGES.map(([value, label]) => (
+            <option key={value || "plain"} value={value}>{label}</option>
+          ))}
+        </select>
         {isHtml && (
           <button
             type="button"

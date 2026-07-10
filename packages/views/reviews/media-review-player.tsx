@@ -22,6 +22,28 @@ export interface MediaReviewPlayerRef {
   getCurrentTime: () => number;
 }
 
+export function isReviewCommentVisible(
+  comment: ReviewComment,
+  assetType: ReviewAsset["asset_type"],
+  currentTime: number,
+  selectedCommentId?: string,
+): boolean {
+  if (comment.id === selectedCommentId) return true;
+  if (assetType === "image") return true;
+  if (
+    comment.start_time === null ||
+    comment.start_time === undefined ||
+    comment.end_time === null ||
+    comment.end_time === undefined
+  ) {
+    return false;
+  }
+  if (comment.start_time === comment.end_time) {
+    return Math.abs(currentTime - comment.start_time) <= 0.25;
+  }
+  return currentTime >= comment.start_time && currentTime <= comment.end_time;
+}
+
 export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPlayerProps>(
   ({ asset, onTimeUpdate, comments, selectedCommentId, onSelectComment, onDrawingShapeChange }, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -181,16 +203,14 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
     setIsDrawing(false);
   };
 
-  const visibleComments = (comments || []).filter(c => {
-    if (asset.asset_type === 'image') return true;
-    if (c.start_time !== null && c.start_time !== undefined && c.end_time !== null && c.end_time !== undefined) {
-      if (c.start_time === c.end_time) {
-        return Math.abs(currentTime - c.start_time) <= 0.25;
-      }
-      return currentTime >= c.start_time && currentTime <= c.end_time;
-    }
-    return false;
-  });
+  const visibleComments = (comments || []).filter((comment) =>
+    isReviewCommentVisible(
+      comment,
+      asset.asset_type,
+      currentTime,
+      selectedCommentId,
+    ),
+  );
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if ((asset.asset_type !== "video") || !mediaRef.current) return;

@@ -3,10 +3,27 @@
  */
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
-import { MediaReviewPlayer } from "./media-review-player";
+import { MediaReviewPlayer, isReviewCommentVisible } from "./media-review-player";
 import type { ReviewAsset } from "@multica/core/types";
 
 describe("MediaReviewPlayer", () => {
+  it("keeps a selected frame annotation visible while the video seek settles", () => {
+    const comment = {
+      id: "comment-1",
+      asset_id: "asset-1",
+      author_id: "member-1",
+      content: "Move this logo",
+      start_time: 12,
+      end_time: 12,
+      shapes: [],
+      resolved: false,
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-01T00:00:00Z",
+    };
+
+    expect(isReviewCommentVisible(comment, "video", 0, "comment-1")).toBe(true);
+    expect(isReviewCommentVisible(comment, "video", 0)).toBe(false);
+  });
   it("renders a video element for video assets", () => {
     const asset: ReviewAsset = {
       id: "1",
@@ -80,4 +97,3 @@ describe("MediaReviewPlayer", () => {
     expect(video?.hasAttribute("src")).toBe(false); // HLS overrides src
   });
 });
-

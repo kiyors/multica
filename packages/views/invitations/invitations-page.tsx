@@ -20,6 +20,10 @@ import { Card, CardContent } from "@multica/ui/components/ui/card";
 import { Checkbox } from "@multica/ui/components/ui/checkbox";
 import { Skeleton } from "@multica/ui/components/ui/skeleton";
 import { LogOut, Mail, Users } from "lucide-react";
+import {
+  InviteeProfileFields,
+  inviteeProfileDescription,
+} from "./invitee-profile-fields";
 
 /**
  * Batch invitation handling page for first-contact users who land here
@@ -46,6 +50,9 @@ export function InvitationsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const currentUser = useAuthStore((state) => state.user);
+  const [profileName, setProfileName] = useState(currentUser?.name ?? "");
+  const [department, setDepartment] = useState("");
 
   const {
     data: invitations,
@@ -73,9 +80,21 @@ export function InvitationsPage() {
       return;
     }
 
+    if (!profileName.trim() || !department.trim()) {
+      setError(t(($) => $.profile.required));
+      return;
+    }
+
     setSubmitting(true);
     const acceptedIds: string[] = [];
     try {
+      await api.updateMe({
+        name: profileName.trim(),
+        profile_description: inviteeProfileDescription(department),
+      });
+      await api.patchOnboarding({
+        questionnaire: { source: [], source_other: null, source_skipped: true },
+      });
       for (const id of selected) {
         await api.acceptInvitation(id);
         acceptedIds.push(id);
@@ -209,6 +228,16 @@ export function InvitationsPage() {
               />
             ))}
           </ul>
+
+          {selected.size > 0 ? (
+            <InviteeProfileFields
+              name={profileName}
+              email={currentUser?.email ?? ""}
+              department={department}
+              onNameChange={setProfileName}
+              onDepartmentChange={setDepartment}
+            />
+          ) : null}
 
           <Button
             className="w-full"

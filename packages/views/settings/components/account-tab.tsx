@@ -193,6 +193,19 @@ export function AccountTab() {
               />
             </div>
             <div>
+              <Label className="text-xs text-muted-foreground">{t(($) => $.account.email_label)}</Label>
+              <Input
+                type="email"
+                value={user?.email ?? ""}
+                readOnly
+                aria-readonly="true"
+                className="mt-1 bg-muted/40 text-muted-foreground"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                {t(($) => $.account.email_hint)}
+              </p>
+            </div>
+            <div>
               <Label className="text-xs text-muted-foreground">
                 {t(($) => $.account.profile_description_label)}
               </Label>

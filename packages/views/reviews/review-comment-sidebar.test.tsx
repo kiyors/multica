@@ -119,4 +119,39 @@ describe("ReviewCommentSidebar", () => {
     // The button title changes to 'Remove end time'
     expect(screen.getByTitle("Remove end time")).toBeInTheDocument();
   });
+
+  it("selects the annotation before seeking from its timecode", () => {
+    const asset = { id: "1", asset_type: "video", issue_id: "1" } as ReviewAsset;
+    const onSeek = vi.fn();
+    const onSelectComment = vi.fn();
+
+    render(
+      <ReviewCommentSidebar
+        workspaceId="ws-1"
+        asset={asset}
+        currentTime={0}
+        onSeek={onSeek}
+        onDrawStart={vi.fn()}
+        getCanvasShapes={vi.fn(() => [])}
+        clearCanvasShapes={vi.fn()}
+        onSelectComment={onSelectComment}
+        comments={[
+          {
+            id: "comment-1",
+            content: "Move this logo",
+            author_id: "member-1",
+            resolved: false,
+            start_time: 12,
+            end_time: 12,
+            shapes: [{ color: "#ef4444" }],
+          },
+        ]}
+      />,
+    );
+
+    fireEvent.click(screen.getByTitle("Jump to timecode"));
+
+    expect(onSelectComment).toHaveBeenCalledWith("comment-1");
+    expect(onSeek).toHaveBeenCalledWith(12);
+  });
 });

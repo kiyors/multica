@@ -164,6 +164,7 @@ export function ReviewCommentSidebar({
                             className="inline-flex items-center gap-1 rounded-md bg-primary/15 px-1.5 py-0.5 text-[11px] font-mono text-primary hover:bg-primary/25 transition-colors"
                             onClick={(e) => {
                               e.stopPropagation();
+                              onSelectComment?.(comment.id);
                               onSeek(comment.start_time!);
                             }}
                             title="Jump to timecode"

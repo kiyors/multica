@@ -33,7 +33,7 @@ describe("MediaScrubber", () => {
       />
     );
     
-    const track = container.querySelector(".group\\/progress");
+    const track = container.querySelector(".cursor-pointer");
     expect(track).toBeInTheDocument();
     
     if (track) {
