@@ -30,10 +30,11 @@ export type AgentTemplateId = "coding" | "planning" | "writing" | "assistant";
 export function recommendTemplate(
   answers: Pick<QuestionnaireAnswers, "role" | "use_case">,
 ): AgentTemplateId {
-  const role: Role | null = answers.role;
+  const roleRaw = answers.role;
+  const role: Role | null = Array.isArray(roleRaw) ? (roleRaw[0] as Role) : (typeof roleRaw === "string" ? roleRaw : null);
   const useCases: readonly UseCase[] = answers.use_case ?? [];
 
-  if (role === null) return fallbackFromUseCase(useCases);
+  if (!role) return fallbackFromUseCase(useCases);
 
   switch (role) {
     case "engineer":
@@ -58,6 +59,7 @@ export function recommendTemplate(
     case "ops":
     case "student":
     case "other":
+    default:
       return "assistant";
   }
 }

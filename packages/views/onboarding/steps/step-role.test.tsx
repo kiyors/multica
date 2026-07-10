@@ -46,7 +46,7 @@ describe("StepRole", () => {
     const user = userEvent.setup();
     const { onChange, onAdvance } = renderStep();
 
-    await user.click(screen.getByRole("radio", { name: /engineer/i }));
+    await user.click(screen.getByRole("checkbox", { name: /^engineer/i }));
 
     expect(onChange).toHaveBeenCalledWith({
       role: "engineer",
@@ -74,10 +74,9 @@ describe("StepRole", () => {
     const user = userEvent.setup();
     const { onChange } = renderStep();
 
-    await user.click(screen.getByRole("radio", { name: /^other$/i }));
+    await user.click(screen.getByRole("checkbox", { name: /^other$/i }));
     expect(onChange).toHaveBeenCalledWith({
-      role: "other",
-      role_skipped: false,
+      role_other: "",
     });
 
     const input = await screen.findByPlaceholderText(/teacher/i);
