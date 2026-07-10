@@ -25,7 +25,7 @@ This is where Multica shines for marketing teams. You don't need a separate tool
 ### Reviewing Videos
 - **Play and Pause**: Click the asset to open the media player.
 - **Scrubbing**: Use the timeline scrubber at the bottom to find the exact frame you want to comment on.
-- **Frame-Accurate Comments**: Click anywhere on the video frame, or just pause and type a comment. The comment will be stamped with the exact timestamp (e.g., `0:14 - Make the logo bigger`).
+- **Frame-Accurate Comments**: Click anywhere on the video frame, or just pause and type a comment. The comment will be stamped with the exact timestamp (e.g., '0:14 - Make the logo bigger').
 - **Shapes & Annotations**: You can draw boxes or arrows on the video frame to clearly point out what needs changing.
 
 ### Reviewing PDFs and Images

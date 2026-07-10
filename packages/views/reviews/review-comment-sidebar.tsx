@@ -10,7 +10,7 @@ import {
 } from "@multica/core/reviews";
 import type { ReviewAsset } from "@multica/core/types";
 import { useActorName } from "@multica/core/workspace";
-import { useCurrentMember } from "@multica/core/permissions/use-current-member";
+import { useCurrentMember } from "@multica/core/permissions";
 import { ContentEditor, type ContentEditorRef } from "../editor";
 import { Clock, Pencil, Smile, Globe, ChevronDown, Send, X } from "lucide-react";
 

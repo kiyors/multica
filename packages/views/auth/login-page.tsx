@@ -494,6 +494,7 @@ export function LoginPage({
                   Continue with GitHub
                 </Button>
               </div>
+            </>
           )}
           {extra && <div className="w-full pt-1 text-center">{extra}</div>}
         </CardFooter>
