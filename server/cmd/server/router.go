@@ -681,6 +681,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 	authRL := middleware.RateLimit(rdb, envPositiveInt("RATE_LIMIT_AUTH", 5), time.Minute, trustedProxies)
 	authVerifyRL := middleware.RateLimit(rdb, envPositiveInt("RATE_LIMIT_AUTH_VERIFY", 20), time.Minute, trustedProxies)
 	contactSalesRL := middleware.RateLimit(rdb, envPositiveInt("RATE_LIMIT_CONTACT_SALES", 5), time.Hour, trustedProxies)
+	guestReviewRL := middleware.RateLimit(rdb, envPositiveInt("RATE_LIMIT_GUEST_REVIEW", 120), time.Minute, trustedProxies)
 	r.With(authRL).Post("/auth/send-code", h.SendCode)
 	r.With(authVerifyRL).Post("/auth/verify-code", h.VerifyCode)
 	r.With(authRL).Post("/auth/google", h.GoogleLogin)
@@ -709,6 +710,11 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 	// only forward the bytes + the Stripe-Signature header; see
 	// HandleCloudBillingStripeWebhook for the rationale).
 	r.Post("/api/webhooks/stripe", h.HandleCloudBillingStripeWebhook)
+
+	// Guest media review routes are authenticated by a high-entropy, hashed
+	// capability token rather than a Multica account session.
+	r.With(guestReviewRL).Get("/api/guest/reviews/{token}", h.GetGuestReview)
+	r.With(guestReviewRL).Post("/api/guest/reviews/{token}/comments", h.CreateGuestReviewComment)
 
 	// Composio OAuth callback (MUL-3843). NOT under the Auth group on purpose:
 	// Composio 302-redirects the user's browser here at the end of the OAuth
@@ -989,11 +995,11 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					r.Get("/", h.GetChannel)
 					r.Put("/", h.UpdateChannel)
 					r.Delete("/", h.DeleteChannel)
-					
+
 					r.Get("/members", h.ListChannelMembers)
 					r.Post("/members/{memberId}", h.AddChannelMember)
 					r.Delete("/members/{memberId}", h.RemoveChannelMember)
-					
+
 					r.Get("/messages", h.ListChannelMessages)
 					r.Post("/messages", h.CreateChannelMessage)
 				})
@@ -1022,7 +1028,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					r.Post("/comments/trigger-preview", h.PreviewCommentTriggers)
 					r.Post("/comments", h.CreateComment)
 					r.Get("/comments", h.ListComments)
-					
+
 					// Reviews
 					r.Route("/reviews", func(r chi.Router) {
 						r.Get("/assets", h.ListReviewAssets)
@@ -1032,11 +1038,12 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 						r.Put("/assets/direct-upload", h.DirectUploadReviewAsset)
 						r.Post("/assets/complete", h.CompleteReviewAssetUpload)
 						r.Patch("/assets/{assetId}/status", h.UpdateReviewAssetStatus)
+						r.Post("/assets/{assetId}/guest-link", h.CreateGuestReviewLink)
 						r.Delete("/assets/{assetId}", h.DeleteReviewAsset)
 						r.Delete("/assets/group/{groupId}", h.DeleteReviewAssetGroup)
 						r.Post("/assets/bulk-approve", h.BulkApproveReviewAssets)
 						r.Get("/pending-issues", h.ListPendingReviewIssueIDs)
-						
+
 						r.Get("/comments", h.ListReviewComments)
 						r.Post("/comments", h.CreateReviewComment)
 						r.Patch("/comments/{commentId}", h.UpdateReviewComment)
@@ -1044,7 +1051,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 						r.Patch("/comments/{commentId}/resolve", h.ResolveReviewComment)
 						r.Patch("/comments/{commentId}/unresolve", h.UnresolveReviewComment)
 					})
-					
+
 					// Approvals
 					r.Get("/approvals", h.ListApprovalsByIssue)
 					r.Post("/approvals", h.CreateApproval)

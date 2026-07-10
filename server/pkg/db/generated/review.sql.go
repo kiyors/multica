@@ -20,12 +20,63 @@ func (q *Queries) BulkApproveReviewAssets(ctx context.Context, issueID pgtype.UU
 	return err
 }
 
+const createGuestReviewComment = `-- name: CreateGuestReviewComment :one
+INSERT INTO review_comments (
+  asset_id, author_id, guest_name, content, start_time, end_time, shapes, parent_id, page_index
+) VALUES (
+  $1, NULL, $2, $3, $4, $5, $6, $7, $8
+) RETURNING id, asset_id, author_id, content, start_time, shapes, resolved, resolved_by, resolved_at, parent_id, created_at, updated_at, end_time, guest_name, page_index
+`
+
+type CreateGuestReviewCommentParams struct {
+	AssetID   pgtype.UUID   `json:"asset_id"`
+	GuestName pgtype.Text   `json:"guest_name"`
+	Content   string        `json:"content"`
+	StartTime pgtype.Float4 `json:"start_time"`
+	EndTime   pgtype.Float4 `json:"end_time"`
+	Shapes    []byte        `json:"shapes"`
+	ParentID  pgtype.UUID   `json:"parent_id"`
+	PageIndex int32         `json:"page_index"`
+}
+
+func (q *Queries) CreateGuestReviewComment(ctx context.Context, arg CreateGuestReviewCommentParams) (ReviewComment, error) {
+	row := q.db.QueryRow(ctx, createGuestReviewComment,
+		arg.AssetID,
+		arg.GuestName,
+		arg.Content,
+		arg.StartTime,
+		arg.EndTime,
+		arg.Shapes,
+		arg.ParentID,
+		arg.PageIndex,
+	)
+	var i ReviewComment
+	err := row.Scan(
+		&i.ID,
+		&i.AssetID,
+		&i.AuthorID,
+		&i.Content,
+		&i.StartTime,
+		&i.Shapes,
+		&i.Resolved,
+		&i.ResolvedBy,
+		&i.ResolvedAt,
+		&i.ParentID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.EndTime,
+		&i.GuestName,
+		&i.PageIndex,
+	)
+	return i, err
+}
+
 const createReviewAsset = `-- name: CreateReviewAsset :one
 INSERT INTO review_assets (
   issue_id, workspace_id, name, asset_type, file_url, thumbnail_url, width, height, duration, version, uploaded_by, asset_group_id
 ) VALUES (
   $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
-) RETURNING id, issue_id, workspace_id, name, asset_type, file_url, thumbnail_url, width, height, duration, version, status, uploaded_by, created_at, updated_at, asset_group_id
+) RETURNING id, issue_id, workspace_id, name, asset_type, file_url, thumbnail_url, width, height, duration, version, status, uploaded_by, created_at, updated_at, asset_group_id, upload_completed_at
 `
 
 type CreateReviewAssetParams struct {
@@ -76,16 +127,17 @@ func (q *Queries) CreateReviewAsset(ctx context.Context, arg CreateReviewAssetPa
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.AssetGroupID,
+		&i.UploadCompletedAt,
 	)
 	return i, err
 }
 
 const createReviewComment = `-- name: CreateReviewComment :one
 INSERT INTO review_comments (
-  asset_id, author_id, content, start_time, end_time, shapes, parent_id
+  asset_id, author_id, content, start_time, end_time, shapes, parent_id, page_index
 ) VALUES (
-  $1, $2, $3, $4, $5, $6, $7
-) RETURNING id, asset_id, author_id, content, start_time, shapes, resolved, resolved_by, resolved_at, parent_id, created_at, updated_at, end_time
+  $1, $2, $3, $4, $5, $6, $7, $8
+) RETURNING id, asset_id, author_id, content, start_time, shapes, resolved, resolved_by, resolved_at, parent_id, created_at, updated_at, end_time, guest_name, page_index
 `
 
 type CreateReviewCommentParams struct {
@@ -96,6 +148,7 @@ type CreateReviewCommentParams struct {
 	EndTime   pgtype.Float4 `json:"end_time"`
 	Shapes    []byte        `json:"shapes"`
 	ParentID  pgtype.UUID   `json:"parent_id"`
+	PageIndex int32         `json:"page_index"`
 }
 
 func (q *Queries) CreateReviewComment(ctx context.Context, arg CreateReviewCommentParams) (ReviewComment, error) {
@@ -107,6 +160,7 @@ func (q *Queries) CreateReviewComment(ctx context.Context, arg CreateReviewComme
 		arg.EndTime,
 		arg.Shapes,
 		arg.ParentID,
+		arg.PageIndex,
 	)
 	var i ReviewComment
 	err := row.Scan(
@@ -123,6 +177,8 @@ func (q *Queries) CreateReviewComment(ctx context.Context, arg CreateReviewComme
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.EndTime,
+		&i.GuestName,
+		&i.PageIndex,
 	)
 	return i, err
 }
@@ -154,8 +210,49 @@ func (q *Queries) DeleteReviewComment(ctx context.Context, id pgtype.UUID) error
 	return err
 }
 
+const deleteStaleIncompleteReviewAssets = `-- name: DeleteStaleIncompleteReviewAssets :many
+DELETE FROM review_assets
+WHERE upload_completed_at IS NULL
+  AND created_at < now() - interval '24 hours'
+RETURNING file_url
+`
+
+func (q *Queries) DeleteStaleIncompleteReviewAssets(ctx context.Context) ([]string, error) {
+	rows, err := q.db.Query(ctx, deleteStaleIncompleteReviewAssets)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var file_url string
+		if err := rows.Scan(&file_url); err != nil {
+			return nil, err
+		}
+		items = append(items, file_url)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getGuestReviewAssetIDByTokenHash = `-- name: GetGuestReviewAssetIDByTokenHash :one
+SELECT asset_id FROM guest_review_link
+WHERE token_hash = $1
+  AND revoked_at IS NULL
+  AND (expires_at IS NULL OR expires_at > now())
+`
+
+func (q *Queries) GetGuestReviewAssetIDByTokenHash(ctx context.Context, tokenHash []byte) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, getGuestReviewAssetIDByTokenHash, tokenHash)
+	var asset_id pgtype.UUID
+	err := row.Scan(&asset_id)
+	return asset_id, err
+}
+
 const getReviewAsset = `-- name: GetReviewAsset :one
-SELECT id, issue_id, workspace_id, name, asset_type, file_url, thumbnail_url, width, height, duration, version, status, uploaded_by, created_at, updated_at, asset_group_id FROM review_assets WHERE id = $1
+SELECT id, issue_id, workspace_id, name, asset_type, file_url, thumbnail_url, width, height, duration, version, status, uploaded_by, created_at, updated_at, asset_group_id, upload_completed_at FROM review_assets WHERE id = $1
 `
 
 func (q *Queries) GetReviewAsset(ctx context.Context, id pgtype.UUID) (ReviewAsset, error) {
@@ -178,12 +275,13 @@ func (q *Queries) GetReviewAsset(ctx context.Context, id pgtype.UUID) (ReviewAss
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.AssetGroupID,
+		&i.UploadCompletedAt,
 	)
 	return i, err
 }
 
 const getReviewComment = `-- name: GetReviewComment :one
-SELECT id, asset_id, author_id, content, start_time, shapes, resolved, resolved_by, resolved_at, parent_id, created_at, updated_at, end_time FROM review_comments WHERE id = $1
+SELECT id, asset_id, author_id, content, start_time, shapes, resolved, resolved_by, resolved_at, parent_id, created_at, updated_at, end_time, guest_name, page_index FROM review_comments WHERE id = $1
 `
 
 func (q *Queries) GetReviewComment(ctx context.Context, id pgtype.UUID) (ReviewComment, error) {
@@ -203,6 +301,8 @@ func (q *Queries) GetReviewComment(ctx context.Context, id pgtype.UUID) (ReviewC
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.EndTime,
+		&i.GuestName,
+		&i.PageIndex,
 	)
 	return i, err
 }
@@ -232,7 +332,9 @@ func (q *Queries) ListPendingReviewIssueIDs(ctx context.Context, workspaceID pgt
 }
 
 const listReviewAssetVersions = `-- name: ListReviewAssetVersions :many
-SELECT id, issue_id, workspace_id, name, asset_type, file_url, thumbnail_url, width, height, duration, version, status, uploaded_by, created_at, updated_at, asset_group_id FROM review_assets WHERE asset_group_id = $1 ORDER BY version DESC
+SELECT id, issue_id, workspace_id, name, asset_type, file_url, thumbnail_url, width, height, duration, version, status, uploaded_by, created_at, updated_at, asset_group_id, upload_completed_at FROM review_assets
+WHERE asset_group_id = $1 AND upload_completed_at IS NOT NULL
+ORDER BY version DESC
 `
 
 func (q *Queries) ListReviewAssetVersions(ctx context.Context, assetGroupID pgtype.UUID) ([]ReviewAsset, error) {
@@ -261,6 +363,7 @@ func (q *Queries) ListReviewAssetVersions(ctx context.Context, assetGroupID pgty
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.AssetGroupID,
+			&i.UploadCompletedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -273,7 +376,9 @@ func (q *Queries) ListReviewAssetVersions(ctx context.Context, assetGroupID pgty
 }
 
 const listReviewAssetsByIssue = `-- name: ListReviewAssetsByIssue :many
-SELECT id, issue_id, workspace_id, name, asset_type, file_url, thumbnail_url, width, height, duration, version, status, uploaded_by, created_at, updated_at, asset_group_id FROM review_assets WHERE issue_id = $1 ORDER BY created_at DESC
+SELECT id, issue_id, workspace_id, name, asset_type, file_url, thumbnail_url, width, height, duration, version, status, uploaded_by, created_at, updated_at, asset_group_id, upload_completed_at FROM review_assets
+WHERE issue_id = $1 AND upload_completed_at IS NOT NULL
+ORDER BY created_at DESC
 `
 
 func (q *Queries) ListReviewAssetsByIssue(ctx context.Context, issueID pgtype.UUID) ([]ReviewAsset, error) {
@@ -302,6 +407,7 @@ func (q *Queries) ListReviewAssetsByIssue(ctx context.Context, issueID pgtype.UU
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.AssetGroupID,
+			&i.UploadCompletedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -314,7 +420,7 @@ func (q *Queries) ListReviewAssetsByIssue(ctx context.Context, issueID pgtype.UU
 }
 
 const listReviewCommentsByAsset = `-- name: ListReviewCommentsByAsset :many
-SELECT id, asset_id, author_id, content, start_time, shapes, resolved, resolved_by, resolved_at, parent_id, created_at, updated_at, end_time FROM review_comments WHERE asset_id = $1 ORDER BY created_at ASC
+SELECT id, asset_id, author_id, content, start_time, shapes, resolved, resolved_by, resolved_at, parent_id, created_at, updated_at, end_time, guest_name, page_index FROM review_comments WHERE asset_id = $1 ORDER BY created_at ASC
 `
 
 func (q *Queries) ListReviewCommentsByAsset(ctx context.Context, assetID pgtype.UUID) ([]ReviewComment, error) {
@@ -340,6 +446,8 @@ func (q *Queries) ListReviewCommentsByAsset(ctx context.Context, assetID pgtype.
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.EndTime,
+			&i.GuestName,
+			&i.PageIndex,
 		); err != nil {
 			return nil, err
 		}
@@ -351,8 +459,40 @@ func (q *Queries) ListReviewCommentsByAsset(ctx context.Context, assetID pgtype.
 	return items, nil
 }
 
+const markReviewAssetUploadCompleted = `-- name: MarkReviewAssetUploadCompleted :one
+UPDATE review_assets
+SET upload_completed_at = now(), updated_at = now()
+WHERE id = $1
+RETURNING id, issue_id, workspace_id, name, asset_type, file_url, thumbnail_url, width, height, duration, version, status, uploaded_by, created_at, updated_at, asset_group_id, upload_completed_at
+`
+
+func (q *Queries) MarkReviewAssetUploadCompleted(ctx context.Context, id pgtype.UUID) (ReviewAsset, error) {
+	row := q.db.QueryRow(ctx, markReviewAssetUploadCompleted, id)
+	var i ReviewAsset
+	err := row.Scan(
+		&i.ID,
+		&i.IssueID,
+		&i.WorkspaceID,
+		&i.Name,
+		&i.AssetType,
+		&i.FileUrl,
+		&i.ThumbnailUrl,
+		&i.Width,
+		&i.Height,
+		&i.Duration,
+		&i.Version,
+		&i.Status,
+		&i.UploadedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.AssetGroupID,
+		&i.UploadCompletedAt,
+	)
+	return i, err
+}
+
 const resolveReviewComment = `-- name: ResolveReviewComment :one
-UPDATE review_comments SET resolved = true, resolved_by = $2, resolved_at = now(), updated_at = now() WHERE id = $1 RETURNING id, asset_id, author_id, content, start_time, shapes, resolved, resolved_by, resolved_at, parent_id, created_at, updated_at, end_time
+UPDATE review_comments SET resolved = true, resolved_by = $2, resolved_at = now(), updated_at = now() WHERE id = $1 RETURNING id, asset_id, author_id, content, start_time, shapes, resolved, resolved_by, resolved_at, parent_id, created_at, updated_at, end_time, guest_name, page_index
 `
 
 type ResolveReviewCommentParams struct {
@@ -377,12 +517,14 @@ func (q *Queries) ResolveReviewComment(ctx context.Context, arg ResolveReviewCom
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.EndTime,
+		&i.GuestName,
+		&i.PageIndex,
 	)
 	return i, err
 }
 
 const unresolveReviewComment = `-- name: UnresolveReviewComment :one
-UPDATE review_comments SET resolved = false, resolved_by = NULL, resolved_at = NULL, updated_at = now() WHERE id = $1 RETURNING id, asset_id, author_id, content, start_time, shapes, resolved, resolved_by, resolved_at, parent_id, created_at, updated_at, end_time
+UPDATE review_comments SET resolved = false, resolved_by = NULL, resolved_at = NULL, updated_at = now() WHERE id = $1 RETURNING id, asset_id, author_id, content, start_time, shapes, resolved, resolved_by, resolved_at, parent_id, created_at, updated_at, end_time, guest_name, page_index
 `
 
 func (q *Queries) UnresolveReviewComment(ctx context.Context, id pgtype.UUID) (ReviewComment, error) {
@@ -402,6 +544,8 @@ func (q *Queries) UnresolveReviewComment(ctx context.Context, id pgtype.UUID) (R
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.EndTime,
+		&i.GuestName,
+		&i.PageIndex,
 	)
 	return i, err
 }
@@ -439,7 +583,7 @@ func (q *Queries) UpdateReviewAssetMetadata(ctx context.Context, arg UpdateRevie
 }
 
 const updateReviewAssetStatus = `-- name: UpdateReviewAssetStatus :one
-UPDATE review_assets SET status = $2, updated_at = now() WHERE id = $1 RETURNING id, issue_id, workspace_id, name, asset_type, file_url, thumbnail_url, width, height, duration, version, status, uploaded_by, created_at, updated_at, asset_group_id
+UPDATE review_assets SET status = $2, updated_at = now() WHERE id = $1 RETURNING id, issue_id, workspace_id, name, asset_type, file_url, thumbnail_url, width, height, duration, version, status, uploaded_by, created_at, updated_at, asset_group_id, upload_completed_at
 `
 
 type UpdateReviewAssetStatusParams struct {
@@ -467,12 +611,13 @@ func (q *Queries) UpdateReviewAssetStatus(ctx context.Context, arg UpdateReviewA
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.AssetGroupID,
+		&i.UploadCompletedAt,
 	)
 	return i, err
 }
 
 const updateReviewComment = `-- name: UpdateReviewComment :one
-UPDATE review_comments SET content = $2, shapes = $3, start_time = $4, end_time = $5, updated_at = now() WHERE id = $1 RETURNING id, asset_id, author_id, content, start_time, shapes, resolved, resolved_by, resolved_at, parent_id, created_at, updated_at, end_time
+UPDATE review_comments SET content = $2, shapes = $3, start_time = $4, end_time = $5, page_index = COALESCE($6, page_index), updated_at = now() WHERE id = $1 RETURNING id, asset_id, author_id, content, start_time, shapes, resolved, resolved_by, resolved_at, parent_id, created_at, updated_at, end_time, guest_name, page_index
 `
 
 type UpdateReviewCommentParams struct {
@@ -481,6 +626,7 @@ type UpdateReviewCommentParams struct {
 	Shapes    []byte        `json:"shapes"`
 	StartTime pgtype.Float4 `json:"start_time"`
 	EndTime   pgtype.Float4 `json:"end_time"`
+	PageIndex pgtype.Int4   `json:"page_index"`
 }
 
 func (q *Queries) UpdateReviewComment(ctx context.Context, arg UpdateReviewCommentParams) (ReviewComment, error) {
@@ -490,6 +636,7 @@ func (q *Queries) UpdateReviewComment(ctx context.Context, arg UpdateReviewComme
 		arg.Shapes,
 		arg.StartTime,
 		arg.EndTime,
+		arg.PageIndex,
 	)
 	var i ReviewComment
 	err := row.Scan(
@@ -506,6 +653,47 @@ func (q *Queries) UpdateReviewComment(ctx context.Context, arg UpdateReviewComme
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.EndTime,
+		&i.GuestName,
+		&i.PageIndex,
+	)
+	return i, err
+}
+
+const upsertGuestReviewLink = `-- name: UpsertGuestReviewLink :one
+INSERT INTO guest_review_link (asset_id, token_hash, created_by, expires_at)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (asset_id) DO UPDATE SET
+  token_hash = EXCLUDED.token_hash,
+  created_by = EXCLUDED.created_by,
+  created_at = now(),
+  expires_at = EXCLUDED.expires_at,
+  revoked_at = NULL
+RETURNING id, asset_id, token_hash, created_by, created_at, expires_at, revoked_at
+`
+
+type UpsertGuestReviewLinkParams struct {
+	AssetID   pgtype.UUID        `json:"asset_id"`
+	TokenHash []byte             `json:"token_hash"`
+	CreatedBy pgtype.UUID        `json:"created_by"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+}
+
+func (q *Queries) UpsertGuestReviewLink(ctx context.Context, arg UpsertGuestReviewLinkParams) (GuestReviewLink, error) {
+	row := q.db.QueryRow(ctx, upsertGuestReviewLink,
+		arg.AssetID,
+		arg.TokenHash,
+		arg.CreatedBy,
+		arg.ExpiresAt,
+	)
+	var i GuestReviewLink
+	err := row.Scan(
+		&i.ID,
+		&i.AssetID,
+		&i.TokenHash,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+		&i.RevokedAt,
 	)
 	return i, err
 }

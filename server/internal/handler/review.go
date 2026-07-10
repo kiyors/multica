@@ -2,10 +2,14 @@ package handler
 
 import (
 	"context"
+	cryptorand "crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -39,10 +43,12 @@ type ReviewAssetResponse struct {
 type ReviewCommentResponse struct {
 	ID         string          `json:"id"`
 	AssetID    string          `json:"asset_id"`
-	AuthorID   string          `json:"author_id"`
+	AuthorID   *string         `json:"author_id,omitempty"`
+	GuestName  *string         `json:"guest_name,omitempty"`
 	Content    string          `json:"content"`
 	StartTime  *float32        `json:"start_time,omitempty"`
 	EndTime    *float32        `json:"end_time,omitempty"`
+	PageIndex  int32           `json:"page_index"`
 	Shapes     json.RawMessage `json:"shapes"`
 	Resolved   bool            `json:"resolved"`
 	ResolvedBy *string         `json:"resolved_by"`
@@ -87,10 +93,12 @@ func reviewCommentToResponse(c db.ReviewComment) ReviewCommentResponse {
 	return ReviewCommentResponse{
 		ID:         uuidToString(c.ID),
 		AssetID:    uuidToString(c.AssetID),
-		AuthorID:   uuidToString(c.AuthorID),
+		AuthorID:   uuidToPtr(c.AuthorID),
+		GuestName:  textToPtr(c.GuestName),
 		Content:    c.Content,
 		StartTime:  float4ToPtr(c.StartTime),
 		EndTime:    float4ToPtr(c.EndTime),
+		PageIndex:  c.PageIndex,
 		Shapes:     c.Shapes,
 		Resolved:   c.Resolved,
 		ResolvedBy: uuidToPtr(c.ResolvedBy),
@@ -122,6 +130,14 @@ type PresignReviewAssetUploadResponse struct {
 
 func (h *Handler) PresignReviewAssetUpload(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	if staleKeys, err := h.Queries.DeleteStaleIncompleteReviewAssets(ctx); err != nil {
+		slog.Warn("failed to clean stale review uploads", "error", err)
+	} else if len(staleKeys) > 0 {
+		if h.Storage != nil {
+			h.Storage.DeleteKeys(ctx, staleKeys)
+		}
+		slog.Info("deleted stale incomplete review uploads", "count", len(staleKeys))
+	}
 	workspaceIDStr := h.resolveWorkspaceID(r)
 	requester, ok := h.requireWorkspaceRole(w, r, workspaceIDStr, "workspace not found", "owner", "admin", "member")
 	if !ok {
@@ -158,6 +174,8 @@ func (h *Handler) PresignReviewAssetUpload(w http.ResponseWriter, r *http.Reques
 	assetType := "image"
 	if req.ContentType == "video/mp4" || req.ContentType == "video/webm" || req.ContentType == "video/quicktime" {
 		assetType = "video"
+	} else if req.ContentType == "application/pdf" {
+		assetType = "pdf"
 	}
 
 	// For S3 we can generate a presigned URL. For local, we fallback to a direct upload URL
@@ -243,6 +261,11 @@ func (h *Handler) CompleteReviewAssetUpload(w http.ResponseWriter, r *http.Reque
 		writeError(w, http.StatusNotFound, "asset not found")
 		return
 	}
+	asset, err = h.Queries.MarkReviewAssetUploadCompleted(ctx, assetUUID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to complete asset upload")
+		return
+	}
 
 	if asset.AssetType == "video" || asset.AssetType == "audio" {
 		// Run transcode in background
@@ -285,6 +308,7 @@ type CreateReviewCommentRequest struct {
 	EndTime   *float32        `json:"end_time"`
 	Shapes    json.RawMessage `json:"shapes"`
 	ParentID  *string         `json:"parent_id"`
+	PageIndex int32           `json:"page_index"`
 }
 
 func (h *Handler) CreateReviewComment(w http.ResponseWriter, r *http.Request) {
@@ -299,6 +323,10 @@ func (h *Handler) CreateReviewComment(w http.ResponseWriter, r *http.Request) {
 	var req CreateReviewCommentRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+	if req.PageIndex < 0 {
+		writeError(w, http.StatusBadRequest, "page_index must be non-negative")
 		return
 	}
 
@@ -335,6 +363,7 @@ func (h *Handler) CreateReviewComment(w http.ResponseWriter, r *http.Request) {
 		EndTime:   endTime,
 		Shapes:    shapes,
 		ParentID:  parentUUID,
+		PageIndex: req.PageIndex,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to create comment")
@@ -357,12 +386,17 @@ func (h *Handler) CreateReviewComment(w http.ResponseWriter, r *http.Request) {
 		// Create a standard comment so it shows up in the issue timeline
 		content := fmt.Sprintf("**Review Comment on %s:**\n\n%s", asset.Name, req.Content)
 		normalComment, err := h.Queries.CreateComment(ctx, db.CreateCommentParams{
-			IssueID:     asset.IssueID,
-			WorkspaceID: asset.WorkspaceID,
-			AuthorType:  "member",
-			AuthorID:    requester.ID,
-			Content:     content,
-			Type:        "comment",
+			IssueID:         asset.IssueID,
+			WorkspaceID:     asset.WorkspaceID,
+			AuthorType:      "member",
+			AuthorID:        requester.ID,
+			Content:         content,
+			Type:            "comment",
+			ReviewAssetID:   asset.ID,
+			ReviewCommentID: comment.ID,
+			ReviewPageIndex: pgtype.Int4{Int32: comment.PageIndex, Valid: true},
+			ReviewStartTime: comment.StartTime,
+			ReviewEndTime:   comment.EndTime,
 		})
 		if err == nil {
 			h.triggerTasksForComment(ctx, issue, normalComment, nil, "member", util.UUIDToString(requester.ID), userID, nil)
@@ -654,6 +688,7 @@ type UpdateReviewCommentRequest struct {
 	StartTime *float32        `json:"start_time"`
 	EndTime   *float32        `json:"end_time"`
 	Shapes    json.RawMessage `json:"shapes"`
+	PageIndex *int32          `json:"page_index"`
 }
 
 func (h *Handler) UpdateReviewComment(w http.ResponseWriter, r *http.Request) {
@@ -671,6 +706,10 @@ func (h *Handler) UpdateReviewComment(w http.ResponseWriter, r *http.Request) {
 	var req UpdateReviewCommentRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid json payload")
+		return
+	}
+	if req.PageIndex != nil && *req.PageIndex < 0 {
+		writeError(w, http.StatusBadRequest, "page_index must be non-negative")
 		return
 	}
 
@@ -706,6 +745,12 @@ func (h *Handler) UpdateReviewComment(w http.ResponseWriter, r *http.Request) {
 		Shapes:    shapes,
 		StartTime: startTime,
 		EndTime:   endTime,
+		PageIndex: func() pgtype.Int4 {
+			if req.PageIndex == nil {
+				return pgtype.Int4{}
+			}
+			return pgtype.Int4{Int32: *req.PageIndex, Valid: true}
+		}(),
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to update comment")
@@ -715,6 +760,153 @@ func (h *Handler) UpdateReviewComment(w http.ResponseWriter, r *http.Request) {
 	resp := reviewCommentToResponse(updated)
 	// Optionally publish an event
 	writeJSON(w, http.StatusOK, resp)
+}
+
+type GuestReviewResponse struct {
+	Asset    ReviewAssetResponse     `json:"asset"`
+	Comments []ReviewCommentResponse `json:"comments"`
+}
+
+func guestReviewTokenHash(token string) []byte {
+	sum := sha256.Sum256([]byte(token))
+	return sum[:]
+}
+
+// CreateGuestReviewLink creates a new opaque link and rotates any existing
+// link for the asset. Only the hash is persisted, so a database read cannot
+// recover a usable guest URL.
+func (h *Handler) CreateGuestReviewLink(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	workspaceID := h.resolveWorkspaceID(r)
+	requester, ok := h.requireWorkspaceRole(w, r, workspaceID, "workspace not found", "owner", "admin", "member")
+	if !ok {
+		return
+	}
+	assetID, ok := parseUUIDOrBadRequest(w, chi.URLParam(r, "assetId"), "assetId")
+	if !ok {
+		return
+	}
+	asset, err := h.Queries.GetReviewAsset(ctx, assetID)
+	if err != nil || uuidToString(asset.WorkspaceID) != workspaceID {
+		writeError(w, http.StatusNotFound, "asset not found")
+		return
+	}
+
+	raw := make([]byte, 32)
+	if _, err := cryptorand.Read(raw); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to create guest link")
+		return
+	}
+	token := base64.RawURLEncoding.EncodeToString(raw)
+	if _, err := h.Queries.UpsertGuestReviewLink(ctx, db.UpsertGuestReviewLinkParams{
+		AssetID: assetID, TokenHash: guestReviewTokenHash(token), CreatedBy: requester.ID,
+	}); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to create guest link")
+		return
+	}
+	writeJSON(w, http.StatusCreated, map[string]string{"token": token})
+}
+
+func (h *Handler) guestReviewAsset(w http.ResponseWriter, r *http.Request) (db.ReviewAsset, bool) {
+	token := chi.URLParam(r, "token")
+	if len(token) < 32 || len(token) > 128 {
+		writeError(w, http.StatusNotFound, "guest review not found")
+		return db.ReviewAsset{}, false
+	}
+	assetID, err := h.Queries.GetGuestReviewAssetIDByTokenHash(r.Context(), guestReviewTokenHash(token))
+	if err != nil {
+		writeError(w, http.StatusNotFound, "guest review not found")
+		return db.ReviewAsset{}, false
+	}
+	asset, err := h.Queries.GetReviewAsset(r.Context(), assetID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "guest review not found")
+		return db.ReviewAsset{}, false
+	}
+	return asset, true
+}
+
+func (h *Handler) GetGuestReview(w http.ResponseWriter, r *http.Request) {
+	asset, ok := h.guestReviewAsset(w, r)
+	if !ok {
+		return
+	}
+	comments, err := h.Queries.ListReviewCommentsByAsset(r.Context(), asset.ID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to fetch guest review")
+		return
+	}
+	res := GuestReviewResponse{Asset: h.reviewAssetToResponse(asset), Comments: make([]ReviewCommentResponse, 0, len(comments))}
+	for _, comment := range comments {
+		res.Comments = append(res.Comments, reviewCommentToResponse(comment))
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	writeJSON(w, http.StatusOK, res)
+}
+
+type CreateGuestReviewCommentRequest struct {
+	GuestName string          `json:"guest_name"`
+	Content   string          `json:"content"`
+	StartTime *float32        `json:"start_time"`
+	EndTime   *float32        `json:"end_time"`
+	Shapes    json.RawMessage `json:"shapes"`
+	ParentID  *string         `json:"parent_id"`
+	PageIndex int32           `json:"page_index"`
+}
+
+func (h *Handler) CreateGuestReviewComment(w http.ResponseWriter, r *http.Request) {
+	asset, ok := h.guestReviewAsset(w, r)
+	if !ok {
+		return
+	}
+	var req CreateGuestReviewCommentRequest
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 64<<10)).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+	req.GuestName = strings.TrimSpace(req.GuestName)
+	req.Content = strings.TrimSpace(req.Content)
+	if req.GuestName == "" || len(req.GuestName) > 80 || req.Content == "" || len(req.Content) > 5000 || req.PageIndex < 0 {
+		writeError(w, http.StatusBadRequest, "guest_name, content, or page_index is invalid")
+		return
+	}
+	var parentID pgtype.UUID
+	if req.ParentID != nil {
+		parsed, ok := parseUUIDOrBadRequest(w, *req.ParentID, "parent_id")
+		if !ok {
+			return
+		}
+		parent, err := h.Queries.GetReviewComment(r.Context(), parsed)
+		if err != nil || parent.AssetID != asset.ID {
+			writeError(w, http.StatusBadRequest, "parent comment is not part of this review")
+			return
+		}
+		parentID = parsed
+	}
+	shapes := []byte(`[]`)
+	if len(req.Shapes) > 0 {
+		if !json.Valid(req.Shapes) {
+			writeError(w, http.StatusBadRequest, "shapes must be valid json")
+			return
+		}
+		shapes = req.Shapes
+	}
+	var startTime, endTime pgtype.Float4
+	if req.StartTime != nil {
+		startTime = pgtype.Float4{Float32: *req.StartTime, Valid: true}
+	}
+	if req.EndTime != nil {
+		endTime = pgtype.Float4{Float32: *req.EndTime, Valid: true}
+	}
+	comment, err := h.Queries.CreateGuestReviewComment(r.Context(), db.CreateGuestReviewCommentParams{
+		AssetID: asset.ID, GuestName: pgtype.Text{String: req.GuestName, Valid: true}, Content: req.Content,
+		StartTime: startTime, EndTime: endTime, Shapes: shapes, ParentID: parentID, PageIndex: req.PageIndex,
+	})
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to create comment")
+		return
+	}
+	writeJSON(w, http.StatusCreated, reviewCommentToResponse(comment))
 }
 
 func (h *Handler) DeleteReviewComment(w http.ResponseWriter, r *http.Request) {

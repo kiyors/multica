@@ -339,8 +339,15 @@ SELECT c.* FROM comment c
 WHERE c.id = (SELECT id FROM root_of WHERE parent_id IS NULL LIMIT 1);
 
 -- name: CreateComment :one
-INSERT INTO comment (issue_id, workspace_id, author_type, author_id, content, type, parent_id, source_task_id)
-VALUES ($1, $2, $3, $4, $5, $6, sqlc.narg(parent_id), sqlc.narg(source_task_id))
+INSERT INTO comment (
+  issue_id, workspace_id, author_type, author_id, content, type, parent_id, source_task_id,
+  review_asset_id, review_comment_id, review_page_index, review_start_time, review_end_time
+)
+VALUES (
+  $1, $2, $3, $4, $5, $6, sqlc.narg(parent_id), sqlc.narg(source_task_id),
+  sqlc.narg(review_asset_id), sqlc.narg(review_comment_id), sqlc.narg(review_page_index),
+  sqlc.narg(review_start_time), sqlc.narg(review_end_time)
+)
 RETURNING *;
 
 -- name: UpdateComment :one

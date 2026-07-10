@@ -134,6 +134,54 @@ func TestListTimeline_MergesCommentsAndActivities(t *testing.T) {
 	}
 }
 
+func TestListTimeline_IncludesReviewDeepLinkMetadata(t *testing.T) {
+	issueID := createIssueForTimeline(t, "Review deep-link metadata")
+	ctx := context.Background()
+	var memberID, assetID, reviewCommentID, timelineCommentID string
+	if err := testPool.QueryRow(ctx, `SELECT id FROM member WHERE workspace_id = $1 AND user_id = $2`, testWorkspaceID, testUserID).Scan(&memberID); err != nil {
+		t.Fatalf("member id: %v", err)
+	}
+	if err := testPool.QueryRow(ctx, `
+		INSERT INTO review_assets (issue_id, workspace_id, name, asset_type, file_url, uploaded_by, upload_completed_at)
+		VALUES ($1, $2, 'review.mp4', 'video', 'reviews/test.mp4', $3, now()) RETURNING id
+	`, issueID, testWorkspaceID, memberID).Scan(&assetID); err != nil {
+		t.Fatalf("review asset: %v", err)
+	}
+	if err := testPool.QueryRow(ctx, `
+		INSERT INTO review_comments (asset_id, author_id, content, start_time, end_time, page_index)
+		VALUES ($1, $2, 'Adjust this frame', 12.5, 14.0, 2) RETURNING id
+	`, assetID, memberID).Scan(&reviewCommentID); err != nil {
+		t.Fatalf("review comment: %v", err)
+	}
+	if err := testPool.QueryRow(ctx, `
+		INSERT INTO comment (
+			issue_id, workspace_id, author_type, author_id, content, type,
+			review_asset_id, review_comment_id, review_page_index, review_start_time, review_end_time
+		) VALUES ($1, $2, 'member', $3, 'Review Comment', 'comment', $4, $5, 2, 12.5, 14.0)
+		RETURNING id
+	`, issueID, testWorkspaceID, memberID, assetID, reviewCommentID).Scan(&timelineCommentID); err != nil {
+		t.Fatalf("timeline comment: %v", err)
+	}
+
+	entries, status := fetchTimeline(t, issueID)
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want 200", status)
+	}
+	for _, entry := range entries {
+		if entry.ID != timelineCommentID {
+			continue
+		}
+		if entry.ReviewAssetID == nil || *entry.ReviewAssetID != assetID ||
+			entry.ReviewCommentID == nil || *entry.ReviewCommentID != reviewCommentID ||
+			entry.ReviewPageIndex == nil || *entry.ReviewPageIndex != 2 ||
+			entry.ReviewStartTime == nil || *entry.ReviewStartTime != float32(12.5) {
+			t.Fatalf("review deep-link metadata missing: %+v", entry)
+		}
+		return
+	}
+	t.Fatalf("timeline comment %s not found", timelineCommentID)
+}
+
 // fetchTimelineWrapped exercises the legacy wrapped response shape that
 // stale Multica.app v0.2.26+ builds still expect — sending any of
 // limit/before/after/around makes the server emit a TimelinePage-style

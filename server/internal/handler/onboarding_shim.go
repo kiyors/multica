@@ -281,13 +281,34 @@ func (h *Handler) BootstrapOnboardingRuntime(w http.ResponseWriter, r *http.Requ
 		issueCreated = true
 	}
 
-	// Mark onboarded. COALESCE in MarkUserOnboarded preserves the original
-	// timestamp on re-entries, so this is idempotent.
 	before, err := qtx.GetUser(r.Context(), parseUUID(userID))
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to load user")
 		return
 	}
+
+	if issueCreated && isCreativeRole(before.OnboardingQuestionnaire) {
+		marketingIssueNumber, err := qtx.IncrementIssueCounter(r.Context(), wsUUID)
+		if err == nil {
+			_, _ = qtx.CreateIssue(r.Context(), db.CreateIssueParams{
+				WorkspaceID:   wsUUID,
+				Title:         "📖 Guide: How to use Multica for Marketing",
+				Description:   strOrNullText(marketingGuideDescription),
+				Status:        "todo",
+				Priority:      "high",
+				AssigneeType:  pgtype.Text{String: "member", Valid: true},
+				AssigneeID:    parseUUID(userID),
+				CreatorType:   "member",
+				CreatorID:     parseUUID(userID),
+				ParentIssueID: emptyUUID,
+				Position:      0,
+				Number:        marketingIssueNumber,
+				ProjectID:     emptyUUID,
+			})
+		}
+	}
+
+
 	firstCompletion := !before.OnboardedAt.Valid
 	updatedUser, err := qtx.MarkUserOnboarded(r.Context(), parseUUID(userID))
 	if err != nil {
@@ -439,6 +460,27 @@ func (h *Handler) BootstrapOnboardingNoRuntime(w http.ResponseWriter, r *http.Re
 		issueCreated = true
 	}
 
+	if issueCreated && isCreativeRole(userBefore.OnboardingQuestionnaire) {
+		marketingIssueNumber, err := qtx.IncrementIssueCounter(r.Context(), wsUUID)
+		if err == nil {
+			_, _ = qtx.CreateIssue(r.Context(), db.CreateIssueParams{
+				WorkspaceID:   wsUUID,
+				Title:         "📖 Guide: How to use Multica for Marketing",
+				Description:   strOrNullText(marketingGuideDescription),
+				Status:        "todo",
+				Priority:      "high",
+				AssigneeType:  pgtype.Text{String: "member", Valid: true},
+				AssigneeID:    parseUUID(userID),
+				CreatorType:   "member",
+				CreatorID:     parseUUID(userID),
+				ParentIssueID: emptyUUID,
+				Position:      0,
+				Number:        marketingIssueNumber,
+				ProjectID:     emptyUUID,
+			})
+		}
+	}
+
 	firstCompletion := !userBefore.OnboardedAt.Valid
 	updatedUser, err := qtx.MarkUserOnboarded(r.Context(), parseUUID(userID))
 	if err != nil {
@@ -578,6 +620,19 @@ func zhNoRuntimeIssueDescription() string {
 		"",
 		"运行时连上后，你就可以创建 Multica Helper，开始一次有智能体参与的上手引导。",
 	}, "\n")
+}
+
+func isCreativeRole(q []byte) bool {
+	qs := string(q)
+	return strings.Contains(qs, "marketing") ||
+		strings.Contains(qs, "marketing_team") ||
+		strings.Contains(qs, "creative") ||
+		strings.Contains(qs, "graphic_designer") ||
+		strings.Contains(qs, "video") ||
+		strings.Contains(qs, "videographer") ||
+		strings.Contains(qs, "social_media") ||
+		strings.Contains(qs, "writer") ||
+		strings.Contains(qs, "designer")
 }
 
 // strOrNullText converts an empty-meaning-absent string into a nullable

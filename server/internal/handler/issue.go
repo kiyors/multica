@@ -889,7 +889,7 @@ func (h *Handler) ListIssues(w http.ResponseWriter, r *http.Request) {
 			InvolvesUserID:    involvesUserFilter,
 			PendingApproverID: pendingApproverFilter,
 			MetadataFilter:    metadataFilter,
-			IsAdmin:           member.Role == "admin",
+			IsAdmin:           isWorkspaceManagerRole(member.Role),
 			MemberID:          member.ID,
 		})
 		if err != nil {
@@ -1034,9 +1034,9 @@ func (h *Handler) ListIssues(w http.ResponseWriter, r *http.Request) {
 	if projectFilter.Valid {
 		where = append(where, fmt.Sprintf("i.project_id = %s::uuid", addArg(projectFilter)))
 	}
-	
+
 	member, _ := middleware.MemberFromContext(r.Context())
-	if member.Role != "admin" {
+	if !isWorkspaceManagerRole(member.Role) {
 		where = append(where, fmt.Sprintf(`(
 			i.project_id IS NULL
 			OR EXISTS (

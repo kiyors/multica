@@ -5,6 +5,7 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -486,7 +487,16 @@ func signGitHubAppJWT(now time.Time) (string, error) {
 	if appID == "" || pemKey == "" {
 		return "", nil
 	}
-	key, err := jwt.ParseRSAPrivateKeyFromPEM([]byte(pemKey))
+	keyBytes := []byte(pemKey)
+	// Docker Compose env files cannot contain an unquoted multiline PEM.
+	// Accept a single-line base64 value as well as the traditional raw PEM.
+	if !strings.Contains(pemKey, "-----BEGIN") {
+		decoded, decodeErr := base64.StdEncoding.DecodeString(pemKey)
+		if decodeErr == nil {
+			keyBytes = decoded
+		}
+	}
+	key, err := jwt.ParseRSAPrivateKeyFromPEM(keyBytes)
 	if err != nil {
 		return "", fmt.Errorf("parse GITHUB_APP_PRIVATE_KEY: %w", err)
 	}

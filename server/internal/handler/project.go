@@ -130,12 +130,12 @@ func (h *Handler) ListProjects(w http.ResponseWriter, r *http.Request) {
 		priorityFilter = pgtype.Text{String: p, Valid: true}
 	}
 	member, _ := middleware.MemberFromContext(r.Context())
-	
+
 	projects, err := h.Queries.ListProjects(r.Context(), db.ListProjectsParams{
 		WorkspaceID: wsUUID,
 		Status:      statusFilter,
 		Priority:    priorityFilter,
-		IsAdmin:     member.Role == "admin",
+		IsAdmin:     isWorkspaceManagerRole(member.Role),
 		MemberID:    member.ID,
 	})
 	if err != nil {
@@ -195,9 +195,9 @@ func (h *Handler) GetProject(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "project not found")
 		return
 	}
-	
+
 	member, _ := middleware.MemberFromContext(r.Context())
-	if member.Role != "admin" {
+	if !isWorkspaceManagerRole(member.Role) {
 		_, err := h.Queries.GetProjectMember(r.Context(), db.GetProjectMemberParams{
 			ProjectID: project.ID,
 			MemberID:  member.ID,

@@ -20,21 +20,26 @@ import (
 )
 
 type CommentResponse struct {
-	ID             string               `json:"id"`
-	IssueID        string               `json:"issue_id"`
-	AuthorType     string               `json:"author_type"`
-	AuthorID       string               `json:"author_id"`
-	Content        string               `json:"content"`
-	Type           string               `json:"type"`
-	ParentID       *string              `json:"parent_id"`
-	CreatedAt      string               `json:"created_at"`
-	UpdatedAt      string               `json:"updated_at"`
-	ResolvedAt     *string              `json:"resolved_at"`
-	ResolvedByType *string              `json:"resolved_by_type"`
-	ResolvedByID   *string              `json:"resolved_by_id"`
-	SourceTaskID   *string              `json:"source_task_id,omitempty"`
-	Reactions      []ReactionResponse   `json:"reactions"`
-	Attachments    []AttachmentResponse `json:"attachments"`
+	ID              string               `json:"id"`
+	IssueID         string               `json:"issue_id"`
+	AuthorType      string               `json:"author_type"`
+	AuthorID        string               `json:"author_id"`
+	Content         string               `json:"content"`
+	Type            string               `json:"type"`
+	ParentID        *string              `json:"parent_id"`
+	CreatedAt       string               `json:"created_at"`
+	UpdatedAt       string               `json:"updated_at"`
+	ResolvedAt      *string              `json:"resolved_at"`
+	ResolvedByType  *string              `json:"resolved_by_type"`
+	ResolvedByID    *string              `json:"resolved_by_id"`
+	SourceTaskID    *string              `json:"source_task_id,omitempty"`
+	ReviewAssetID   *string              `json:"review_asset_id,omitempty"`
+	ReviewCommentID *string              `json:"review_comment_id,omitempty"`
+	ReviewPageIndex *int32               `json:"review_page_index,omitempty"`
+	ReviewStartTime *float32             `json:"review_start_time,omitempty"`
+	ReviewEndTime   *float32             `json:"review_end_time,omitempty"`
+	Reactions       []ReactionResponse   `json:"reactions"`
+	Attachments     []AttachmentResponse `json:"attachments"`
 	// Orientation stats — populated only on the roots_only path and omitted in
 	// every other mode, so the default response shape stays byte-identical for
 	// existing callers. ReplyCount is the number of descendants in the thread;
@@ -67,21 +72,26 @@ func commentToResponse(c db.Comment, reactions []ReactionResponse, attachments [
 		attachments = []AttachmentResponse{}
 	}
 	return CommentResponse{
-		ID:             uuidToString(c.ID),
-		IssueID:        uuidToString(c.IssueID),
-		AuthorType:     c.AuthorType,
-		AuthorID:       uuidToString(c.AuthorID),
-		Content:        c.Content,
-		Type:           c.Type,
-		ParentID:       uuidToPtr(c.ParentID),
-		CreatedAt:      timestampToString(c.CreatedAt),
-		UpdatedAt:      timestampToString(c.UpdatedAt),
-		ResolvedAt:     timestampToPtr(c.ResolvedAt),
-		ResolvedByType: textToPtr(c.ResolvedByType),
-		ResolvedByID:   uuidToPtr(c.ResolvedByID),
-		SourceTaskID:   uuidToPtr(c.SourceTaskID),
-		Reactions:      reactions,
-		Attachments:    attachments,
+		ID:              uuidToString(c.ID),
+		IssueID:         uuidToString(c.IssueID),
+		AuthorType:      c.AuthorType,
+		AuthorID:        uuidToString(c.AuthorID),
+		Content:         c.Content,
+		Type:            c.Type,
+		ParentID:        uuidToPtr(c.ParentID),
+		CreatedAt:       timestampToString(c.CreatedAt),
+		UpdatedAt:       timestampToString(c.UpdatedAt),
+		ResolvedAt:      timestampToPtr(c.ResolvedAt),
+		ResolvedByType:  textToPtr(c.ResolvedByType),
+		ResolvedByID:    uuidToPtr(c.ResolvedByID),
+		SourceTaskID:    uuidToPtr(c.SourceTaskID),
+		ReviewAssetID:   uuidToPtr(c.ReviewAssetID),
+		ReviewCommentID: uuidToPtr(c.ReviewCommentID),
+		ReviewPageIndex: int4ToPtr(c.ReviewPageIndex),
+		ReviewStartTime: float4ToPtr(c.ReviewStartTime),
+		ReviewEndTime:   float4ToPtr(c.ReviewEndTime),
+		Reactions:       reactions,
+		Attachments:     attachments,
 	}
 }
 

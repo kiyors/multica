@@ -977,28 +977,28 @@ WHERE i.workspace_id = $1
   AND ($11::jsonb IS NULL OR i.metadata @> $11::jsonb)
   AND (
     i.project_id IS NULL
-    OR $14::boolean = true
+    OR $12::boolean = true
     OR EXISTS (
       SELECT 1 FROM project_member pm
-      WHERE pm.project_id = i.project_id AND pm.member_id = $15
+      WHERE pm.project_id = i.project_id AND pm.member_id = $13
     )
   )
   AND (
-    $12::uuid IS NULL
+    $14::uuid IS NULL
     OR EXISTS (
       SELECT 1 FROM approvals a
       WHERE a.issue_id = i.id
-        AND a.approver_id = $12::uuid
+        AND a.approver_id = $14::uuid
         AND a.status = 'pending'
     )
   )
   AND (
-    $13::uuid IS NULL
+    $15::uuid IS NULL
     -- (1) assignee is an agent owned by the user
     OR (i.assignee_type = 'agent' AND i.assignee_id IN (
           SELECT a.id FROM agent a
            WHERE a.workspace_id = $1
-             AND a.owner_id     = $13::uuid
+             AND a.owner_id     = $15::uuid
     ))
     -- (2)(3)(4) assignee is a squad related to the user — three relations
     OR (i.assignee_type = 'squad' AND i.assignee_id IN (
@@ -1008,7 +1008,7 @@ WHERE i.workspace_id = $1
             JOIN squad s ON s.id = sm.squad_id
            WHERE s.workspace_id = $1
              AND sm.member_type = 'member'
-             AND sm.member_id   = $13::uuid
+             AND sm.member_id   = $15::uuid
           UNION
           -- (3) the squad's canonical leader is an agent owned by the user.
           -- We read squad.leader_id directly rather than relying on a
@@ -1019,7 +1019,7 @@ WHERE i.workspace_id = $1
             JOIN agent a ON a.id = s.leader_id
            WHERE s.workspace_id = $1
              AND a.workspace_id = $1
-             AND a.owner_id     = $13::uuid
+             AND a.owner_id     = $15::uuid
           UNION
           -- (4) the squad has an agent member owned by the user
           SELECT sm.squad_id
@@ -1029,7 +1029,7 @@ WHERE i.workspace_id = $1
            WHERE s.workspace_id = $1
              AND sm.member_type = 'agent'
              AND a.workspace_id = $1
-             AND a.owner_id     = $13::uuid
+             AND a.owner_id     = $15::uuid
     ))
   )
 ORDER BY i.position ASC, i.created_at DESC
@@ -1048,10 +1048,10 @@ type ListIssuesParams struct {
 	ProjectID         pgtype.UUID   `json:"project_id"`
 	Scheduled         pgtype.Bool   `json:"scheduled"`
 	MetadataFilter    []byte        `json:"metadata_filter"`
-	PendingApproverID pgtype.UUID   `json:"pending_approver_id"`
-	InvolvesUserID    pgtype.UUID   `json:"involves_user_id"`
 	IsAdmin           bool          `json:"is_admin"`
 	MemberID          pgtype.UUID   `json:"member_id"`
+	PendingApproverID pgtype.UUID   `json:"pending_approver_id"`
+	InvolvesUserID    pgtype.UUID   `json:"involves_user_id"`
 }
 
 type ListIssuesRow struct {
@@ -1096,10 +1096,10 @@ func (q *Queries) ListIssues(ctx context.Context, arg ListIssuesParams) ([]ListI
 		arg.ProjectID,
 		arg.Scheduled,
 		arg.MetadataFilter,
-		arg.PendingApproverID,
-		arg.InvolvesUserID,
 		arg.IsAdmin,
 		arg.MemberID,
+		arg.PendingApproverID,
+		arg.InvolvesUserID,
 	)
 	if err != nil {
 		return nil, err
@@ -1155,27 +1155,27 @@ WHERE i.workspace_id = $1
   AND ($7::jsonb IS NULL OR i.metadata @> $7::jsonb)
   AND (
     i.project_id IS NULL
-    OR $10::boolean = true
+    OR $8::boolean = true
     OR EXISTS (
       SELECT 1 FROM project_member pm
-      WHERE pm.project_id = i.project_id AND pm.member_id = $11
+      WHERE pm.project_id = i.project_id AND pm.member_id = $9
     )
   )
   AND (
-    $8::uuid IS NULL
+    $10::uuid IS NULL
     OR EXISTS (
       SELECT 1 FROM approvals a
       WHERE a.issue_id = i.id
-        AND a.approver_id = $8::uuid
+        AND a.approver_id = $10::uuid
         AND a.status = 'pending'
     )
   )
   AND (
-    $9::uuid IS NULL
+    $11::uuid IS NULL
     OR (i.assignee_type = 'agent' AND i.assignee_id IN (
           SELECT a.id FROM agent a
            WHERE a.workspace_id = $1
-             AND a.owner_id     = $9::uuid
+             AND a.owner_id     = $11::uuid
     ))
     OR (i.assignee_type = 'squad' AND i.assignee_id IN (
           SELECT sm.squad_id
@@ -1183,14 +1183,14 @@ WHERE i.workspace_id = $1
             JOIN squad s ON s.id = sm.squad_id
            WHERE s.workspace_id = $1
              AND sm.member_type = 'member'
-             AND sm.member_id   = $9::uuid
+             AND sm.member_id   = $11::uuid
           UNION
           SELECT s.id
             FROM squad s
             JOIN agent a ON a.id = s.leader_id
            WHERE s.workspace_id = $1
              AND a.workspace_id = $1
-             AND a.owner_id     = $9::uuid
+             AND a.owner_id     = $11::uuid
           UNION
           SELECT sm.squad_id
             FROM squad_member sm
@@ -1199,7 +1199,7 @@ WHERE i.workspace_id = $1
            WHERE s.workspace_id = $1
              AND sm.member_type = 'agent'
              AND a.workspace_id = $1
-             AND a.owner_id     = $9::uuid
+             AND a.owner_id     = $11::uuid
     ))
   )
 ORDER BY i.position ASC, i.created_at DESC
@@ -1213,10 +1213,10 @@ type ListOpenIssuesParams struct {
 	CreatorID         pgtype.UUID   `json:"creator_id"`
 	ProjectID         pgtype.UUID   `json:"project_id"`
 	MetadataFilter    []byte        `json:"metadata_filter"`
-	PendingApproverID pgtype.UUID   `json:"pending_approver_id"`
-	InvolvesUserID    pgtype.UUID   `json:"involves_user_id"`
 	IsAdmin           bool          `json:"is_admin"`
 	MemberID          pgtype.UUID   `json:"member_id"`
+	PendingApproverID pgtype.UUID   `json:"pending_approver_id"`
+	InvolvesUserID    pgtype.UUID   `json:"involves_user_id"`
 }
 
 type ListOpenIssuesRow struct {
@@ -1253,10 +1253,10 @@ func (q *Queries) ListOpenIssues(ctx context.Context, arg ListOpenIssuesParams) 
 		arg.CreatorID,
 		arg.ProjectID,
 		arg.MetadataFilter,
-		arg.PendingApproverID,
-		arg.InvolvesUserID,
 		arg.IsAdmin,
 		arg.MemberID,
+		arg.PendingApproverID,
+		arg.InvolvesUserID,
 	)
 	if err != nil {
 		return nil, err

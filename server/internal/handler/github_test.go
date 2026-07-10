@@ -8,6 +8,7 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
@@ -1678,7 +1679,7 @@ func TestWebhook_CheckSuite_CIFailingLabel(t *testing.T) {
 
 	head := "label1234567890"
 	firePullRequestWebhookWithHead(t, secret, created.Identifier, installationID, "ci-label-repo", 12, "opened", head, "")
-	
+
 	// Fail the suite -> should attach label
 	fireCheckSuiteWebhook(t, secret, installationID, "ci-label-repo", []int32{12}, 2001, 8001, head, "failure", "2026-05-01T00:00:00Z")
 
@@ -2558,6 +2559,15 @@ func TestSignGitHubAppJWT_ClaimsAndSignature(t *testing.T) {
 	}
 	if exp-iat > int64(10*time.Minute/time.Second) {
 		t.Errorf("exp-iat = %d s, exceeds GitHub's 10m max", exp-iat)
+	}
+}
+
+func TestSignGitHubAppJWT_Base64PEM(t *testing.T) {
+	pemBytes, _ := generateTestRSAKeyPEM(t)
+	t.Setenv("GITHUB_APP_ID", "424242")
+	t.Setenv("GITHUB_APP_PRIVATE_KEY", base64.StdEncoding.EncodeToString(pemBytes))
+	if token, err := signGitHubAppJWT(time.Now()); err != nil || token == "" {
+		t.Fatalf("expected base64 PEM to sign a token, token=%q err=%v", token, err)
 	}
 }
 

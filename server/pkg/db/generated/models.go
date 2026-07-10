@@ -360,20 +360,25 @@ type ChatSession struct {
 }
 
 type Comment struct {
-	ID             pgtype.UUID        `json:"id"`
-	IssueID        pgtype.UUID        `json:"issue_id"`
-	AuthorType     string             `json:"author_type"`
-	AuthorID       pgtype.UUID        `json:"author_id"`
-	Content        string             `json:"content"`
-	Type           string             `json:"type"`
-	CreatedAt      pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
-	ParentID       pgtype.UUID        `json:"parent_id"`
-	WorkspaceID    pgtype.UUID        `json:"workspace_id"`
-	ResolvedAt     pgtype.Timestamptz `json:"resolved_at"`
-	ResolvedByType pgtype.Text        `json:"resolved_by_type"`
-	ResolvedByID   pgtype.UUID        `json:"resolved_by_id"`
-	SourceTaskID   pgtype.UUID        `json:"source_task_id"`
+	ID              pgtype.UUID        `json:"id"`
+	IssueID         pgtype.UUID        `json:"issue_id"`
+	AuthorType      string             `json:"author_type"`
+	AuthorID        pgtype.UUID        `json:"author_id"`
+	Content         string             `json:"content"`
+	Type            string             `json:"type"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+	ParentID        pgtype.UUID        `json:"parent_id"`
+	WorkspaceID     pgtype.UUID        `json:"workspace_id"`
+	ResolvedAt      pgtype.Timestamptz `json:"resolved_at"`
+	ResolvedByType  pgtype.Text        `json:"resolved_by_type"`
+	ResolvedByID    pgtype.UUID        `json:"resolved_by_id"`
+	SourceTaskID    pgtype.UUID        `json:"source_task_id"`
+	ReviewAssetID   pgtype.UUID        `json:"review_asset_id"`
+	ReviewCommentID pgtype.UUID        `json:"review_comment_id"`
+	ReviewPageIndex pgtype.Int4        `json:"review_page_index"`
+	ReviewStartTime pgtype.Float4      `json:"review_start_time"`
+	ReviewEndTime   pgtype.Float4      `json:"review_end_time"`
 }
 
 type CommentReaction struct {
@@ -510,6 +515,16 @@ type GithubPullRequestCheckSuite struct {
 	Conclusion pgtype.Text        `json:"conclusion"`
 	Status     string             `json:"status"`
 	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
+}
+
+type GuestReviewLink struct {
+	ID        pgtype.UUID        `json:"id"`
+	AssetID   pgtype.UUID        `json:"asset_id"`
+	TokenHash []byte             `json:"token_hash"`
+	CreatedBy pgtype.UUID        `json:"created_by"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+	RevokedAt pgtype.Timestamptz `json:"revoked_at"`
 }
 
 type InboxItem struct {
@@ -816,22 +831,23 @@ type ProjectResource struct {
 }
 
 type ReviewAsset struct {
-	ID           pgtype.UUID        `json:"id"`
-	IssueID      pgtype.UUID        `json:"issue_id"`
-	WorkspaceID  pgtype.UUID        `json:"workspace_id"`
-	Name         string             `json:"name"`
-	AssetType    string             `json:"asset_type"`
-	FileUrl      string             `json:"file_url"`
-	ThumbnailUrl pgtype.Text        `json:"thumbnail_url"`
-	Width        pgtype.Int4        `json:"width"`
-	Height       pgtype.Int4        `json:"height"`
-	Duration     pgtype.Float4      `json:"duration"`
-	Version      int32              `json:"version"`
-	Status       string             `json:"status"`
-	UploadedBy   pgtype.UUID        `json:"uploaded_by"`
-	CreatedAt    pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
-	AssetGroupID pgtype.UUID        `json:"asset_group_id"`
+	ID                pgtype.UUID        `json:"id"`
+	IssueID           pgtype.UUID        `json:"issue_id"`
+	WorkspaceID       pgtype.UUID        `json:"workspace_id"`
+	Name              string             `json:"name"`
+	AssetType         string             `json:"asset_type"`
+	FileUrl           string             `json:"file_url"`
+	ThumbnailUrl      pgtype.Text        `json:"thumbnail_url"`
+	Width             pgtype.Int4        `json:"width"`
+	Height            pgtype.Int4        `json:"height"`
+	Duration          pgtype.Float4      `json:"duration"`
+	Version           int32              `json:"version"`
+	Status            string             `json:"status"`
+	UploadedBy        pgtype.UUID        `json:"uploaded_by"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
+	AssetGroupID      pgtype.UUID        `json:"asset_group_id"`
+	UploadCompletedAt pgtype.Timestamptz `json:"upload_completed_at"`
 }
 
 type ReviewComment struct {
@@ -848,6 +864,8 @@ type ReviewComment struct {
 	CreatedAt  pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
 	EndTime    pgtype.Float4      `json:"end_time"`
+	GuestName  pgtype.Text        `json:"guest_name"`
+	PageIndex  int32              `json:"page_index"`
 }
 
 type RuntimeProfile struct {

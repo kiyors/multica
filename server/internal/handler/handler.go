@@ -44,6 +44,10 @@ func randomID() string {
 	return hex.EncodeToString(b)
 }
 
+func isWorkspaceManagerRole(role string) bool {
+	return role == "owner" || role == "admin"
+}
+
 type txStarter interface {
 	Begin(ctx context.Context) (pgx.Tx, error)
 }

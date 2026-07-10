@@ -25,16 +25,21 @@ type TimelineEntry struct {
 	Details json.RawMessage `json:"details,omitempty"`
 
 	// Comment-only fields
-	Content        *string              `json:"content,omitempty"`
-	ParentID       *string              `json:"parent_id,omitempty"`
-	UpdatedAt      *string              `json:"updated_at,omitempty"`
-	CommentType    *string              `json:"comment_type,omitempty"`
-	Reactions      []ReactionResponse   `json:"reactions,omitempty"`
-	Attachments    []AttachmentResponse `json:"attachments,omitempty"`
-	ResolvedAt     *string              `json:"resolved_at,omitempty"`
-	ResolvedByType *string              `json:"resolved_by_type,omitempty"`
-	ResolvedByID   *string              `json:"resolved_by_id,omitempty"`
-	SourceTaskID   *string              `json:"source_task_id,omitempty"`
+	Content         *string              `json:"content,omitempty"`
+	ParentID        *string              `json:"parent_id,omitempty"`
+	UpdatedAt       *string              `json:"updated_at,omitempty"`
+	CommentType     *string              `json:"comment_type,omitempty"`
+	Reactions       []ReactionResponse   `json:"reactions,omitempty"`
+	Attachments     []AttachmentResponse `json:"attachments,omitempty"`
+	ResolvedAt      *string              `json:"resolved_at,omitempty"`
+	ResolvedByType  *string              `json:"resolved_by_type,omitempty"`
+	ResolvedByID    *string              `json:"resolved_by_id,omitempty"`
+	SourceTaskID    *string              `json:"source_task_id,omitempty"`
+	ReviewAssetID   *string              `json:"review_asset_id,omitempty"`
+	ReviewCommentID *string              `json:"review_comment_id,omitempty"`
+	ReviewPageIndex *int32               `json:"review_page_index,omitempty"`
+	ReviewStartTime *float32             `json:"review_start_time,omitempty"`
+	ReviewEndTime   *float32             `json:"review_end_time,omitempty"`
 }
 
 // timelineHardCap bounds the per-issue timeline payload. Sized as a defensive
@@ -175,21 +180,26 @@ func (h *Handler) commentsToEntries(r *http.Request, comments []db.Comment) []Ti
 		updatedAt := timestampToString(c.UpdatedAt)
 		cid := uuidToString(c.ID)
 		out[i] = TimelineEntry{
-			Type:           "comment",
-			ID:             cid,
-			ActorType:      c.AuthorType,
-			ActorID:        uuidToString(c.AuthorID),
-			Content:        &content,
-			CommentType:    &commentType,
-			ParentID:       uuidToPtr(c.ParentID),
-			CreatedAt:      timestampToString(c.CreatedAt),
-			UpdatedAt:      &updatedAt,
-			Reactions:      reactions[cid],
-			Attachments:    attachments[cid],
-			ResolvedAt:     timestampToPtr(c.ResolvedAt),
-			ResolvedByType: textToPtr(c.ResolvedByType),
-			ResolvedByID:   uuidToPtr(c.ResolvedByID),
-			SourceTaskID:   uuidToPtr(c.SourceTaskID),
+			Type:            "comment",
+			ID:              cid,
+			ActorType:       c.AuthorType,
+			ActorID:         uuidToString(c.AuthorID),
+			Content:         &content,
+			CommentType:     &commentType,
+			ParentID:        uuidToPtr(c.ParentID),
+			CreatedAt:       timestampToString(c.CreatedAt),
+			UpdatedAt:       &updatedAt,
+			Reactions:       reactions[cid],
+			Attachments:     attachments[cid],
+			ResolvedAt:      timestampToPtr(c.ResolvedAt),
+			ResolvedByType:  textToPtr(c.ResolvedByType),
+			ResolvedByID:    uuidToPtr(c.ResolvedByID),
+			SourceTaskID:    uuidToPtr(c.SourceTaskID),
+			ReviewAssetID:   uuidToPtr(c.ReviewAssetID),
+			ReviewCommentID: uuidToPtr(c.ReviewCommentID),
+			ReviewPageIndex: int4ToPtr(c.ReviewPageIndex),
+			ReviewStartTime: float4ToPtr(c.ReviewStartTime),
+			ReviewEndTime:   float4ToPtr(c.ReviewEndTime),
 		}
 	}
 	return out
