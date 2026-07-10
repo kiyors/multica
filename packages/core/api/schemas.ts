@@ -20,6 +20,9 @@ import type {
   ListWebhookDeliveriesResponse,
   SearchIssuesResponse,
   SearchProjectsResponse,
+  ProjectMember,
+  Milestone,
+  ProjectDocument,
   Squad,
   TimelineEntry,
   User,
@@ -349,6 +352,84 @@ export const SearchProjectsResponseSchema = z.object({
 export const EMPTY_SEARCH_PROJECTS_RESPONSE: SearchProjectsResponse = {
   projects: [],
   total: 0,
+};
+
+export const ProjectMemberSchema = z.object({
+  project_id: z.string(),
+  member_id: z.string(),
+  role: z.string(),
+  invited_at: z.string().default(""),
+  invited_by: z.string().nullable().default(null),
+}).loose();
+
+export const ProjectMemberListSchema = z.array(ProjectMemberSchema);
+
+export const EMPTY_PROJECT_MEMBER: ProjectMember = {
+  project_id: "",
+  member_id: "",
+  role: "viewer",
+  invited_at: "",
+  invited_by: null,
+};
+
+export const MilestoneSchema = z.object({
+  id: z.string(),
+  project_id: z.string(),
+  title: z.string().default(""),
+  description: z.string().nullable().default(null),
+  start_date: z.string().nullable().default(null),
+  due_date: z.string().nullable().default(null),
+  status: z.string().default("active"),
+  sort_order: z.number().default(0),
+  created_by: z.string().nullable().default(null),
+  created_at: z.string().default(""),
+  updated_at: z.string().default(""),
+  member_ids: z.array(z.string()).default([]),
+}).loose();
+
+export const MilestoneListSchema = z.array(MilestoneSchema);
+
+export const EMPTY_MILESTONE: Milestone = {
+  id: "",
+  project_id: "",
+  title: "",
+  description: null,
+  start_date: null,
+  due_date: null,
+  status: "active",
+  sort_order: 0,
+  created_by: null,
+  created_at: "",
+  updated_at: "",
+  member_ids: [],
+};
+
+export const ProjectDocumentSchema = z.object({
+  id: z.string(),
+  project_id: z.string(),
+  parent_id: z.string().nullable().default(null),
+  title: z.string().default(""),
+  content: z.string().default(""),
+  sort_order: z.number().default(0),
+  created_by: z.string().nullable().default(null),
+  created_at: z.string().default(""),
+  updated_at: z.string().default(""),
+  document_type: z.string().default("page"),
+}).loose();
+
+export const ProjectDocumentListSchema = z.array(ProjectDocumentSchema);
+
+export const EMPTY_PROJECT_DOCUMENT: ProjectDocument = {
+  id: "",
+  project_id: "",
+  parent_id: null,
+  title: "",
+  content: "",
+  sort_order: 0,
+  created_by: null,
+  created_at: "",
+  updated_at: "",
+  document_type: "page",
 };
 
 const IssueAssigneeGroupSchema = z.object({

@@ -6,6 +6,33 @@ afterEach(() => {
 });
 
 describe("ApiClient", () => {
+  it("sends the workspace member ID when adding a project member", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({
+        project_id: "project-1",
+        member_id: "member-1",
+        role: "viewer",
+        invited_at: "2026-07-10T00:00:00Z",
+        invited_by: "member-owner",
+      }), {
+        status: 201,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = new ApiClient("https://api.example.test");
+    await client.addProjectMember("project-1", "member-1", "viewer");
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.example.test/api/projects/project-1/members",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ member_id: "member-1", role: "viewer" }),
+      }),
+    );
+  });
+
   it("preserves HTTP status on failed requests", async () => {
     vi.stubGlobal(
       "fetch",

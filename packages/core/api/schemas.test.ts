@@ -20,6 +20,9 @@ import {
   SquadSchema,
   TimelineEntriesSchema,
   UserSchema,
+  MilestoneListSchema,
+  ProjectDocumentListSchema,
+  ProjectMemberListSchema,
 } from "./schemas";
 import { parseWithFallback } from "./schema";
 
@@ -309,6 +312,36 @@ describe("UserSchema timezone drift", () => {
       { endpoint: "GET /api/me" },
     );
     expect(parsed).toBe(EMPTY_USER);
+  });
+});
+
+describe("project collaboration response schemas", () => {
+  it("defaults milestone assignees for older servers", () => {
+    const [milestone] = MilestoneListSchema.parse([{
+      id: "milestone-1",
+      project_id: "project-1",
+      title: "Launch",
+    }]);
+    expect(milestone?.member_ids).toEqual([]);
+  });
+
+  it("defaults legacy wiki documents to pages", () => {
+    const [document] = ProjectDocumentListSchema.parse([{
+      id: "document-1",
+      project_id: "project-1",
+      title: "Notes",
+    }]);
+    expect(document?.document_type).toBe("page");
+  });
+
+  it("rejects malformed project member arrays instead of leaking invalid identities", () => {
+    const parsed = parseWithFallback(
+      [{ project_id: "project-1", member_id: 42, role: "viewer" }],
+      ProjectMemberListSchema,
+      [],
+      { endpoint: "GET /api/projects/:id/members" },
+    );
+    expect(parsed).toEqual([]);
   });
 });
 

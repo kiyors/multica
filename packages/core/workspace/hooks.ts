@@ -5,6 +5,16 @@ import { useQuery } from "@tanstack/react-query";
 import { useWorkspaceId } from "../hooks";
 import { memberListOptions, agentListOptions, squadListOptions } from "./queries";
 import { resolvePublicFileUrl } from "./avatar-url";
+import type { MemberWithUser } from "../types";
+
+export function findMemberByActorId(
+  members: MemberWithUser[],
+  actorId: string,
+): MemberWithUser | undefined {
+  return members.find(
+    (member) => member.user_id === actorId || member.id === actorId,
+  );
+}
 
 export function useActorName() {
   const wsId = useWorkspaceId();
@@ -13,7 +23,10 @@ export function useActorName() {
   const { data: squads = [] } = useQuery(squadListOptions(wsId));
 
   const getMemberName = useCallback((userId: string) => {
-    const m = members.find((m) => m.user_id === userId);
+    // Most actor references use user IDs, but review comments predate that
+    // convention and store the workspace member ID. Resolve both identities
+    // so existing review threads keep showing their real author.
+    const m = findMemberByActorId(members, userId);
     return m?.name ?? "Unknown";
   }, [members]);
 
@@ -46,7 +59,11 @@ export function useActorName() {
   }, [getActorName]);
 
   const getActorAvatarUrl = useCallback((type: string, id: string): string | null => {
-    if (type === "member") return resolvePublicFileUrl(members.find((m) => m.user_id === id)?.avatar_url);
+    if (type === "member") {
+      return resolvePublicFileUrl(
+        findMemberByActorId(members, id)?.avatar_url,
+      );
+    }
     if (type === "agent") return resolvePublicFileUrl(agents.find((a) => a.id === id)?.avatar_url);
     if (type === "squad") return resolvePublicFileUrl(squads.find((s) => s.id === id)?.avatar_url);
     return null;

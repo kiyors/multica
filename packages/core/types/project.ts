@@ -131,6 +131,7 @@ export interface Milestone {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  member_ids: string[];
 }
 
 export interface ProjectDocument {
@@ -143,4 +144,5 @@ export interface ProjectDocument {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  document_type: "page" | "folder";
 }

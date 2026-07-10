@@ -239,6 +239,15 @@ import {
   EMPTY_CREATE_FEEDBACK_RESPONSE,
   InboxUnreadSummarySchema,
   EMPTY_INBOX_UNREAD_SUMMARY,
+  ProjectMemberSchema,
+  ProjectMemberListSchema,
+  EMPTY_PROJECT_MEMBER,
+  MilestoneSchema,
+  MilestoneListSchema,
+  EMPTY_MILESTONE,
+  ProjectDocumentSchema,
+  ProjectDocumentListSchema,
+  EMPTY_PROJECT_DOCUMENT,
 } from "./schemas";
 
 /** Identifies the calling client to the server.
@@ -2651,20 +2660,29 @@ export class ApiClient {
   // --- Project Members ---
 
   async listProjectMembers(projectId: string): Promise<ProjectMember[]> {
-    return this.fetch(`/api/projects/${projectId}/members`);
+    const raw = await this.fetch<unknown>(`/api/projects/${projectId}/members`);
+    return parseWithFallback(raw, ProjectMemberListSchema, [], {
+      endpoint: "GET /api/projects/:id/members",
+    });
   }
 
   async addProjectMember(projectId: string, memberId: string, role: string): Promise<ProjectMember> {
-    return this.fetch(`/api/projects/${projectId}/members`, {
+    const raw = await this.fetch<unknown>(`/api/projects/${projectId}/members`, {
       method: "POST",
       body: JSON.stringify({ member_id: memberId, role }),
+    });
+    return parseWithFallback(raw, ProjectMemberSchema, EMPTY_PROJECT_MEMBER, {
+      endpoint: "POST /api/projects/:id/members",
     });
   }
 
   async updateProjectMember(projectId: string, memberId: string, role: string): Promise<ProjectMember> {
-    return this.fetch(`/api/projects/${projectId}/members/${memberId}`, {
+    const raw = await this.fetch<unknown>(`/api/projects/${projectId}/members/${memberId}`, {
       method: "PATCH",
       body: JSON.stringify({ role }),
+    });
+    return parseWithFallback(raw, ProjectMemberSchema, EMPTY_PROJECT_MEMBER, {
+      endpoint: "PATCH /api/projects/:id/members/:memberId",
     });
   }
 
@@ -2677,24 +2695,36 @@ export class ApiClient {
   // --- Milestones ---
 
   async listMilestones(projectId: string): Promise<Milestone[]> {
-    return this.fetch(`/api/projects/${projectId}/milestones`);
+    const raw = await this.fetch<unknown>(`/api/projects/${projectId}/milestones`);
+    return parseWithFallback(raw, MilestoneListSchema, [], {
+      endpoint: "GET /api/projects/:id/milestones",
+    });
   }
 
   async getMilestone(milestoneId: string): Promise<Milestone> {
-    return this.fetch(`/api/milestones/${milestoneId}`);
+    const raw = await this.fetch<unknown>(`/api/milestones/${milestoneId}`);
+    return parseWithFallback(raw, MilestoneSchema, EMPTY_MILESTONE, {
+      endpoint: "GET /api/milestones/:id",
+    });
   }
 
   async createMilestone(projectId: string, data: Partial<Milestone>): Promise<Milestone> {
-    return this.fetch(`/api/projects/${projectId}/milestones`, {
+    const raw = await this.fetch<unknown>(`/api/projects/${projectId}/milestones`, {
       method: "POST",
       body: JSON.stringify(data),
+    });
+    return parseWithFallback(raw, MilestoneSchema, EMPTY_MILESTONE, {
+      endpoint: "POST /api/projects/:id/milestones",
     });
   }
 
   async updateMilestone(milestoneId: string, data: Partial<Milestone>): Promise<Milestone> {
-    return this.fetch(`/api/milestones/${milestoneId}`, {
+    const raw = await this.fetch<unknown>(`/api/milestones/${milestoneId}`, {
       method: "PATCH",
       body: JSON.stringify(data),
+    });
+    return parseWithFallback(raw, MilestoneSchema, EMPTY_MILESTONE, {
+      endpoint: "PATCH /api/milestones/:id",
     });
   }
 
@@ -2707,24 +2737,36 @@ export class ApiClient {
   // --- Project Documents ---
 
   async listProjectDocuments(projectId: string): Promise<ProjectDocument[]> {
-    return this.fetch(`/api/projects/${projectId}/documents`);
+    const raw = await this.fetch<unknown>(`/api/projects/${projectId}/documents`);
+    return parseWithFallback(raw, ProjectDocumentListSchema, [], {
+      endpoint: "GET /api/projects/:id/documents",
+    });
   }
 
   async getProjectDocument(documentId: string): Promise<ProjectDocument> {
-    return this.fetch(`/api/project-documents/${documentId}`);
+    const raw = await this.fetch<unknown>(`/api/project-documents/${documentId}`);
+    return parseWithFallback(raw, ProjectDocumentSchema, EMPTY_PROJECT_DOCUMENT, {
+      endpoint: "GET /api/project-documents/:id",
+    });
   }
 
   async createProjectDocument(projectId: string, data: Partial<ProjectDocument>): Promise<ProjectDocument> {
-    return this.fetch(`/api/projects/${projectId}/documents`, {
+    const raw = await this.fetch<unknown>(`/api/projects/${projectId}/documents`, {
       method: "POST",
       body: JSON.stringify(data),
+    });
+    return parseWithFallback(raw, ProjectDocumentSchema, EMPTY_PROJECT_DOCUMENT, {
+      endpoint: "POST /api/projects/:id/documents",
     });
   }
 
   async updateProjectDocument(documentId: string, data: Partial<ProjectDocument>): Promise<ProjectDocument> {
-    return this.fetch(`/api/project-documents/${documentId}`, {
+    const raw = await this.fetch<unknown>(`/api/project-documents/${documentId}`, {
       method: "PATCH",
       body: JSON.stringify(data),
+    });
+    return parseWithFallback(raw, ProjectDocumentSchema, EMPTY_PROJECT_DOCUMENT, {
+      endpoint: "PATCH /api/project-documents/:id",
     });
   }
 
@@ -2841,4 +2883,3 @@ export class ApiClient {
     });
   }
 }
-
