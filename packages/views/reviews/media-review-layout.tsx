@@ -3,6 +3,13 @@ import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Trash2, Share2, X } from "lucide-react";
 import { toast } from "sonner";
 import type { ReviewAsset } from "@multica/core/types";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@multica/ui/components/ui/carousel";
+import { pdfjs } from "react-pdf";
+
+if (typeof window !== "undefined") {
+  pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
+}
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,6 +45,16 @@ export function MediaReviewLayout({ workspaceId, asset, onAssetChange, onClose, 
   const [selectedCommentId, setSelectedCommentId] = useState<string | undefined>(initialCommentId);
   const [drawingShape, setDrawingShape] = useState<any>(null);
   const [pageIndex, setPageIndex] = useState(initialPageIndex);
+  const [pdfNumPages, setPdfNumPages] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (asset.asset_type === "pdf") {
+      setPdfNumPages(null);
+      pdfjs.getDocument(asset.src_url).promise.then((pdf) => {
+        setPdfNumPages(pdf.numPages);
+      }).catch(console.error);
+    }
+  }, [asset.src_url, asset.asset_type]);
 
   useEffect(() => {
     setSelectedCommentId(initialCommentId);
@@ -101,6 +118,13 @@ export function MediaReviewLayout({ workspaceId, asset, onAssetChange, onClose, 
   const assetVersions = (allAssets as ReviewAsset[] | undefined)
     ?.filter((a: ReviewAsset) => a.asset_group_id === asset.asset_group_id)
     ?.sort((a: ReviewAsset, b: ReviewAsset) => b.version - a.version) || [asset];
+
+  const groupAssets = Object.values(
+    (allAssets as ReviewAsset[] | undefined ?? []).reduce((acc, a) => {
+      if (!acc[a.asset_group_id] || (acc[a.asset_group_id]?.version ?? -1) < a.version) acc[a.asset_group_id] = a;
+      return acc;
+    }, {} as Record<string, ReviewAsset>)
+  ).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
   const handleSeek = (time: number) => {
     playerRef.current?.seek(time);
@@ -170,8 +194,8 @@ export function MediaReviewLayout({ workspaceId, asset, onAssetChange, onClose, 
           {asset.asset_type === "pdf" && (
             <div className="flex items-center gap-1">
               <button className="rounded p-1 hover:bg-muted" aria-label="Previous page" disabled={pageIndex === 0} onClick={() => setPageIndex((value) => Math.max(0, value - 1))}><ChevronLeft className="h-4 w-4" /></button>
-              <span className="min-w-14 text-center text-xs">Page {pageIndex + 1}</span>
-              <button className="rounded p-1 hover:bg-muted" aria-label="Next page" onClick={() => setPageIndex((value) => value + 1)}><ChevronRight className="h-4 w-4" /></button>
+              <span className="min-w-16 text-center text-xs">Page {pageIndex + 1} {pdfNumPages ? `/ ${pdfNumPages}` : ''}</span>
+              <button className="rounded p-1 hover:bg-muted" aria-label="Next page" disabled={pdfNumPages !== null && pageIndex >= pdfNumPages - 1} onClick={() => setPageIndex((value) => pdfNumPages ? Math.min(pdfNumPages - 1, value + 1) : value + 1)}><ChevronRight className="h-4 w-4" /></button>
             </div>
           )}
           
@@ -276,6 +300,31 @@ export function MediaReviewLayout({ workspaceId, asset, onAssetChange, onClose, 
           </button>
         </div>
       </div>
+
+      {groupAssets.length > 1 && (
+        <div className="h-20 border-b border-border bg-background p-2 flex justify-center">
+           <Carousel className="w-full max-w-2xl" opts={{ dragFree: true }}>
+             <CarouselContent className="-ml-2">
+               {groupAssets.map(a => (
+                 <CarouselItem key={a.id} className="pl-2 basis-24">
+                   <div 
+                     onClick={() => onAssetChange && onAssetChange(a)}
+                     className={`w-full h-16 rounded cursor-pointer border-2 overflow-hidden relative ${a.asset_group_id === asset.asset_group_id ? 'border-primary' : 'border-transparent hover:border-border'}`}
+                   >
+                     {a.thumbnail_url ? (
+                       <img src={a.thumbnail_url} className="w-full h-full object-cover" />
+                     ) : (
+                       <div className="w-full h-full bg-muted flex items-center justify-center text-[10px] text-muted-foreground uppercase">{a.asset_type}</div>
+                     )}
+                   </div>
+                 </CarouselItem>
+               ))}
+             </CarouselContent>
+             <CarouselPrevious className="left-0" />
+             <CarouselNext className="right-0" />
+           </Carousel>
+        </div>
+      )}
 
       {/* Review Content */}
       <ResizablePanelGroup orientation="horizontal" className="flex-1 w-full overflow-hidden">

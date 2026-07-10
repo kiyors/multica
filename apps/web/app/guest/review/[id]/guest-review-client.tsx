@@ -4,6 +4,11 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react
 import { ChevronLeft, ChevronRight, Loader2, MessageSquare, Send, ThumbsUp, AlertCircle } from "lucide-react";
 import { MediaReviewPlayer } from "@multica/views/reviews";
 import type { GuestReview, ReviewComment, ReviewAssetStatus } from "@multica/core/types";
+import { pdfjs } from "react-pdf";
+
+if (typeof window !== "undefined") {
+  pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
+}
 
 const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "";
 
@@ -15,6 +20,16 @@ export function GuestReviewClient({ token }: { token: string }) {
   const [pageIndex, setPageIndex] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [sentiment, setSentiment] = useState<ReviewAssetStatus>("pending");
+  const [pdfNumPages, setPdfNumPages] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (review?.asset.asset_type === "pdf") {
+      setPdfNumPages(null);
+      pdfjs.getDocument(review.asset.src_url).promise.then((pdf) => {
+        setPdfNumPages(pdf.numPages);
+      }).catch(console.error);
+    }
+  }, [review?.asset.src_url, review?.asset.asset_type]);
 
   const load = useCallback(async () => {
     const response = await fetch(`${apiBase}/api/guest/reviews/${encodeURIComponent(token)}`, { cache: "no-store" });
@@ -80,7 +95,7 @@ export function GuestReviewClient({ token }: { token: string }) {
       <section className="flex min-h-[55vh] flex-1 flex-col bg-black">
         <header className="flex h-14 items-center justify-between border-b border-white/10 px-4 text-white">
           <div className="min-w-0"><p className="truncate text-sm font-medium">{review.asset.name}</p><p className="text-xs text-white/60">Guest media review</p></div>
-          {isPdf && <div className="flex items-center gap-1"><button aria-label="Previous page" className="rounded p-2 hover:bg-white/10" disabled={pageIndex === 0} onClick={() => setPageIndex((value) => Math.max(0, value - 1))}><ChevronLeft className="h-4 w-4" /></button><span className="min-w-16 text-center text-xs">Page {pageIndex + 1}</span><button aria-label="Next page" className="rounded p-2 hover:bg-white/10" onClick={() => setPageIndex((value) => value + 1)}><ChevronRight className="h-4 w-4" /></button></div>}
+          {isPdf && <div className="flex items-center gap-1"><button aria-label="Previous page" className="rounded p-2 hover:bg-white/10" disabled={pageIndex === 0} onClick={() => setPageIndex((value) => Math.max(0, value - 1))}><ChevronLeft className="h-4 w-4" /></button><span className="min-w-16 text-center text-xs">Page {pageIndex + 1} {pdfNumPages ? `/ ${pdfNumPages}` : ''}</span><button aria-label="Next page" className="rounded p-2 hover:bg-white/10" disabled={pdfNumPages !== null && pageIndex >= pdfNumPages - 1} onClick={() => setPageIndex((value) => pdfNumPages ? Math.min(pdfNumPages - 1, value + 1) : value + 1)}><ChevronRight className="h-4 w-4" /></button></div>}
         </header>
         <div className="relative flex-1">
           {isPdf ? <iframe title={review.asset.name} className="absolute inset-0 h-full w-full border-0 bg-white" src={`${review.asset.src_url}#page=${pageIndex + 1}&view=Fit`} /> : <MediaReviewPlayer asset={review.asset} comments={comments} />}

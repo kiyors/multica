@@ -96,6 +96,7 @@
     "motion": "^12.38.0",
     "pinyin-pro": "3.26.0",
     "react-markdown": "^10.1.0",
+    "react-pdf": "^10.4.1",
     "react-qr-code": "catalog:",
     "react-resizable-panels": "^4.7.5",
     "react-virtuoso": "catalog:",
