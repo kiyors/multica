@@ -241,19 +241,19 @@ func (q *Queries) ListChannelMessageReplies(ctx context.Context, parentID pgtype
 
 const listChannelMessages = `-- name: ListChannelMessages :many
 SELECT id, channel_id, author_id, content, parent_id, edited_at, created_at FROM channel_messages
-WHERE channel_id = $1 AND parent_id IS NULL AND ($2::timestamptz IS NULL OR created_at < $2::timestamptz)
+WHERE channel_id = $1 AND parent_id IS NULL AND ($3::timestamptz IS NULL OR created_at < $3::timestamptz)
 ORDER BY created_at DESC
-LIMIT $3
+LIMIT $2
 `
 
 type ListChannelMessagesParams struct {
 	ChannelID pgtype.UUID        `json:"channel_id"`
-	Cursor    pgtype.Timestamptz `json:"cursor"`
 	Limit     int32              `json:"limit"`
+	Cursor    pgtype.Timestamptz `json:"cursor"`
 }
 
 func (q *Queries) ListChannelMessages(ctx context.Context, arg ListChannelMessagesParams) ([]ChannelMessage, error) {
-	rows, err := q.db.Query(ctx, listChannelMessages, arg.ChannelID, arg.Cursor, arg.Limit)
+	rows, err := q.db.Query(ctx, listChannelMessages, arg.ChannelID, arg.Limit, arg.Cursor)
 	if err != nil {
 		return nil, err
 	}

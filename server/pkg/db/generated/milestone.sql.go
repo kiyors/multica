@@ -11,6 +11,22 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const addMilestoneMember = `-- name: AddMilestoneMember :exec
+INSERT INTO milestone_member (milestone_id, member_id)
+VALUES ($1, $2)
+ON CONFLICT DO NOTHING
+`
+
+type AddMilestoneMemberParams struct {
+	MilestoneID pgtype.UUID `json:"milestone_id"`
+	MemberID    pgtype.UUID `json:"member_id"`
+}
+
+func (q *Queries) AddMilestoneMember(ctx context.Context, arg AddMilestoneMemberParams) error {
+	_, err := q.db.Exec(ctx, addMilestoneMember, arg.MilestoneID, arg.MemberID)
+	return err
+}
+
 const createMilestone = `-- name: CreateMilestone :one
 INSERT INTO milestone (
   project_id, title, description, start_date, due_date, status, sort_order, created_by
@@ -69,6 +85,15 @@ func (q *Queries) DeleteMilestone(ctx context.Context, id pgtype.UUID) error {
 	return err
 }
 
+const deleteMilestoneMembers = `-- name: DeleteMilestoneMembers :exec
+DELETE FROM milestone_member WHERE milestone_id = $1
+`
+
+func (q *Queries) DeleteMilestoneMembers(ctx context.Context, milestoneID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteMilestoneMembers, milestoneID)
+	return err
+}
+
 const getMilestone = `-- name: GetMilestone :one
 SELECT id, project_id, title, description, start_date, due_date, status, sort_order, created_by, created_at, updated_at FROM milestone
 WHERE id = $1
@@ -91,6 +116,66 @@ func (q *Queries) GetMilestone(ctx context.Context, id pgtype.UUID) (Milestone, 
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const listMilestoneMemberIDs = `-- name: ListMilestoneMemberIDs :many
+SELECT member_id
+FROM milestone_member
+WHERE milestone_id = $1
+ORDER BY assigned_at ASC
+`
+
+func (q *Queries) ListMilestoneMemberIDs(ctx context.Context, milestoneID pgtype.UUID) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, listMilestoneMemberIDs, milestoneID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []pgtype.UUID{}
+	for rows.Next() {
+		var member_id pgtype.UUID
+		if err := rows.Scan(&member_id); err != nil {
+			return nil, err
+		}
+		items = append(items, member_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMilestoneMembersByProject = `-- name: ListMilestoneMembersByProject :many
+SELECT mm.milestone_id, mm.member_id
+FROM milestone_member mm
+JOIN milestone m ON m.id = mm.milestone_id
+WHERE m.project_id = $1
+ORDER BY mm.assigned_at ASC
+`
+
+type ListMilestoneMembersByProjectRow struct {
+	MilestoneID pgtype.UUID `json:"milestone_id"`
+	MemberID    pgtype.UUID `json:"member_id"`
+}
+
+func (q *Queries) ListMilestoneMembersByProject(ctx context.Context, projectID pgtype.UUID) ([]ListMilestoneMembersByProjectRow, error) {
+	rows, err := q.db.Query(ctx, listMilestoneMembersByProject, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListMilestoneMembersByProjectRow{}
+	for rows.Next() {
+		var i ListMilestoneMembersByProjectRow
+		if err := rows.Scan(&i.MilestoneID, &i.MemberID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listMilestonesByProject = `-- name: ListMilestonesByProject :many
@@ -135,30 +220,40 @@ const updateMilestone = `-- name: UpdateMilestone :one
 UPDATE milestone
 SET title = COALESCE($1, title),
     description = COALESCE($2, description),
-    start_date = COALESCE($3, start_date),
-    due_date = COALESCE($4, due_date),
-    status = COALESCE($5, status),
-    sort_order = COALESCE($6, sort_order),
+    start_date = CASE
+      WHEN $3::boolean THEN $4
+      ELSE start_date
+    END,
+    due_date = CASE
+      WHEN $5::boolean THEN $6
+      ELSE due_date
+    END,
+    status = COALESCE($7, status),
+    sort_order = COALESCE($8, sort_order),
     updated_at = now()
-WHERE id = $7
+WHERE id = $9
 RETURNING id, project_id, title, description, start_date, due_date, status, sort_order, created_by, created_at, updated_at
 `
 
 type UpdateMilestoneParams struct {
-	Title       pgtype.Text `json:"title"`
-	Description pgtype.Text `json:"description"`
-	StartDate   pgtype.Date `json:"start_date"`
-	DueDate     pgtype.Date `json:"due_date"`
-	Status      pgtype.Text `json:"status"`
-	SortOrder   pgtype.Int4 `json:"sort_order"`
-	ID          pgtype.UUID `json:"id"`
+	Title        pgtype.Text `json:"title"`
+	Description  pgtype.Text `json:"description"`
+	StartDateSet bool        `json:"start_date_set"`
+	StartDate    pgtype.Date `json:"start_date"`
+	DueDateSet   bool        `json:"due_date_set"`
+	DueDate      pgtype.Date `json:"due_date"`
+	Status       pgtype.Text `json:"status"`
+	SortOrder    pgtype.Int4 `json:"sort_order"`
+	ID           pgtype.UUID `json:"id"`
 }
 
 func (q *Queries) UpdateMilestone(ctx context.Context, arg UpdateMilestoneParams) (Milestone, error) {
 	row := q.db.QueryRow(ctx, updateMilestone,
 		arg.Title,
 		arg.Description,
+		arg.StartDateSet,
 		arg.StartDate,
+		arg.DueDateSet,
 		arg.DueDate,
 		arg.Status,
 		arg.SortOrder,

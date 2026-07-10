@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -35,12 +36,17 @@ func listProjectMemberToResponse(m db.ListProjectMembersRow) ProjectMemberRespon
 
 func (h *Handler) ListProjectMembers(w http.ResponseWriter, r *http.Request) {
 	workspaceID := h.resolveWorkspaceID(r)
-	if _, ok := parseUUIDOrBadRequest(w, workspaceID, "workspace_id"); !ok {
+	workspaceUUID, ok := parseUUIDOrBadRequest(w, workspaceID, "workspace_id")
+	if !ok {
 		return
 	}
 	id := chi.URLParam(r, "id")
 	projectID, ok := parseUUIDOrBadRequest(w, id, "project id")
 	if !ok {
+		return
+	}
+	if !h.projectExistsInWorkspace(r.Context(), projectID, workspaceUUID) {
+		writeError(w, http.StatusNotFound, "project not found")
 		return
 	}
 
@@ -59,7 +65,8 @@ func (h *Handler) ListProjectMembers(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) AddProjectMember(w http.ResponseWriter, r *http.Request) {
 	workspaceID := h.resolveWorkspaceID(r)
-	if _, ok := parseUUIDOrBadRequest(w, workspaceID, "workspace_id"); !ok {
+	workspaceUUID, ok := parseUUIDOrBadRequest(w, workspaceID, "workspace_id")
+	if !ok {
 		return
 	}
 	id := chi.URLParam(r, "id")
@@ -67,7 +74,7 @@ func (h *Handler) AddProjectMember(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	
+
 	requester, ok := h.requireWorkspaceRole(w, r, workspaceID, "workspace not found", "owner", "admin", "member")
 	if !ok {
 		return
@@ -86,11 +93,24 @@ func (h *Handler) AddProjectMember(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if req.Role == "" {
-		req.Role = "member"
+		req.Role = "viewer"
+	}
+	if req.Role != "admin" && req.Role != "editor" && req.Role != "viewer" {
+		writeError(w, http.StatusBadRequest, "invalid project member role")
+		return
 	}
 
 	memberUUID, ok := parseUUIDOrBadRequest(w, req.MemberID, "member_id")
 	if !ok {
+		return
+	}
+	member, err := h.Queries.GetMember(r.Context(), memberUUID)
+	if err != nil || uuidToString(member.WorkspaceID) != workspaceID {
+		writeError(w, http.StatusBadRequest, "member_id must identify a member of this workspace")
+		return
+	}
+	if _, err := h.Queries.GetProjectInWorkspace(r.Context(), db.GetProjectInWorkspaceParams{ID: projectID, WorkspaceID: workspaceUUID}); err != nil {
+		writeError(w, http.StatusNotFound, "project not found")
 		return
 	}
 
@@ -105,6 +125,7 @@ func (h *Handler) AddProjectMember(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusConflict, "member already in project")
 			return
 		}
+		log.Printf("AddProjectMember error: %v", err)
 		writeError(w, http.StatusInternalServerError, "failed to add project member")
 		return
 	}
@@ -116,7 +137,7 @@ func (h *Handler) AddProjectMember(w http.ResponseWriter, r *http.Request) {
 		"invited_at": timestampToString(sm.InvitedAt),
 		"invited_by": uuidToString(sm.InvitedBy),
 	})
-	
+
 	h.publish(protocol.EventProjectMemberAdded, workspaceID, "member", uuidToString(requester.UserID), map[string]any{
 		"project_id": uuidToString(projectID),
 		"member_id":  uuidToString(memberUUID),
@@ -125,7 +146,8 @@ func (h *Handler) AddProjectMember(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) UpdateProjectMember(w http.ResponseWriter, r *http.Request) {
 	workspaceID := h.resolveWorkspaceID(r)
-	if _, ok := parseUUIDOrBadRequest(w, workspaceID, "workspace_id"); !ok {
+	workspaceUUID, ok := parseUUIDOrBadRequest(w, workspaceID, "workspace_id")
+	if !ok {
 		return
 	}
 	id := chi.URLParam(r, "id")
@@ -133,9 +155,18 @@ func (h *Handler) UpdateProjectMember(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	if !h.projectExistsInWorkspace(r.Context(), projectID, workspaceUUID) {
+		writeError(w, http.StatusNotFound, "project not found")
+		return
+	}
 	memberIdStr := chi.URLParam(r, "memberId")
 	memberUUID, ok := parseUUIDOrBadRequest(w, memberIdStr, "member id")
 	if !ok {
+		return
+	}
+	member, err := h.Queries.GetMember(r.Context(), memberUUID)
+	if err != nil || uuidToString(member.WorkspaceID) != workspaceID {
+		writeError(w, http.StatusNotFound, "project member not found")
 		return
 	}
 
@@ -153,6 +184,10 @@ func (h *Handler) UpdateProjectMember(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Role == "" {
 		writeError(w, http.StatusBadRequest, "role is required")
+		return
+	}
+	if req.Role != "admin" && req.Role != "editor" && req.Role != "viewer" {
+		writeError(w, http.StatusBadRequest, "invalid project member role")
 		return
 	}
 
@@ -173,7 +208,7 @@ func (h *Handler) UpdateProjectMember(w http.ResponseWriter, r *http.Request) {
 		"invited_at": timestampToString(sm.InvitedAt),
 		"invited_by": uuidToString(sm.InvitedBy),
 	})
-	
+
 	h.publish(protocol.EventProjectMemberUpdated, workspaceID, "member", uuidToString(requester.UserID), map[string]any{
 		"project_id": uuidToString(projectID),
 		"member_id":  uuidToString(memberUUID),
@@ -182,7 +217,8 @@ func (h *Handler) UpdateProjectMember(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) RemoveProjectMember(w http.ResponseWriter, r *http.Request) {
 	workspaceID := h.resolveWorkspaceID(r)
-	if _, ok := parseUUIDOrBadRequest(w, workspaceID, "workspace_id"); !ok {
+	workspaceUUID, ok := parseUUIDOrBadRequest(w, workspaceID, "workspace_id")
+	if !ok {
 		return
 	}
 	id := chi.URLParam(r, "id")
@@ -190,9 +226,18 @@ func (h *Handler) RemoveProjectMember(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	if !h.projectExistsInWorkspace(r.Context(), projectID, workspaceUUID) {
+		writeError(w, http.StatusNotFound, "project not found")
+		return
+	}
 	memberIdStr := chi.URLParam(r, "memberId")
 	memberUUID, ok := parseUUIDOrBadRequest(w, memberIdStr, "member id")
 	if !ok {
+		return
+	}
+	member, err := h.Queries.GetMember(r.Context(), memberUUID)
+	if err != nil || uuidToString(member.WorkspaceID) != workspaceID {
+		writeError(w, http.StatusNotFound, "project member not found")
 		return
 	}
 
@@ -201,7 +246,7 @@ func (h *Handler) RemoveProjectMember(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := h.Queries.RemoveProjectMember(r.Context(), db.RemoveProjectMemberParams{
+	err = h.Queries.RemoveProjectMember(r.Context(), db.RemoveProjectMemberParams{
 		ProjectID: projectID,
 		MemberID:  memberUUID,
 	})
@@ -211,7 +256,7 @@ func (h *Handler) RemoveProjectMember(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
-	
+
 	h.publish(protocol.EventProjectMemberRemoved, workspaceID, "member", uuidToString(requester.UserID), map[string]any{
 		"project_id": uuidToString(projectID),
 		"member_id":  uuidToString(memberUUID),

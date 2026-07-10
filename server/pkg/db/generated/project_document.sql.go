@@ -13,20 +13,21 @@ import (
 
 const createDocument = `-- name: CreateDocument :one
 INSERT INTO project_document (
-  project_id, parent_id, title, content, sort_order, created_by
+  project_id, parent_id, title, content, sort_order, created_by, document_type
 ) VALUES (
-  $1, $2, $3, $4, $5, $6
+  $1, $2, $3, $4, $5, $6, $7
 )
-RETURNING id, project_id, parent_id, title, content, sort_order, created_by, created_at, updated_at
+RETURNING id, project_id, parent_id, title, content, sort_order, created_by, created_at, updated_at, document_type
 `
 
 type CreateDocumentParams struct {
-	ProjectID pgtype.UUID `json:"project_id"`
-	ParentID  pgtype.UUID `json:"parent_id"`
-	Title     string      `json:"title"`
-	Content   string      `json:"content"`
-	SortOrder int32       `json:"sort_order"`
-	CreatedBy pgtype.UUID `json:"created_by"`
+	ProjectID    pgtype.UUID `json:"project_id"`
+	ParentID     pgtype.UUID `json:"parent_id"`
+	Title        string      `json:"title"`
+	Content      string      `json:"content"`
+	SortOrder    int32       `json:"sort_order"`
+	CreatedBy    pgtype.UUID `json:"created_by"`
+	DocumentType string      `json:"document_type"`
 }
 
 func (q *Queries) CreateDocument(ctx context.Context, arg CreateDocumentParams) (ProjectDocument, error) {
@@ -37,6 +38,7 @@ func (q *Queries) CreateDocument(ctx context.Context, arg CreateDocumentParams) 
 		arg.Content,
 		arg.SortOrder,
 		arg.CreatedBy,
+		arg.DocumentType,
 	)
 	var i ProjectDocument
 	err := row.Scan(
@@ -49,6 +51,7 @@ func (q *Queries) CreateDocument(ctx context.Context, arg CreateDocumentParams) 
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DocumentType,
 	)
 	return i, err
 }
@@ -64,7 +67,7 @@ func (q *Queries) DeleteDocument(ctx context.Context, id pgtype.UUID) error {
 }
 
 const getDocument = `-- name: GetDocument :one
-SELECT id, project_id, parent_id, title, content, sort_order, created_by, created_at, updated_at FROM project_document
+SELECT id, project_id, parent_id, title, content, sort_order, created_by, created_at, updated_at, document_type FROM project_document
 WHERE id = $1
 `
 
@@ -81,12 +84,13 @@ func (q *Queries) GetDocument(ctx context.Context, id pgtype.UUID) (ProjectDocum
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DocumentType,
 	)
 	return i, err
 }
 
 const listDocumentsByProject = `-- name: ListDocumentsByProject :many
-SELECT id, project_id, parent_id, title, content, sort_order, created_by, created_at, updated_at FROM project_document
+SELECT id, project_id, parent_id, title, content, sort_order, created_by, created_at, updated_at, document_type FROM project_document
 WHERE project_id = $1
 ORDER BY parent_id NULLS FIRST, sort_order ASC, created_at DESC
 `
@@ -110,6 +114,7 @@ func (q *Queries) ListDocumentsByProject(ctx context.Context, projectID pgtype.U
 			&i.CreatedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.DocumentType,
 		); err != nil {
 			return nil, err
 		}
@@ -123,28 +128,36 @@ func (q *Queries) ListDocumentsByProject(ctx context.Context, projectID pgtype.U
 
 const updateDocument = `-- name: UpdateDocument :one
 UPDATE project_document
-SET parent_id = COALESCE($1, parent_id),
-    title = COALESCE($2, title),
-    content = COALESCE($3, content),
-    sort_order = COALESCE($4, sort_order),
+SET parent_id = CASE
+      WHEN $1::boolean THEN $2
+      ELSE parent_id
+    END,
+    title = COALESCE($3, title),
+    content = COALESCE($4, content),
+    document_type = COALESCE($5, document_type),
+    sort_order = COALESCE($6, sort_order),
     updated_at = now()
-WHERE id = $5
-RETURNING id, project_id, parent_id, title, content, sort_order, created_by, created_at, updated_at
+WHERE id = $7
+RETURNING id, project_id, parent_id, title, content, sort_order, created_by, created_at, updated_at, document_type
 `
 
 type UpdateDocumentParams struct {
-	ParentID  pgtype.UUID `json:"parent_id"`
-	Title     pgtype.Text `json:"title"`
-	Content   pgtype.Text `json:"content"`
-	SortOrder pgtype.Int4 `json:"sort_order"`
-	ID        pgtype.UUID `json:"id"`
+	ParentIDSet  bool        `json:"parent_id_set"`
+	ParentID     pgtype.UUID `json:"parent_id"`
+	Title        pgtype.Text `json:"title"`
+	Content      pgtype.Text `json:"content"`
+	DocumentType pgtype.Text `json:"document_type"`
+	SortOrder    pgtype.Int4 `json:"sort_order"`
+	ID           pgtype.UUID `json:"id"`
 }
 
 func (q *Queries) UpdateDocument(ctx context.Context, arg UpdateDocumentParams) (ProjectDocument, error) {
 	row := q.db.QueryRow(ctx, updateDocument,
+		arg.ParentIDSet,
 		arg.ParentID,
 		arg.Title,
 		arg.Content,
+		arg.DocumentType,
 		arg.SortOrder,
 		arg.ID,
 	)
@@ -159,6 +172,7 @@ func (q *Queries) UpdateDocument(ctx context.Context, arg UpdateDocumentParams) 
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DocumentType,
 	)
 	return i, err
 }

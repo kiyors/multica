@@ -45,10 +45,12 @@ const devVerificationCodeEnv = "MULTICA_DEV_VERIFICATION_CODE"
 // field round-trips through GetMe back into i18n.changeLanguage(), so without
 // validation an arbitrary string would persist and echo to every device.
 var supportedLanguages = map[string]struct{}{
-	"en":      {},
-	"zh-Hans": {},
-	"ko":      {},
-	"ja":      {},
+	"en":           {},
+	"zh-Hans":      {},
+	"ko":           {},
+	"ja":           {},
+	"en-marketing": {},
+	"en-creative":  {},
 }
 
 type UserResponse struct {

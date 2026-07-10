@@ -732,6 +732,12 @@ type Milestone struct {
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
 }
 
+type MilestoneMember struct {
+	MilestoneID pgtype.UUID        `json:"milestone_id"`
+	MemberID    pgtype.UUID        `json:"member_id"`
+	AssignedAt  pgtype.Timestamptz `json:"assigned_at"`
+}
+
 type NotificationPreference struct {
 	ID          pgtype.UUID        `json:"id"`
 	WorkspaceID pgtype.UUID        `json:"workspace_id"`
@@ -777,15 +783,16 @@ type Project struct {
 }
 
 type ProjectDocument struct {
-	ID        pgtype.UUID        `json:"id"`
-	ProjectID pgtype.UUID        `json:"project_id"`
-	ParentID  pgtype.UUID        `json:"parent_id"`
-	Title     string             `json:"title"`
-	Content   string             `json:"content"`
-	SortOrder int32              `json:"sort_order"`
-	CreatedBy pgtype.UUID        `json:"created_by"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	ID           pgtype.UUID        `json:"id"`
+	ProjectID    pgtype.UUID        `json:"project_id"`
+	ParentID     pgtype.UUID        `json:"parent_id"`
+	Title        string             `json:"title"`
+	Content      string             `json:"content"`
+	SortOrder    int32              `json:"sort_order"`
+	CreatedBy    pgtype.UUID        `json:"created_by"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+	DocumentType string             `json:"document_type"`
 }
 
 type ProjectMember struct {

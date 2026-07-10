@@ -39,6 +39,18 @@ type ProjectResponse struct {
 	ResourceCount int64 `json:"resource_count"`
 }
 
+func (h *Handler) projectExistsInWorkspace(
+	ctx context.Context,
+	projectID pgtype.UUID,
+	workspaceID pgtype.UUID,
+) bool {
+	_, err := h.Queries.GetProjectInWorkspace(ctx, db.GetProjectInWorkspaceParams{
+		ID:          projectID,
+		WorkspaceID: workspaceID,
+	})
+	return err == nil
+}
+
 func projectToResponse(p db.Project) ProjectResponse {
 	return ProjectResponse{
 		ID:          uuidToString(p.ID),
