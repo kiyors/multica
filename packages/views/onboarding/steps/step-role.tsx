@@ -41,6 +41,8 @@ export function StepRole({
     { slug: "designer", icon: <Palette className="h-4 w-4" />, label: t(($) => $.questions.role.designer) },
     { slug: "founder", icon: <Rocket className="h-4 w-4" />, label: t(($) => $.questions.role.founder) },
     { slug: "marketing", icon: <Megaphone className="h-4 w-4" />, label: t(($) => $.questions.role.marketing) },
+    { slug: "creative", icon: <Palette className="h-4 w-4" />, label: t(($) => $.questions.role.creative) },
+    { slug: "marketing_team", icon: <Megaphone className="h-4 w-4" />, label: t(($) => $.questions.role.marketing_team) },
     { slug: "writer", icon: <PenLine className="h-4 w-4" />, label: t(($) => $.questions.role.writer) },
     { slug: "research", icon: <Search className="h-4 w-4" />, label: t(($) => $.questions.role.research) },
     { slug: "ops", icon: <Settings2 className="h-4 w-4" />, label: t(($) => $.questions.role.ops) },

@@ -214,11 +214,6 @@ export function ProjectDocsTab({ projectId }: { projectId: string }) {
                 className="h-auto border-none bg-transparent px-0 text-3xl font-bold shadow-none focus-visible:ring-0"
                 placeholder={selectedDoc.document_type === "folder" ? "Folder name" : "Document title"}
               />
-              {selectedDoc.document_type === "page" ? (
-                <Button variant="outline" size="sm" onClick={() => exportProjectDocument(selectedDoc)}>
-                  <Download className="h-4 w-4" /> {t(($) => $.docs.export_markdown)}
-                </Button>
-              ) : null}
             </div>
 
             {selectedDoc.document_type === "folder" ? (

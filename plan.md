@@ -1063,3 +1063,65 @@ The AI daemon runs on your team's local laptops, NOT the VPS.
 
 Because you are using Dokploy, upgrading is incredibly simple. When you push new code to your `main` branch, your GitHub Action builds the new Docker images. 
 Once the GHCR images are built, you simply go into the Dokploy UI and click **Redeploy**. Dokploy pulls the latest images and seamlessly restarts the containers!
+
+---
+
+## Phase 13 — UI/UX Polish, Roles, and Media Review Extensions (Ongoing)
+
+> **Goal:** Address all lingering UI bugs, implement user roles natively, refine terminology, enforce project-level access, and polish the media review experience.
+> **Effort:** 3-5 days
+> **Dependencies:** Phase 0-4
+
+### 13.1 User Roles & Dynamic Terminology
+- [ ] **Onboarding & Profile:** Add `creative`, `graphic_designer`, `marketing_team`, `video_writer`, `videographer`, and `social_media` roles to onboarding questions.
+- [ ] **Multi-Role Support:** Allow users to select 2-3 roles in their Profile Settings (replacing the old "Language/Profile Type" dropdown). Save in `onboarding_questionnaire.role` as an array.
+- [ ] **Language Settings:** Hide the "Language" UI from the Profile tab. Remove "English (Marketing)" and "English (Creative)" from the Language preferences entirely.
+- [ ] **Terminology Switcher:** Dynamically change "Issues" to "Tasks", "My issues" to "My tasks", and "New issues" to "New task" across the application, depending on the **first role** selected by the user.
+
+### 13.2 Project Architecture & Access Control (Completion)
+- [ ] **Project Privacy:** Enforce project membership visibility. If a user is not in `Project Members`, they should completely lose visibility of the project and its tasks/issues across the app.
+- [ ] **Admin Override:** Workspace Admins must be able to view all projects and features regardless of direct membership.
+- [ ] **Project-Specific Prefix:** Update the issue prefix generator (e.g. `MUL-123`) to use a unique prefix per project rather than a single workspace-wide prefix.
+
+### 13.3 Media Review Workflow Enhancements
+- [ ] **Timeline Annotation Click:** Fix the bug where clicking on a comment in the timeline fails to open the media correctly (for both graphic and video).
+- [ ] **Highlighter Consistency:** Make the annotation highlighters (bounding boxes/shapes) match the exact color of their corresponding comments in the right-side panel.
+- [ ] **Comment Management:** Allow deleting and editing of comments directly from the media review right-side panel (currently only possible inside the main issue view).
+- [ ] **Upload Error Handling:** Prevent the creation of a blank card/asset inside the issue if the media fails to upload.
+- [ ] **Optimistic Updates:** Implement `@tanstack/react-query` optimistic updates (`setQueryData`) for media review comments so that the UI updates instantly, rather than waiting 2-3 seconds for the server.
+
+### 13.4 Editor & Wiki Polish
+- [ ] **Renaming:** Change the "Wiki" feature title to "Document" everywhere.
+- [ ] **Title Editing UI:** Redesign the document title and file name UI in edit mode to be a basic, intuitive title editor (currently overly complicated).
+- [ ] **Menu Redundancy:** Remove the "Export MD" file button from the main edit view, as it is already present inside the 3-dot menu.
+
+### 13.5 Task Creation Form Polish
+- [ ] **State Persistence:** When switching the task creator from "Agent" to "Manual", the state management should remember this preference for future tasks.
+- [ ] **Assignee Memory:** 
+    - If "Create Another" is toggled ON, remember the assignees for the next task in the queue.
+    - If "Create Another" is toggled OFF, clear out all assignees when opening a new task creation form later (prevents stale assignee persistence).
+- [ ] **Data Loss Investigation:** Investigate and fix the bug where newly created tasks seemingly get deleted or lost (likely a cache invalidation or optimistic update bug).
+
+### 13.6 Guest Media Review (Future Architecture)
+- [ ] **Guest Review Links:** Prepare architecture for tokenized guest links (`/guest/review/[token]`).
+- [ ] **Guest Submission:** Guests will type their name and use simplified predefined tags (e.g. "Approved", "Looks good", "Changes needed") instead of a full Multica account.
+- [ ] **Carousels (Multi-page):** Support `page_index` on review comments for multi-page graphics, allowing reviewers to annotate specific pages and jump to them by clicking the comment.
+
+---
+
+## Phase 14 — Google Workspace Integrations
+
+> **Goal:** Enhance identity and scheduling capabilities by native integration with Google.
+> **Effort:** 3-5 days
+
+### 14.1 Google Single Sign-On (SSO)
+- [ ] **Backend OAuth Flow:** Implement the `/auth/google/login` and `/auth/google/callback` endpoints in Go using `golang.org/x/oauth2/google`.
+- [ ] **User Syncing:** Match incoming Google OAuth users by email to existing `members`, or provision new accounts automatically if signups are enabled.
+- [ ] **Frontend Button:** Add "Continue with Google" button to the unified login and signup screens.
+
+### 14.2 Google Calendar 2-Way Sync
+- [ ] **Calendar API Scopes:** Request `https://www.googleapis.com/auth/calendar.events` permissions during OAuth flow if calendar sync is enabled by the user in settings.
+- [ ] **Token Storage:** Store Google refresh tokens securely in the DB (encrypted) to allow offline syncing.
+- [ ] **Multica → Google:** When a user is assigned an issue with a specific "Due Date" or "Scheduled Block", automatically push a block to their Google Calendar.
+- [ ] **Google → Multica (Autopilot):** Allow the Multica Autopilot or Planning Agent to read a user's calendar free/busy times to dynamically suggest deadlines or sprint allocations without colliding with their meetings.
+- [ ] **Milestone Sync:** Option to sync entire Project Milestones as multi-day events on a shared Google Calendar.

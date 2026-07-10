@@ -192,8 +192,8 @@ export function useCreateIssue() {
   return useMutation({
     mutationFn: (data: CreateIssueRequest) => api.createIssue(data),
     onSuccess: (newIssue) => {
-      for (const [key, data] of qc.getQueriesData<ListIssuesCache>({ queryKey: issueKeys.list(wsId) })) {
-        if (data) qc.setQueryData<ListIssuesCache>(key, addIssueToBuckets(data, newIssue));
+      for (const [key] of qc.getQueriesData<ListIssuesCache>({ queryKey: issueKeys.list(wsId) })) {
+        qc.setQueryData<ListIssuesCache>(key, (old) => old ? addIssueToBuckets(old, newIssue) : old);
       }
       // Surface the just-created issue in cmd+k's Recent list without
       // requiring the user to open it first.
@@ -206,6 +206,7 @@ export function useCreateIssue() {
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: issueKeys.list(wsId) });
+      qc.invalidateQueries({ queryKey: issueKeys.myAll(wsId) });
       qc.invalidateQueries({ queryKey: issueKeys.assigneeGroupsAll(wsId) });
       qc.invalidateQueries({ queryKey: issueKeys.myAssigneeGroupsAll(wsId) });
       qc.invalidateQueries({ queryKey: issueKeys.projectGanttAll(wsId) });
@@ -448,6 +449,7 @@ export function useDeleteIssue() {
     },
     onSettled: (_data, _err, _id, ctx) => {
       qc.invalidateQueries({ queryKey: issueKeys.list(wsId) });
+      qc.invalidateQueries({ queryKey: issueKeys.myAll(wsId) });
       qc.invalidateQueries({ queryKey: issueKeys.assigneeGroupsAll(wsId) });
       qc.invalidateQueries({ queryKey: issueKeys.myAssigneeGroupsAll(wsId) });
       qc.invalidateQueries({ queryKey: issueKeys.projectGanttAll(wsId) });
@@ -690,6 +692,7 @@ export function useBatchDeleteIssues() {
     },
     onSettled: (_data, _err, _ids, ctx) => {
       qc.invalidateQueries({ queryKey: issueKeys.list(wsId) });
+      qc.invalidateQueries({ queryKey: issueKeys.myAll(wsId) });
       qc.invalidateQueries({ queryKey: issueKeys.assigneeGroupsAll(wsId) });
       qc.invalidateQueries({ queryKey: issueKeys.myAssigneeGroupsAll(wsId) });
       qc.invalidateQueries({ queryKey: issueKeys.projectGanttAll(wsId) });

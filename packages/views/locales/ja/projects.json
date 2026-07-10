@@ -148,7 +148,7 @@
     "status": { "active": "進行中", "completed": "完了", "cancelled": "キャンセル済み" }
   },
   "docs": {
-    "title": "Wiki",
+    "title": "Document",
     "new_page": "新しいページ",
     "new_folder": "新しいフォルダ",
     "empty": "Wiki ページはまだありません。ページまたはフォルダを作成してください。",

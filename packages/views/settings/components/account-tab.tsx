@@ -13,15 +13,7 @@ import { api } from "@multica/core/api";
 import { resolvePublicFileUrl } from "@multica/core/workspace/avatar-url";
 import { useFileUpload } from "@multica/core/hooks/use-file-upload";
 import { useT } from "../../i18n";
-import { useLocaleAdapter } from "@multica/core/i18n/react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@multica/ui/components/ui/select";
-import { DEFAULT_LOCALE, SUPPORTED_LOCALES, type SupportedLocale } from "@multica/core/i18n";
+import { Checkbox } from "@multica/ui/components/ui/checkbox";
 
 // Mirror server/internal/handler/auth.go:MaxProfileDescriptionLen. Counted in
 // JS String.length (UTF-16 code units) here while the server counts runes,
@@ -41,18 +33,17 @@ export function AccountTab() {
   const [profileSaving, setProfileSaving] = useState(false);
   const { upload, uploading } = useFileUpload(api);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const localeAdapter = useLocaleAdapter();
-  const { i18n } = useT("settings");
+  const { t: tOnboarding } = useT("onboarding");
 
-  const currentLocale: SupportedLocale = SUPPORTED_LOCALES.includes(
-    i18n.language as SupportedLocale,
-  )
-    ? (i18n.language as SupportedLocale)
-    : DEFAULT_LOCALE;
+  const rawRole = user?.onboarding_questionnaire?.role;
+  const initialRoles = Array.isArray(rawRole) ? rawRole : typeof rawRole === "string" ? [rawRole] : [];
+  const [roles, setRoles] = useState<string[]>(initialRoles);
 
   useEffect(() => {
     setProfileName(user?.name ?? "");
     setProfileDescription(user?.profile_description ?? "");
+    const rawR = user?.onboarding_questionnaire?.role;
+    setRoles(Array.isArray(rawR) ? rawR : typeof rawR === "string" ? [rawR] : []);
   }, [user]);
 
   const descriptionTooLong = profileDescription.length > MAX_PROFILE_DESCRIPTION_LEN;
@@ -84,12 +75,19 @@ export function AccountTab() {
     if (descriptionTooLong) return;
     setProfileSaving(true);
     try {
+      await api.patchOnboarding({
+        questionnaire: {
+          ...user?.onboarding_questionnaire,
+          role: roles,
+        },
+      });
       const updated = await api.updateMe({
         name: profileName,
         profile_description: profileDescription,
       });
       setUser(updated);
       toast.success(t(($) => $.account.toast_profile_updated));
+      window.location.reload();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t(($) => $.account.toast_profile_failed));
     } finally {
@@ -116,26 +114,7 @@ export function AccountTab() {
     }
   };
 
-  const handleProfileTypeChange = async (next: SupportedLocale) => {
-    if (next === currentLocale) return;
-    localeAdapter.persist(next);
 
-    let syncFailed = false;
-    if (user) {
-      try {
-        await api.updateMe({ language: next });
-      } catch {
-        syncFailed = true;
-      }
-    }
-
-    if (syncFailed) {
-      toast.warning("Failed to sync profile type");
-      setTimeout(() => window.location.reload(), 2500);
-      return;
-    }
-    window.location.reload();
-  };
 
   return (
     <div className="space-y-8">
@@ -238,25 +217,47 @@ export function AccountTab() {
 
             <div>
               <Label className="text-xs text-muted-foreground">
-                Profile Type (What kind of work do you do?)
+                Roles (Select up to 3)
               </Label>
-              <div className="mt-1">
-                <Select
-                  value={currentLocale}
-                  onValueChange={(val) => handleProfileTypeChange(val as SupportedLocale)}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select a profile type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="en">Software Development</SelectItem>
-                    <SelectItem value="en-marketing">Marketing</SelectItem>
-                    <SelectItem value="en-creative">Creative</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-2 gap-3 mt-2">
+                {[
+                  { slug: "engineer", label: tOnboarding(($) => $.questions.role.engineer) },
+                  { slug: "product", label: tOnboarding(($) => $.questions.role.product) },
+                  { slug: "designer", label: tOnboarding(($) => $.questions.role.designer) },
+                  { slug: "founder", label: tOnboarding(($) => $.questions.role.founder) },
+                  { slug: "marketing", label: tOnboarding(($) => $.questions.role.marketing) },
+                  { slug: "creative", label: tOnboarding(($) => $.questions.role.creative) },
+                  { slug: "graphic_designer", label: tOnboarding(($) => $.questions.role.graphic_designer) },
+                  { slug: "marketing_team", label: tOnboarding(($) => $.questions.role.marketing_team) },
+                  { slug: "video_writer", label: tOnboarding(($) => $.questions.role.video_writer) },
+                  { slug: "videographer", label: tOnboarding(($) => $.questions.role.videographer) },
+                  { slug: "social_media", label: tOnboarding(($) => $.questions.role.social_media) },
+                  { slug: "writer", label: tOnboarding(($) => $.questions.role.writer) },
+                  { slug: "research", label: tOnboarding(($) => $.questions.role.research) },
+                  { slug: "ops", label: tOnboarding(($) => $.questions.role.ops) },
+                  { slug: "student", label: tOnboarding(($) => $.questions.role.student) },
+                ].map((role) => (
+                  <label key={role.slug} className="flex items-center gap-2 cursor-pointer">
+                    <Checkbox
+                      checked={roles.includes(role.slug)}
+                      onCheckedChange={(c) => {
+                        if (c) {
+                          if (roles.length < 3) {
+                            setRoles((prev) => [...prev, role.slug]);
+                          } else {
+                            toast.warning("You can only select up to 3 roles.");
+                          }
+                        } else {
+                          setRoles((prev) => prev.filter((r) => r !== role.slug));
+                        }
+                      }}
+                    />
+                    <span className="text-sm">{role.label}</span>
+                  </label>
+                ))}
               </div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                This adjusts terminology (e.g., Issues vs. Tasks vs. Creative Briefs) to match your workflow.
+              <p className="mt-2 text-xs text-muted-foreground">
+                This adjusts terminology (e.g., Issues vs. Tasks) to match your workflow.
               </p>
             </div>
 

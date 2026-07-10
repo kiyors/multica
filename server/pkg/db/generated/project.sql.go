@@ -175,21 +175,30 @@ func (q *Queries) GetProjectIssueStats(ctx context.Context, projectIds []pgtype.
 }
 
 const listProjects = `-- name: ListProjects :many
-SELECT id, workspace_id, title, description, icon, status, lead_type, lead_id, created_at, updated_at, priority FROM project
-WHERE workspace_id = $1
-  AND ($2::text IS NULL OR status = $2)
-  AND ($3::text IS NULL OR priority = $3)
-ORDER BY created_at DESC
+SELECT p.id, p.workspace_id, p.title, p.description, p.icon, p.status, p.lead_type, p.lead_id, p.created_at, p.updated_at, p.priority FROM project p
+WHERE p.workspace_id = $1
+  AND ($2::text IS NULL OR p.status = $2)
+  AND ($3::text IS NULL OR p.priority = $3)
+  AND (
+    $4::boolean = true
+    OR EXISTS (
+      SELECT 1 FROM project_member pm 
+      WHERE pm.project_id = p.id AND pm.member_id = $5
+    )
+  )
+ORDER BY p.created_at DESC
 `
 
 type ListProjectsParams struct {
 	WorkspaceID pgtype.UUID `json:"workspace_id"`
 	Status      pgtype.Text `json:"status"`
 	Priority    pgtype.Text `json:"priority"`
+	IsAdmin     bool        `json:"is_admin"`
+	MemberID    pgtype.UUID `json:"member_id"`
 }
 
 func (q *Queries) ListProjects(ctx context.Context, arg ListProjectsParams) ([]Project, error) {
-	rows, err := q.db.Query(ctx, listProjects, arg.WorkspaceID, arg.Status, arg.Priority)
+	rows, err := q.db.Query(ctx, listProjects, arg.WorkspaceID, arg.Status, arg.Priority, arg.IsAdmin, arg.MemberID)
 	if err != nil {
 		return nil, err
 	}

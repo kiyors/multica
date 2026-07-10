@@ -448,7 +448,11 @@ export function ManualCreatePanel({
         }
       }
 
-      setLastAssignees(assignees);
+      if (keepOpen) {
+        setLastAssignees(assignees);
+      } else {
+        setLastAssignees([]);
+      }
       setLastMode("manual");
       clearDraft();
       // The old post-create "agent paused in Backlog" blocking panel is gone —

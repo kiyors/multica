@@ -132,3 +132,26 @@ func (q *Queries) UpdateProjectMemberRole(ctx context.Context, arg UpdateProject
 	)
 	return i, err
 }
+
+const getProjectMember = `-- name: GetProjectMember :one
+SELECT project_id, member_id, role, invited_at, invited_by FROM project_member
+WHERE project_id = $1 AND member_id = $2
+`
+
+type GetProjectMemberParams struct {
+	ProjectID pgtype.UUID `json:"project_id"`
+	MemberID  pgtype.UUID `json:"member_id"`
+}
+
+func (q *Queries) GetProjectMember(ctx context.Context, arg GetProjectMemberParams) (ProjectMember, error) {
+	row := q.db.QueryRow(ctx, getProjectMember, arg.ProjectID, arg.MemberID)
+	var i ProjectMember
+	err := row.Scan(
+		&i.ProjectID,
+		&i.MemberID,
+		&i.Role,
+		&i.InvitedAt,
+		&i.InvitedBy,
+	)
+	return i, err
+}

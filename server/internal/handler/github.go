@@ -932,7 +932,6 @@ func (h *Handler) handlePullRequestEvent(ctx context.Context, body []byte) {
 		// a terminal event, later edit/synchronize webhooks must not rewrite
 		// the merge-time close decision.
 		preserveCloseIntent := p.Action != "closed" && (state == "merged" || state == "closed")
-		prefix := h.getIssuePrefix(ctx, wsID)
 
 		existingLinks, err := h.Queries.ListIssueIDsForPullRequest(ctx, pr.ID)
 		if err != nil {
@@ -955,7 +954,7 @@ func (h *Handler) handlePullRequestEvent(ctx context.Context, body []byte) {
 		reevalIssues := make([]db.Issue, 0, len(idents))
 		qualifyingIssues := make([]db.Issue, 0, len(idents))
 		for _, id := range idents {
-			issue, ok := h.lookupIssueByIdentifier(ctx, wsID, prefix, id)
+			issue, ok := h.lookupIssueByIdentifier(ctx, wsID, id)
 			if !ok {
 				continue
 			}
@@ -1623,15 +1622,12 @@ func (h *Handler) githubAutomationFlags(ctx context.Context, workspaceID pgtype.
 // lookupIssueByIdentifier looks up an issue in the given workspace by its
 // "PREFIX-NUMBER" identifier. Returns the row + true if the prefix matches
 // the workspace's configured prefix and the number resolves to a real issue.
-func (h *Handler) lookupIssueByIdentifier(ctx context.Context, workspaceID pgtype.UUID, prefix, identifier string) (db.Issue, bool) {
+func (h *Handler) lookupIssueByIdentifier(ctx context.Context, workspaceID pgtype.UUID, identifier string) (db.Issue, bool) {
 	idx := strings.LastIndex(identifier, "-")
 	if idx < 0 {
 		return db.Issue{}, false
 	}
 	gotPrefix, numStr := identifier[:idx], identifier[idx+1:]
-	if !strings.EqualFold(gotPrefix, prefix) {
-		return db.Issue{}, false
-	}
 	n, err := strconv.Atoi(numStr)
 	if err != nil {
 		return db.Issue{}, false
@@ -1641,6 +1637,10 @@ func (h *Handler) lookupIssueByIdentifier(ctx context.Context, workspaceID pgtyp
 		Number:      int32(n),
 	})
 	if err != nil {
+		return db.Issue{}, false
+	}
+	expectedPrefix := h.getIssuePrefixForIssue(ctx, workspaceID, issue.ProjectID)
+	if !strings.EqualFold(gotPrefix, expectedPrefix) {
 		return db.Issue{}, false
 	}
 	return issue, true
@@ -1671,7 +1671,7 @@ func (h *Handler) advanceIssueStatus(ctx context.Context, issue db.Issue, worksp
 		h.notifyParentOfChildDone(ctx, issue, updated)
 	}
 
-	prefix := h.getIssuePrefix(ctx, issue.WorkspaceID)
+	prefix := h.getIssuePrefixForIssue(ctx, issue.WorkspaceID, issue.ProjectID)
 	resp := issueToResponse(updated, prefix)
 	h.publish(protocol.EventIssueUpdated, workspaceID, "system", "", map[string]any{
 		"issue":          resp,

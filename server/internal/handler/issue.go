@@ -752,9 +752,16 @@ func (h *Handler) SearchIssues(w http.ResponseWriter, r *http.Request) {
 		total = results[0].totalCount
 	}
 
-	prefix := h.getIssuePrefix(ctx, wsUUID)
+	wsPrefix := h.getIssuePrefix(ctx, wsUUID)
+	projectPrefixes := h.loadProjectPrefixes(ctx, wsUUID)
 	resp := make([]SearchIssueResponse, len(results))
 	for i, sr := range results {
+		prefix := wsPrefix
+		if sr.issue.ProjectID.Valid {
+			if p, ok := projectPrefixes[sr.issue.ProjectID]; ok {
+				prefix = p
+			}
+		}
 		sir := SearchIssueResponse{
 			IssueResponse: issueToResponse(sr.issue, prefix),
 			MatchSource:   sr.matchSource,
@@ -870,6 +877,8 @@ func (h *Handler) ListIssues(w http.ResponseWriter, r *http.Request) {
 
 	// open_only=true returns all non-done/cancelled issues (no limit).
 	if r.URL.Query().Get("open_only") == "true" {
+		member, _ := middleware.MemberFromContext(ctx)
+
 		issues, err := h.Queries.ListOpenIssues(ctx, db.ListOpenIssuesParams{
 			WorkspaceID:       wsUUID,
 			Priority:          priorityFilter,
@@ -880,13 +889,16 @@ func (h *Handler) ListIssues(w http.ResponseWriter, r *http.Request) {
 			InvolvesUserID:    involvesUserFilter,
 			PendingApproverID: pendingApproverFilter,
 			MetadataFilter:    metadataFilter,
+			IsAdmin:           member.Role == "admin",
+			MemberID:          member.ID,
 		})
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to list issues")
 			return
 		}
 
-		prefix := h.getIssuePrefix(ctx, wsUUID)
+		wsPrefix := h.getIssuePrefix(ctx, wsUUID)
+		projectPrefixes := h.loadProjectPrefixes(ctx, wsUUID)
 		ids := make([]pgtype.UUID, len(issues))
 		for i, issue := range issues {
 			ids[i] = issue.ID
@@ -895,6 +907,12 @@ func (h *Handler) ListIssues(w http.ResponseWriter, r *http.Request) {
 		assigneesMap := h.assigneesByIssueIDs(ctx, ids)
 		resp := make([]IssueResponse, len(issues))
 		for i, issue := range issues {
+			prefix := wsPrefix
+			if issue.ProjectID.Valid {
+				if p, ok := projectPrefixes[issue.ProjectID]; ok {
+					prefix = p
+				}
+			}
 			resp[i] = openIssueRowToResponse(issue, prefix)
 			labels := labelsMap[resp[i].ID]
 			if labels == nil {
@@ -1015,6 +1033,17 @@ func (h *Handler) ListIssues(w http.ResponseWriter, r *http.Request) {
 	}
 	if projectFilter.Valid {
 		where = append(where, fmt.Sprintf("i.project_id = %s::uuid", addArg(projectFilter)))
+	}
+	
+	member, _ := middleware.MemberFromContext(r.Context())
+	if member.Role != "admin" {
+		where = append(where, fmt.Sprintf(`(
+			i.project_id IS NULL
+			OR EXISTS (
+				SELECT 1 FROM project_member pm
+				WHERE pm.project_id = i.project_id AND pm.member_id = %s::uuid
+			)
+		)`, addArg(member.ID)))
 	}
 	if scheduledFilter.Valid {
 		where = append(where, "(i.start_date IS NOT NULL OR i.due_date IS NOT NULL)")
@@ -1154,7 +1183,8 @@ LIMIT %s OFFSET %s`, whereSql, orderBy, limitRef, offsetRef)
 		}
 	}
 
-	prefix := h.getIssuePrefix(ctx, wsUUID)
+	wsPrefix := h.getIssuePrefix(ctx, wsUUID)
+	projectPrefixes := h.loadProjectPrefixes(ctx, wsUUID)
 	ids := make([]pgtype.UUID, len(issues))
 	for i, issue := range issues {
 		ids[i] = issue.ID
@@ -1176,6 +1206,12 @@ LIMIT %s OFFSET %s`, whereSql, orderBy, limitRef, offsetRef)
 	hydrate.Wait()
 	resp := make([]IssueResponse, len(issues))
 	for i, issue := range issues {
+		prefix := wsPrefix
+		if issue.ProjectID.Valid {
+			if p, ok := projectPrefixes[issue.ProjectID]; ok {
+				prefix = p
+			}
+		}
 		resp[i] = issueListRowToResponse(issue, prefix)
 		labels := labelsMap[resp[i].ID]
 		if labels == nil {
@@ -1705,7 +1741,8 @@ ORDER BY
 	}
 	labelsMap := h.labelsByIssue(ctx, wsUUID, ids)
 	assigneesMap := h.assigneesByIssueIDs(ctx, ids)
-	prefix := h.getIssuePrefix(ctx, wsUUID)
+	wsPrefix := h.getIssuePrefix(ctx, wsUUID)
+	projectPrefixes := h.loadProjectPrefixes(ctx, wsUUID)
 
 	groups := []IssueAssigneeGroupResponse{}
 	groupIndex := map[string]int{}
@@ -1722,6 +1759,13 @@ ORDER BY
 				Issues:       []IssueResponse{},
 				Total:        row.GroupTotal,
 			})
+		}
+
+		prefix := wsPrefix
+		if row.ProjectID.Valid {
+			if p, ok := projectPrefixes[row.ProjectID]; ok {
+				prefix = p
+			}
 		}
 
 		issue := issueListRowToResponse(row.ListIssuesRow, prefix)
@@ -1747,7 +1791,7 @@ func (h *Handler) GetIssue(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	prefix := h.getIssuePrefix(r.Context(), issue.WorkspaceID)
+	prefix := h.getIssuePrefixForIssue(r.Context(), issue.WorkspaceID, issue.ProjectID)
 	resp := issueToResponse(issue, prefix)
 	detailLabels := h.labelsByIssue(r.Context(), issue.WorkspaceID, []pgtype.UUID{issue.ID})[uuidToString(issue.ID)]
 	if detailLabels == nil {
@@ -1795,9 +1839,16 @@ func (h *Handler) ListChildIssues(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to list child issues")
 		return
 	}
-	prefix := h.getIssuePrefix(r.Context(), issue.WorkspaceID)
+	wsPrefix := h.getIssuePrefix(r.Context(), issue.WorkspaceID)
+	projectPrefixes := h.loadProjectPrefixes(r.Context(), issue.WorkspaceID)
 	resp := make([]IssueResponse, len(children))
 	for i, child := range children {
+		prefix := wsPrefix
+		if child.ProjectID.Valid {
+			if p, ok := projectPrefixes[child.ProjectID]; ok {
+				prefix = p
+			}
+		}
 		resp[i] = issueToResponse(child, prefix)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
@@ -1864,9 +1915,16 @@ func (h *Handler) ListChildrenByParents(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusInternalServerError, "failed to list child issues")
 		return
 	}
-	prefix := h.getIssuePrefix(r.Context(), wsUUID)
+	wsPrefix := h.getIssuePrefix(r.Context(), wsUUID)
+	projectPrefixes := h.loadProjectPrefixes(r.Context(), wsUUID)
 	resp := make([]IssueResponse, len(children))
 	for i, child := range children {
+		prefix := wsPrefix
+		if child.ProjectID.Valid {
+			if p, ok := projectPrefixes[child.ProjectID]; ok {
+				prefix = p
+			}
+		}
 		resp[i] = issueToResponse(child, prefix)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
@@ -2371,10 +2429,6 @@ func (h *Handler) CreateIssue(w http.ResponseWriter, r *http.Request) {
 		originID = oid
 	}
 
-	// Prefix is workspace-level; pre-compute once so both the broadcast
-	// payload builder and the HTTP response share the same value.
-	prefix := h.getIssuePrefix(r.Context(), wsUUID)
-
 	// Analytics agent ID: assignee agent when the issue is being assigned
 	// to an agent, otherwise the creator agent for agent-authored issues.
 	// Resolved here (not in the service) because creator identity is HTTP-side.
@@ -2434,7 +2488,7 @@ func (h *Handler) CreateIssue(w http.ResponseWriter, r *http.Request) {
 		AnalyticsAgentID: analyticsAgentID,
 		Platform:         func() string { p, _, _ := middleware.ClientMetadataFromContext(r.Context()); return p }(),
 		BroadcastPayload: func(issue db.Issue, atts []db.Attachment) map[string]any {
-			payload := issueToResponse(issue, prefix)
+			payload := issueToResponse(issue, h.getIssuePrefixForIssue(r.Context(), issue.WorkspaceID, issue.ProjectID))
 			payload.Attachments = buildAttachmentResponses(atts)
 			return map[string]any{"issue": payload}
 		},
@@ -2442,7 +2496,7 @@ func (h *Handler) CreateIssue(w http.ResponseWriter, r *http.Request) {
 
 	if errors.Is(err, service.ErrActiveDuplicate) {
 		dup := *res.DuplicateIssue
-		existing := issueToResponse(dup, h.getIssuePrefix(r.Context(), dup.WorkspaceID))
+		existing := issueToResponse(dup, h.getIssuePrefixForIssue(r.Context(), dup.WorkspaceID, dup.ProjectID))
 		writeJSON(w, http.StatusConflict, map[string]any{
 			"code":  "active_duplicate_issue",
 			"error": duplicateIssueMessage(existing),
@@ -2467,7 +2521,7 @@ func (h *Handler) CreateIssue(w http.ResponseWriter, r *http.Request) {
 	issue := res.Issue
 	slog.Info("issue created", append(logger.RequestAttrs(r), "issue_id", uuidToString(issue.ID), "title", issue.Title, "status", issue.Status, "workspace_id", workspaceID)...)
 
-	resp := issueToResponse(issue, prefix)
+	resp := issueToResponse(issue, h.getIssuePrefixForIssue(r.Context(), issue.WorkspaceID, issue.ProjectID))
 	resp.Attachments = buildAttachmentResponses(res.Attachments)
 	writeJSON(w, http.StatusCreated, resp)
 }
@@ -2741,7 +2795,7 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	prefix := h.getIssuePrefix(r.Context(), issue.WorkspaceID)
+	prefix := h.getIssuePrefixForIssue(r.Context(), issue.WorkspaceID, issue.ProjectID)
 	resp := issueToResponse(issue, prefix)
 	slog.Info("issue updated", append(logger.RequestAttrs(r), "issue_id", id, "workspace_id", workspaceID)...)
 
@@ -3279,7 +3333,7 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		prefix := h.getIssuePrefix(r.Context(), issue.WorkspaceID)
+		prefix := h.getIssuePrefixForIssue(r.Context(), issue.WorkspaceID, issue.ProjectID)
 		resp := issueToResponse(issue, prefix)
 		actorType, actorID := h.resolveActor(r, userID, workspaceID)
 

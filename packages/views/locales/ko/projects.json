@@ -148,7 +148,7 @@
     "status": { "active": "진행 중", "completed": "완료", "cancelled": "취소됨" }
   },
   "docs": {
-    "title": "Wiki",
+    "title": "Document",
     "new_page": "새 페이지",
     "new_folder": "새 폴더",
     "empty": "Wiki 페이지가 없습니다. 페이지나 폴더를 만들어 시작하세요.",

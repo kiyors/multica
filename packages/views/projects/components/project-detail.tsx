@@ -542,7 +542,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
             <div className="border-b px-4 py-2">
               <TabsList>
                 <TabsTrigger value="issues">Issues</TabsTrigger>
-                <TabsTrigger value="docs">Wiki</TabsTrigger>
+                <TabsTrigger value="docs">Document</TabsTrigger>
                 <TabsTrigger value="milestones">Milestones</TabsTrigger>
                 <TabsTrigger value="members">Members</TabsTrigger>
               </TabsList>

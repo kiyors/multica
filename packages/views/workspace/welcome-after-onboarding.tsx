@@ -338,6 +338,8 @@ function RuntimeWelcome({
         designer: t(($) => $.questions.role.designer),
         founder: t(($) => $.questions.role.founder),
         marketing: t(($) => $.questions.role.marketing),
+        creative: t(($) => $.questions.role.creative),
+        marketing_team: t(($) => $.questions.role.marketing_team),
         writer: t(($) => $.questions.role.writer),
         research: t(($) => $.questions.role.research),
         ops: t(($) => $.questions.role.ops),

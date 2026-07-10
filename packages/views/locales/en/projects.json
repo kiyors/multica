@@ -149,7 +149,7 @@
     "status": { "active": "Active", "completed": "Completed", "cancelled": "Cancelled" }
   },
   "docs": {
-    "title": "Wiki",
+    "title": "Document",
     "new_page": "New page",
     "new_folder": "New folder",
     "empty": "No wiki pages yet. Create a page or folder to get started.",

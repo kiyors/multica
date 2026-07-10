@@ -1,9 +1,16 @@
 -- name: ListProjects :many
-SELECT * FROM project
-WHERE workspace_id = $1
-  AND (sqlc.narg('status')::text IS NULL OR status = sqlc.narg('status'))
-  AND (sqlc.narg('priority')::text IS NULL OR priority = sqlc.narg('priority'))
-ORDER BY created_at DESC;
+SELECT p.* FROM project p
+WHERE p.workspace_id = $1
+  AND (sqlc.narg('status')::text IS NULL OR p.status = sqlc.narg('status'))
+  AND (sqlc.narg('priority')::text IS NULL OR p.priority = sqlc.narg('priority'))
+  AND (
+    sqlc.arg('is_admin')::boolean = true
+    OR EXISTS (
+      SELECT 1 FROM project_member pm 
+      WHERE pm.project_id = p.id AND pm.member_id = sqlc.arg('member_id')
+    )
+  )
+ORDER BY p.created_at DESC;
 
 -- name: GetProject :one
 SELECT * FROM project

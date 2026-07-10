@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/multica-ai/multica/server/internal/logger"
+	"github.com/multica-ai/multica/server/internal/middleware"
 	db "github.com/multica-ai/multica/server/pkg/db/generated"
 	"github.com/multica-ai/multica/server/pkg/protocol"
 )
@@ -128,10 +129,14 @@ func (h *Handler) ListProjects(w http.ResponseWriter, r *http.Request) {
 	if p := r.URL.Query().Get("priority"); p != "" {
 		priorityFilter = pgtype.Text{String: p, Valid: true}
 	}
+	member, _ := middleware.MemberFromContext(r.Context())
+	
 	projects, err := h.Queries.ListProjects(r.Context(), db.ListProjectsParams{
 		WorkspaceID: wsUUID,
 		Status:      statusFilter,
 		Priority:    priorityFilter,
+		IsAdmin:     member.Role == "admin",
+		MemberID:    member.ID,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to list projects")
@@ -190,6 +195,19 @@ func (h *Handler) GetProject(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "project not found")
 		return
 	}
+	
+	member, _ := middleware.MemberFromContext(r.Context())
+	if member.Role != "admin" {
+		_, err := h.Queries.GetProjectMember(r.Context(), db.GetProjectMemberParams{
+			ProjectID: project.ID,
+			MemberID:  member.ID,
+		})
+		if err != nil {
+			// Do not leak existence if not accessible
+			writeError(w, http.StatusNotFound, "project not found")
+			return
+		}
+	}
 	resp := projectToResponse(project)
 	resp.IssueCount, resp.DoneCount = h.loadProjectIssueStats(r.Context(), project.ID)
 	resp.ResourceCount = h.loadProjectResourceCount(r.Context(), project.ID)
@@ -203,6 +221,20 @@ func (h *Handler) GetProject(w http.ResponseWriter, r *http.Request) {
 // exact mismatch reported in #3925 (`--status active`).
 var validProjectStatuses = []string{"planned", "in_progress", "paused", "completed", "cancelled"}
 var validProjectPriorities = []string{"urgent", "high", "medium", "low", "none"}
+
+func (h *Handler) loadProjectPrefixes(ctx context.Context, workspaceID pgtype.UUID) map[pgtype.UUID]string {
+	m := make(map[pgtype.UUID]string)
+	projects, err := h.Queries.ListProjects(ctx, db.ListProjectsParams{
+		WorkspaceID: workspaceID,
+		IsAdmin:     true, // we just want to load all project prefixes for resolution
+	})
+	if err == nil {
+		for _, p := range projects {
+			m[p.ID] = generateIssuePrefix(p.Title)
+		}
+	}
+	return m
+}
 
 // validateProjectEnum writes a 400 and returns false when value is not in
 // allowed; the caller returns immediately on false.

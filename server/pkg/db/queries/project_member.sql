@@ -21,3 +21,7 @@ RETURNING *;
 -- name: RemoveProjectMember :exec
 DELETE FROM project_member
 WHERE project_id = $1 AND member_id = $2;
+
+-- name: GetProjectMember :one
+SELECT * FROM project_member
+WHERE project_id = $1 AND member_id = $2;

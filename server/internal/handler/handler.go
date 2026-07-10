@@ -738,6 +738,15 @@ func (h *Handler) getIssuePrefix(ctx context.Context, workspaceID pgtype.UUID) s
 	return generateIssuePrefix(ws.Name)
 }
 
+func (h *Handler) getIssuePrefixForIssue(ctx context.Context, workspaceID pgtype.UUID, projectID pgtype.UUID) string {
+	if projectID.Valid {
+		p, err := h.Queries.GetProject(ctx, projectID)
+		if err == nil {
+			return generateIssuePrefix(p.Title)
+		}
+	}
+	return h.getIssuePrefix(ctx, workspaceID)
+}
 func (h *Handler) loadAgentForUser(w http.ResponseWriter, r *http.Request, agentID string) (db.Agent, bool) {
 	if _, ok := requireUserID(w, r); !ok {
 		return db.Agent{}, false

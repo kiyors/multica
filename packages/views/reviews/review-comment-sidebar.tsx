@@ -10,6 +10,7 @@ import {
 } from "@multica/core/reviews";
 import type { ReviewAsset } from "@multica/core/types";
 import { useActorName } from "@multica/core/workspace";
+import { useCurrentMember } from "@multica/core/permissions/use-current-member";
 import { ContentEditor, type ContentEditorRef } from "../editor";
 import { Clock, Pencil, Smile, Globe, ChevronDown, Send, X } from "lucide-react";
 
@@ -44,6 +45,7 @@ export function ReviewCommentSidebar({
 }: ReviewCommentSidebarProps) {
   const editorRef = React.useRef<ContentEditorRef>(null);
   const currentUserId = useAuthStore(s => s.user?.id);
+  const { member: currentMember } = useCurrentMember(workspaceId);
   const { getActorName } = useActorName();
   const { mutate: createComment, isPending: isCreating } = useCreateReviewComment();
   const { mutate: resolveComment } = useResolveReviewComment();
@@ -57,6 +59,15 @@ export function ReviewCommentSidebar({
   const [filter, setFilter] = useState<"all" | "unresolved" | "resolved">("all");
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
+
+  React.useEffect(() => {
+    if (selectedCommentId) {
+      const el = document.getElementById(`comment-${selectedCommentId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    }
+  }, [selectedCommentId]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -133,7 +144,7 @@ export function ReviewCommentSidebar({
             const shapeColor = comment.shapes?.[0]?.color;
             
             return (
-              <div key={comment.id} className="space-y-2">
+              <div key={comment.id} id={`comment-${comment.id}`} className="space-y-2">
                 {/* Parent Comment */}
                 <div 
                   className={`p-3 rounded border shadow-sm transition-all cursor-pointer ${
@@ -146,8 +157,11 @@ export function ReviewCommentSidebar({
                   style={isSelected ? {
                     borderColor: shapeColor || '#3b82f6',
                     boxShadow: `0 0 10px ${shapeColor || '#3b82f6'}40`,
-                    backgroundColor: `${shapeColor || '#3b82f6'}20`
-                  } : undefined}
+                    backgroundColor: `${shapeColor || '#3b82f6'}20`,
+                    borderLeft: `4px solid ${shapeColor || '#3b82f6'}`
+                  } : {
+                    borderLeft: shapeColor ? `4px solid ${shapeColor}` : undefined
+                  }}
                   onClick={() => onSelectComment?.(comment.id)}
                 >
                   <div>
@@ -260,7 +274,7 @@ export function ReviewCommentSidebar({
                         Resolve
                       </button>
                     )}
-                    {currentUserId === comment.author_id && (
+                    {currentMember?.id === comment.author_id && (
                       <>
                         <button 
                           onClick={(e) => {
@@ -320,7 +334,7 @@ export function ReviewCommentSidebar({
                          ) : (
                            <p className="text-muted-foreground text-sm">{reply.content}</p>
                          )}
-                         {currentUserId === reply.author_id && editingCommentId !== reply.id && (
+                         {currentMember?.id === reply.author_id && editingCommentId !== reply.id && (
                            <div className="mt-1 flex gap-2 text-[10px] text-muted-foreground">
                              <button onClick={(e) => { e.stopPropagation(); setEditContent(reply.content); setEditingCommentId(reply.id); }} className="hover:text-primary">Edit</button>
                              <button onClick={(e) => { e.stopPropagation(); if (confirm("Delete this reply?")) deleteComment({ workspaceId, issueId: asset.issue_id, commentId: reply.id, assetId: asset.id }); }} className="hover:text-destructive">Delete</button>

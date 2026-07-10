@@ -384,7 +384,7 @@ export function AgentCreatePanel({
     useIssueDraftStore.getState().setDraft({
       description: md,
       ...(actor
-        ? { assigneeType: actor.type, assigneeId: actor.id }
+        ? { assignees: [{ type: actor.type as "agent" | "squad", id: actor.id }] }
         : {}),
     });
     setLastMode("manual");

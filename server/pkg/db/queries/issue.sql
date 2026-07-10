@@ -19,6 +19,14 @@ WHERE i.workspace_id = $1
   AND (sqlc.narg('scheduled')::bool IS NULL OR (i.start_date IS NOT NULL OR i.due_date IS NOT NULL))
   AND (sqlc.narg('metadata_filter')::jsonb IS NULL OR i.metadata @> sqlc.narg('metadata_filter')::jsonb)
   AND (
+    i.project_id IS NULL
+    OR sqlc.arg('is_admin')::boolean = true
+    OR EXISTS (
+      SELECT 1 FROM project_member pm
+      WHERE pm.project_id = i.project_id AND pm.member_id = sqlc.arg('member_id')
+    )
+  )
+  AND (
     sqlc.narg('pending_approver_id')::uuid IS NULL
     OR EXISTS (
       SELECT 1 FROM approvals a
@@ -185,6 +193,14 @@ WHERE i.workspace_id = $1
   AND (sqlc.narg('creator_id')::uuid IS NULL OR i.creator_id = sqlc.narg('creator_id'))
   AND (sqlc.narg('project_id')::uuid IS NULL OR i.project_id = sqlc.narg('project_id'))
   AND (sqlc.narg('metadata_filter')::jsonb IS NULL OR i.metadata @> sqlc.narg('metadata_filter')::jsonb)
+  AND (
+    i.project_id IS NULL
+    OR sqlc.arg('is_admin')::boolean = true
+    OR EXISTS (
+      SELECT 1 FROM project_member pm
+      WHERE pm.project_id = i.project_id AND pm.member_id = sqlc.arg('member_id')
+    )
+  )
   AND (
     sqlc.narg('pending_approver_id')::uuid IS NULL
     OR EXISTS (

@@ -120,8 +120,6 @@ export function PreferencesTab() {
 
   const languageOptions: { value: SupportedLocale; label: string }[] = [
     { value: "en", label: t(($) => $.preferences.language.english) },
-    { value: "en-marketing", label: "English (Marketing)" },
-    { value: "en-creative", label: "English (Creative)" },
     { value: "zh-Hans", label: t(($) => $.preferences.language.chinese) },
     { value: "ko", label: t(($) => $.preferences.language.korean) },
     { value: "ja", label: t(($) => $.preferences.language.japanese) },
@@ -215,33 +213,7 @@ export function PreferencesTab() {
         </div>
       </section>
 
-      <section className="space-y-4">
-        <h2 className="text-sm font-semibold">
-          {t(($) => $.preferences.language.title)}
-        </h2>
-        <div className="flex gap-3" role="radiogroup">
-          {languageOptions.map((opt) => {
-            const active = currentLocale === opt.value;
-            return (
-              <button
-                type="button"
-                key={opt.value}
-                role="radio"
-                aria-checked={active}
-                onClick={() => handleLanguageChange(opt.value)}
-                className={cn(
-                  "rounded-md border px-4 py-2 text-sm transition-colors",
-                  active
-                    ? "border-brand bg-brand/10 font-medium text-foreground"
-                    : "border-border text-muted-foreground hover:border-foreground/30"
-                )}
-              >
-                {opt.label}
-              </button>
-            );
-          })}
-        </div>
-      </section>
+
 
       <TimezoneSection />
     </div>

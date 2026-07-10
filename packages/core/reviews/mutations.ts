@@ -163,45 +163,58 @@ export function useReviewAssetUpload() {
     mutationFn: async (params: { workspaceId: string; issueId: string; file: File; previousAssetId?: string; onProgress?: (progress: number) => void; onPhaseChange?: (phase: 'presigning' | 'uploading' | 'completing') => void }) => {
       const { workspaceId, issueId, file, previousAssetId, onProgress, onPhaseChange } = params;
 
-      // 1. Presign
-      onPhaseChange?.('presigning');
-      const { upload_url, asset } = await api.presignReviewAssetUpload(workspaceId, issueId, {
-        filename: file.name,
-        content_type: file.type,
-        size: file.size,
-        previous_asset_id: previousAssetId,
-      });
+      let createdAssetId: string | null = null;
+      try {
+        // 1. Presign
+        onPhaseChange?.('presigning');
+        const { upload_url, asset } = await api.presignReviewAssetUpload(workspaceId, issueId, {
+          filename: file.name,
+          content_type: file.type,
+          size: file.size,
+          previous_asset_id: previousAssetId,
+        });
+        createdAssetId = asset.id;
 
-      // 2. Upload with XHR to track progress
-      onPhaseChange?.('uploading');
-      await new Promise<void>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open("PUT", upload_url, true);
-        xhr.setRequestHeader("Content-Type", file.type);
+        // 2. Upload with XHR to track progress
+        onPhaseChange?.('uploading');
+        await new Promise<void>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open("PUT", upload_url, true);
+          xhr.setRequestHeader("Content-Type", file.type);
 
-        xhr.upload.onprogress = (event) => {
-          if (event.lengthComputable && onProgress) {
-            const percentComplete = (event.loaded / event.total) * 100;
-            onProgress(percentComplete);
+          xhr.upload.onprogress = (event) => {
+            if (event.lengthComputable && onProgress) {
+              const percentComplete = (event.loaded / event.total) * 100;
+              onProgress(percentComplete);
+            }
+          };
+
+          xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              resolve();
+            } else {
+              reject(new Error(`Failed to upload file to storage: ${xhr.status} ${xhr.statusText}`));
+            }
+          };
+
+          xhr.onerror = () => reject(new Error("Network error during upload"));
+          xhr.send(file);
+        });
+
+        // 3. Complete
+        onPhaseChange?.('completing');
+        await api.completeReviewAssetUpload(workspaceId, issueId, asset.id);
+        return asset;
+      } catch (err) {
+        if (createdAssetId) {
+          try {
+            await api.deleteReviewAsset(workspaceId, issueId, createdAssetId);
+          } catch (cleanupErr) {
+            console.error("Failed to cleanup asset after upload failure", cleanupErr);
           }
-        };
-
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            resolve();
-          } else {
-            reject(new Error(`Failed to upload file to storage: ${xhr.status} ${xhr.statusText}`));
-          }
-        };
-
-        xhr.onerror = () => reject(new Error("Network error during upload"));
-        xhr.send(file);
-      });
-
-      // 3. Complete
-      onPhaseChange?.('completing');
-      await api.completeReviewAssetUpload(workspaceId, issueId, asset.id);
-      return asset;
+        }
+        throw err;
+      }
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({

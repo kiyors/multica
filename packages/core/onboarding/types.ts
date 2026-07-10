@@ -42,6 +42,8 @@ export type Role =
   | "designer"
   | "founder"
   | "marketing"
+  | "marketing_team"
+  | "creative"
   | "writer"
   | "research"
   | "ops"
@@ -84,7 +86,7 @@ export interface QuestionnaireAnswers {
   source: Source[];
   source_other: string | null;
   source_skipped: boolean;
-  role: Role | null;
+  role: Role | Role[] | null;
   role_other: string | null;
   role_skipped: boolean;
   use_case: UseCase[];

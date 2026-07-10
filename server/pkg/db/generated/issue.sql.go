@@ -976,6 +976,14 @@ WHERE i.workspace_id = $1
   AND ($10::bool IS NULL OR (i.start_date IS NOT NULL OR i.due_date IS NOT NULL))
   AND ($11::jsonb IS NULL OR i.metadata @> $11::jsonb)
   AND (
+    i.project_id IS NULL
+    OR $14::boolean = true
+    OR EXISTS (
+      SELECT 1 FROM project_member pm
+      WHERE pm.project_id = i.project_id AND pm.member_id = $15
+    )
+  )
+  AND (
     $12::uuid IS NULL
     OR EXISTS (
       SELECT 1 FROM approvals a
@@ -1042,6 +1050,8 @@ type ListIssuesParams struct {
 	MetadataFilter    []byte        `json:"metadata_filter"`
 	PendingApproverID pgtype.UUID   `json:"pending_approver_id"`
 	InvolvesUserID    pgtype.UUID   `json:"involves_user_id"`
+	IsAdmin           bool          `json:"is_admin"`
+	MemberID          pgtype.UUID   `json:"member_id"`
 }
 
 type ListIssuesRow struct {
@@ -1088,6 +1098,8 @@ func (q *Queries) ListIssues(ctx context.Context, arg ListIssuesParams) ([]ListI
 		arg.MetadataFilter,
 		arg.PendingApproverID,
 		arg.InvolvesUserID,
+		arg.IsAdmin,
+		arg.MemberID,
 	)
 	if err != nil {
 		return nil, err
@@ -1142,6 +1154,14 @@ WHERE i.workspace_id = $1
   AND ($6::uuid IS NULL OR i.project_id = $6)
   AND ($7::jsonb IS NULL OR i.metadata @> $7::jsonb)
   AND (
+    i.project_id IS NULL
+    OR $10::boolean = true
+    OR EXISTS (
+      SELECT 1 FROM project_member pm
+      WHERE pm.project_id = i.project_id AND pm.member_id = $11
+    )
+  )
+  AND (
     $8::uuid IS NULL
     OR EXISTS (
       SELECT 1 FROM approvals a
@@ -1195,6 +1215,8 @@ type ListOpenIssuesParams struct {
 	MetadataFilter    []byte        `json:"metadata_filter"`
 	PendingApproverID pgtype.UUID   `json:"pending_approver_id"`
 	InvolvesUserID    pgtype.UUID   `json:"involves_user_id"`
+	IsAdmin           bool          `json:"is_admin"`
+	MemberID          pgtype.UUID   `json:"member_id"`
 }
 
 type ListOpenIssuesRow struct {
@@ -1233,6 +1255,8 @@ func (q *Queries) ListOpenIssues(ctx context.Context, arg ListOpenIssuesParams) 
 		arg.MetadataFilter,
 		arg.PendingApproverID,
 		arg.InvolvesUserID,
+		arg.IsAdmin,
+		arg.MemberID,
 	)
 	if err != nil {
 		return nil, err

@@ -361,7 +361,7 @@ export function MediaScrubber({
                 onHover={() => setHoveredCommentId(c.id)}
                 onLeave={() => setHoveredCommentId(null)}
                 onClick={() => {
-                  if (c.start_time !== undefined) onSeek(c.start_time);
+                  if (c.start_time !== undefined && c.start_time !== null) onSeek(c.start_time);
                   onSelectComment?.(c.id);
                 }}
               />
