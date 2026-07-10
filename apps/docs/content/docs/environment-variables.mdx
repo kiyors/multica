@@ -218,7 +218,7 @@ The [GitHub PR ↔ issue integration](/github-integration) needs two variables. 
 | `GITHUB_APP_SLUG` | empty | The slug of your GitHub App (the tail of `https://github.com/apps/<slug>`). Drives the Settings → GitHub install button URL |
 | `GITHUB_WEBHOOK_SECRET` | empty | The Webhook secret you set on the GitHub App. Used for HMAC-SHA256 verification of every `pull_request` / `installation` delivery, and as the HMAC key for the setup-callback state token |
 | `GITHUB_APP_ID` | empty | Optional. Numeric App ID from the App's settings page. Combined with `GITHUB_APP_PRIVATE_KEY`, lets the setup callback fetch the connected account name from GitHub immediately on install |
-| `GITHUB_APP_PRIVATE_KEY` | empty | Optional. Full PEM block of the App's RSA private key (including `-----BEGIN/END-----` lines, newlines preserved). Used to mint the short-lived JWT GitHub requires for App-authenticated REST calls |
+| `GITHUB_APP_PRIVATE_KEY` | empty | Optional. Full PEM block of the App's RSA private key, or a single-line base64 encoding of that PEM. Use base64 in Docker/Dokploy env files. Used to mint the short-lived JWT GitHub requires for App-authenticated REST calls |
 
 **Behavior when either of the required variables is unset:**
 

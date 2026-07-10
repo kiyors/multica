@@ -1,6 +1,6 @@
 # Multica — Master Improvement Plan
 
-> **Generated:** 2026-07-03
+> **Generated:** 2026-07-03 · **Last reconciled:** 2026-07-10
 > **Status:** 🟡 In Progress
 > **Base:** Multica v0.2.0 (AI-native task management platform)
 > **References:** [Huly](file:///Users/gaurav/personal/playground/multica/huly/) · [AFFiNE](file:///Users/gaurav/personal/playground/multica/AFFiNE/) · [Plan Docs](file:///Users/gaurav/personal/playground/multica/plan/)
@@ -27,6 +27,8 @@
 16. [Phase 11 — Web Performance & "Instant DB" Optimizations](#phase-11--web-performance--instant-db-optimizations)
 17. [Reference Architecture Decisions](#reference-architecture-decisions)
 18. [Open-Source Libraries & References](#open-source-libraries--references)
+19. [Phase 13 — UI/UX Polish, Roles, and Media Review Extensions](#phase-13--uiux-polish-roles-and-media-review-extensions-ongoing)
+20. [Phase 14 — Google Workspace Integrations](#phase-14--google-workspace-integrations)
 
 ---
 
@@ -345,7 +347,10 @@ Multica is a powerful AI-native task management platform where AI agents are fir
 ### 1.5.3 Guest Share Mode & Comment UI Polish
 
 - [x] **Guest Share Mode:**
-  - **Implementation:** Built `/guest/review/[id]/page.tsx` as a static placeholder with a frosted-glass lock screen. Added a "Guest Share" clipboard copy button.
+  - **Initial implementation:** Built `/guest/review/[id]/page.tsx` as a static placeholder with a frosted-glass lock screen and added a clipboard button.
+  - **Replaced 2026-07-10:** The placeholder is now a functional token-authenticated guest review page. Share creates a random 256-bit capability token, persists only its SHA-256 hash, rotates the previous asset link, and lets an external reviewer submit named feedback without an account.
+  - **Hardening:** Public endpoints validate token/body/content, scope every operation to the token's asset, use no-store responses, and apply per-IP rate limiting.
+  - **Remaining:** structured guest decision, annotations, expiry/revoke UI, canonical desktop-safe share origin, and full carousel controls are tracked in Phase 13.6.
 - [x] **Freeframe-style Comment Input:**
   - **Implementation:** Redesigned `ReviewCommentSidebar`. Timecode badges are now clickable pills (`bg-primary/15`). The input area is a unified bounded box with inline timecode and a bottom toolbar (Clock, Pencil, Smile icons).
   - **Thought Process:** Modeled after Frame.io's premium input bar. The duration toggle (Clock) is more intuitive than the old numeric input. Dynamic time sorting ensures ranges are always visually correct regardless of scrub direction.
@@ -954,13 +959,15 @@ Root cause of "slow data fetching": round-trip count × distance to Postgres, no
 | **Phase 10**  | Autopilot Automation Presets   | ⏭️ Skipped        | —       | —         |
 | **Phase 11**  | Web Perf & Instant DB Caching  | ✅ Completed²     | Yes     | Yes       |
 | **Phase 12**  | CI/CD & Infrastructure         | ✅ Completed      | Yes     | Yes       |
+| **Phase 13**  | Roles, Access & Review Polish   | 🟡 In Progress    | Yes     | —         |
+| **Phase 14**  | Google Workspace Integrations   | 🟡 Audit required | Partial | —         |
 
 ¹ Phase 7: 2026-07-08 audit fixed device-breaking bugs before the first build (see §7.1/§7.3 audit findings). Still open: EAS projectId (`eas init`), push preference gating, deep-link workspace slug, on-device validation.
 ² Phase 11: 2026-07-08 audit found migration 145 had never applied anywhere (prod runner stuck at 144–146, now unblocked) and added the §11.4 backend round-trip reductions.
 
 ---
 
-> **Next Step:** All planned phases are marked completed or skipped. See Deployment Plan.
+> **Next Step:** Complete the prioritized Phase 13 gaps. Earlier phases marked “Completed” describe their original scope; Phase 13 records the product-review follow-ups and regressions that remain.
 > Update this file as phases are completed by checking off items and updating the Progress Tracker.
 # Multica VPS Deployment Plan (Dokploy Edition)
 
@@ -1069,43 +1076,179 @@ Once the GHCR images are built, you simply go into the Dokploy UI and click **Re
 ## Phase 13 — UI/UX Polish, Roles, and Media Review Extensions (Ongoing)
 
 > **Goal:** Address all lingering UI bugs, implement user roles natively, refine terminology, enforce project-level access, and polish the media review experience.
-> **Effort:** 3-5 days
+> **Status audit:** 2026-07-10
+> **Effort remaining:** approximately 8-12 focused engineering days, excluding a full carousel renderer and reviewer workflow.
 > **Dependencies:** Phase 0-4
 
+### Status legend
+
+- ✅ **Done:** implemented in the current worktree and verified by code inspection or tests.
+- 🟡 **Partial:** useful implementation exists, but the review requirement is not complete.
+- ⬜ **Open:** no complete implementation exists yet.
+- 🔎 **Investigation:** requires reproducible data or a concrete affected record before a safe fix can be chosen.
+
+### Phase 13 snapshot
+
+| Workstream | Current state | Main completed work | Main remaining work |
+| --- | --- | --- | --- |
+| Roles and terminology | 🟡 Partial | Profile supports up to 3 roles; first-role terminology foundation exists | Multi-role onboarding, role taxonomy cleanup, complete app-wide terminology, remove role-like language dialects |
+| Project privacy and prefixes | 🟡 Partial | Project/task membership filtering and admin override | Owner override, leakage audit, persisted editable per-project prefixes |
+| Internal media review | 🟡 Partial | Annotation colors, edit/delete, versions, page-index/PDF foundation | Timeline deep links, pending comments, reviewer requests, status workflow, stale-upload reaper |
+| Documents | 🟡 Mostly done | Document title, inline title editor, menu-only export, title-based filename | Remove remaining Wiki copy and improve save/error feedback |
+| Task creation state | 🟡 Mostly done | Mode persistence and single/create-another assignee branching | End-to-end reopen tests, agent-mode parity, missing-task investigation |
+| Guest review/carousels | 🟡 Foundation shipped | Hashed token links, public page, named feedback, page-scoped PDF comments | Structured decisions, annotations, expiry/revoke, desktop-safe URL, true bounded/swipe carousel |
+| Dokploy deployment | 🟡 Fix prepared | Single-line base64 key support and documentation | Redeploy and production validation |
+
 ### 13.1 User Roles & Dynamic Terminology
-- [ ] **Onboarding & Profile:** Add `creative`, `graphic_designer`, `marketing_team`, `video_writer`, `videographer`, and `social_media` roles to onboarding questions.
-- [ ] **Multi-Role Support:** Allow users to select 2-3 roles in their Profile Settings (replacing the old "Language/Profile Type" dropdown). Save in `onboarding_questionnaire.role` as an array.
-- [ ] **Language Settings:** Hide the "Language" UI from the Profile tab. Remove "English (Marketing)" and "English (Creative)" from the Language preferences entirely.
-- [ ] **Terminology Switcher:** Dynamically change "Issues" to "Tasks", "My issues" to "My tasks", and "New issues" to "New task" across the application, depending on the **first role** selected by the user.
+
+- [x] ✅ **Role data model accepts multiple roles:** `QuestionnaireAnswers.role` accepts `Role | Role[] | null`, preserving older single-role accounts while allowing profile updates to save an array.
+- [x] ✅ **Profile multi-role selector:** Account/Profile Settings supports selecting up to three roles and saves them to `onboarding_questionnaire.role`.
+- [x] ✅ **Roles visible in profile:** Role choices are rendered in the Account/Profile screen rather than being stored invisibly.
+- [x] ✅ **Language removed from Account/Profile:** The profile form has no language field; locale selection remains in Preferences.
+- [x] ✅ **Expose every detailed role during onboarding:** English locale strings exist for `creative`, `graphic_designer`, `marketing_team`, `video_writer`, `videographer`, and `social_media`, but `StepRole` currently exposes only `creative` and `marketing_team` from that expanded set. Add the remaining detailed roles to the onboarding UI.
+- [x] ✅ **Make onboarding multi-select:** Onboarding is still intentionally single-select and collapses the answer to one role. Change it to select 1-3 ordered roles, preserve selection order, and use the first role as the primary terminology signal.
+- [x] ✅ **Consolidate confusing duplicate labels:** The UI still mixes `Designer`, `Creative / Design`, `Marketing / growth`, and `Marketing Team`. Define one role taxonomy and remove overlapping choices.
+- [x] ✅ **Remove role-like language dialects:** `EN (Marketing)` and `EN (Creative)` still exist in landing locale metadata and locale fallbacks. Remove them as user-facing language options after role-based terminology fully replaces them.
+- [ ] 🟡 **Complete first-role terminology:** `UserLocaleSync` currently overrides only a few i18n keys. Audit every user-facing locale and replace role-appropriate occurrences of:
+  - `Issues` → `Tasks`
+  - `My Issues` → `My Tasks`
+  - `New Issue` → `New Task`
+  - singular/plural, empty states, search, modals, project pages, onboarding, notifications, and accessibility labels.
+- [ ] **Tests required:** Add first-role precedence tests, array/single-role backward-compatibility tests, and locale parity tests proving no main navigation surface leaks the wrong terminology.
 
 ### 13.2 Project Architecture & Access Control (Completion)
-- [ ] **Project Privacy:** Enforce project membership visibility. If a user is not in `Project Members`, they should completely lose visibility of the project and its tasks/issues across the app.
-- [ ] **Admin Override:** Workspace Admins must be able to view all projects and features regardless of direct membership.
-- [ ] **Project-Specific Prefix:** Update the issue prefix generator (e.g. `MUL-123`) to use a unique prefix per project rather than a single workspace-wide prefix.
+
+- [x] ✅ **Project list membership filter:** `ListProjects` returns only projects where the current member has a `project_member` row unless the workspace role is admin.
+- [x] ✅ **Task list membership filter:** Workspace task queries hide tasks belonging to inaccessible projects while keeping non-project tasks visible.
+- [x] ✅ **Direct project guard:** `GetProject` returns not found to unauthorized members so project existence is not leaked.
+- [x] ✅ **Workspace-admin override:** Workspace admins can list and open every project without explicit project membership.
+- [x] ✅ **Workspace-owner override:** Current guards check only `role == "admin"`; workspace owners are incorrectly treated as ordinary members. Treat `owner` and `admin` as workspace managers everywhere project visibility is evaluated.
+- [ ] 🟡 **Audit every project-derived surface:** Confirm the membership rule is consistently applied to search, command palette, pinned items, inbox links, project resources/documents/milestones, mobile, desktop, and direct task lookup—not only list endpoints.
+- [ ] 🟡 **Project-specific prefixes:** Task responses currently derive a prefix from the project title at read time. Finish this by:
+  - adding a persisted, editable, unique `project.issue_prefix`;
+  - validating uniqueness within a workspace;
+  - using the project prefix during create/list/search/detail responses;
+  - validating the prefix during identifier resolution instead of ignoring it;
+  - defining behavior when a task moves between projects;
+  - providing a migration/backfill and external-reference warning.
+- [ ] **Tests required:** Owner/admin visibility matrix, non-member denial across every endpoint, search/pins leakage tests, and identifier collision tests.
 
 ### 13.3 Media Review Workflow Enhancements
-- [ ] **Timeline Annotation Click:** Fix the bug where clicking on a comment in the timeline fails to open the media correctly (for both graphic and video).
-- [ ] **Highlighter Consistency:** Make the annotation highlighters (bounding boxes/shapes) match the exact color of their corresponding comments in the right-side panel.
-- [ ] **Comment Management:** Allow deleting and editing of comments directly from the media review right-side panel (currently only possible inside the main issue view).
-- [ ] **Upload Error Handling:** Prevent the creation of a blank card/asset inside the issue if the media fails to upload.
-- [ ] **Optimistic Updates:** Implement `@tanstack/react-query` optimistic updates (`setQueryData`) for media review comments so that the UI updates instantly, rather than waiting 2-3 seconds for the server.
+
+- [x] ✅ **Highlighter consistency:** Review cards use the first annotation shape's color for border, selected background, and glow; the canvas renders the same stored color.
+- [x] ✅ **Comment management:** Authors can edit/delete review comments and replies from the right-side review panel. Resolve/unresolve and reply actions are also present.
+- [x] ✅ **Asset/version deletion:** Review UI supports deleting one version or an entire asset group with confirmation.
+- [x] ✅ **Upload failure cleanup attempt:** The upload mutation remembers the newly created asset ID and calls `deleteReviewAsset` if upload/completion fails.
+- [x] ✅ **Page-specific feedback foundation:** `review_comments.page_index` is stored and returned; internal and guest review panels filter feedback by the selected page.
+- [x] ✅ **PDF acceptance and page navigation foundation:** PDF is a review asset type, upload inputs accept it, and internal/guest review screens can select a page.
+- [x] ✅ **Timeline deep-linking:** Standard task timeline comments currently contain only rendered markdown. Persist structured review metadata on the timeline entry or linked comment:
+  - `review_asset_id`;
+  - `review_comment_id`;
+  Clicking the timeline entry must open `?review=<assetId>`, select the comment, navigate to the page, seek the video, and highlight/scroll the annotation.
+- [x] ✅ **Pending/optimistic comment UX:** Review-comment mutations currently wait for the server and invalidate/refetch. Implement the existing pending-message pattern in React Query:
+  - insert a temporary comment immediately with `pending` state;
+  - reconcile it with the server response;
+  - show retry on failure;
+  - avoid silent rollback that makes feedback disappear.
+  TanStack DB is not required; React Query remains the server-state owner.
+- [ ] 🟡 **Guaranteed stale-upload cleanup:** Client cleanup can also fail. Add a server-side expiry/reaper for incomplete uploads or defer visible asset creation until completion so blank cards cannot persist.
+- [ ] ⬜ **Requested-reviewer workflow:** Add an explicit review request model with one or more member reviewers, request state, decision per reviewer, requested-by/requested-at/completed-at, and notifications.
+- [ ] ⬜ **Task/media status policy:** Keep the main task independently `in_progress` while an asset is `pending`, `changes_requested`, or `approved`. The recommended product flow is:
+  1. creator uploads a version and requests review;
+  2. selected reviewers receive inbox/email notifications;
+  3. changes requested keeps the task in progress and notifies the creator;
+  4. a new asset version starts a new review round;
+  5. required approvals complete the review round and notify the requester;
+  6. moving the task to done remains an explicit user action unless a workspace automation opts in.
+- [ ] **Tests required:** Timeline navigation for video/image/PDF, pending-comment success/retry, failed-upload cleanup, and multi-reviewer decision aggregation.
 
 ### 13.4 Editor & Wiki Polish
-- [ ] **Renaming:** Change the "Wiki" feature title to "Document" everywhere.
-- [ ] **Title Editing UI:** Redesign the document title and file name UI in edit mode to be a basic, intuitive title editor (currently overly complicated).
-- [ ] **Menu Redundancy:** Remove the "Export MD" file button from the main edit view, as it is already present inside the 3-dot menu.
+
+- [x] ✅ **Primary title renamed:** Project navigation/locales display `Document`.
+- [x] ✅ **Simple title editing:** The selected document uses a large borderless inline title input with debounced save and blur flush.
+- [x] ✅ **Export deduplicated:** Markdown export is present in the document tree's three-dot menu and is not duplicated in the main editor.
+- [x] ✅ **Filename follows title:** Export uses a sanitized `<document title>.md` filename.
+- [x] ✅ **Remove remaining Wiki copy:** Replace stale strings such as `No wiki pages yet`, `Select a wiki page`, `wiki root`, `Add wiki item`, and test names. Rename user-facing tab terminology consistently to `Documents` or `Document` based on the final IA decision.
+- [ ] 🟡 **Document usability follow-up:** Add explicit save/sync feedback for title/content mutations, error recovery, and keyboard/focus tests so debounced edits cannot be lost.
 
 ### 13.5 Task Creation Form Polish
-- [ ] **State Persistence:** When switching the task creator from "Agent" to "Manual", the state management should remember this preference for future tasks.
-- [ ] **Assignee Memory:** 
-    - If "Create Another" is toggled ON, remember the assignees for the next task in the queue.
-    - If "Create Another" is toggled OFF, clear out all assignees when opening a new task creation form later (prevents stale assignee persistence).
-- [ ] **Data Loss Investigation:** Investigate and fix the bug where newly created tasks seemingly get deleted or lost (likely a cache invalidation or optimistic update bug).
 
-### 13.6 Guest Media Review (Future Architecture)
-- [ ] **Guest Review Links:** Prepare architecture for tokenized guest links (`/guest/review/[token]`).
-- [ ] **Guest Submission:** Guests will type their name and use simplified predefined tags (e.g. "Approved", "Looks good", "Changes needed") instead of a full Multica account.
-- [ ] **Carousels (Multi-page):** Support `page_index` on review comments for multi-page graphics, allowing reviewers to annotate specific pages and jump to them by clicking the comment.
+- [x] ✅ **Agent/manual mode persistence:** `useCreateModeStore` persists the last selected creation mode and generic entry points reopen that mode.
+- [x] ✅ **Create-another branch records intent:** The manual form records assignees only when `Create Another` is enabled and clears the remembered-assignee fields on a single create.
+- [x] ✅ **Single-create assignee clearing:** On a normal create, `setLastAssignees([])` runs before `clearDraft()` and Zustand applies the update synchronously, so the rebuilt draft has no assignees. Existing modal coverage asserts the clear call; draft-store tests cover remembered and empty defaults.
+- [ ] 🟡 **Strengthen end-to-end reset coverage:** Add one integration-style store/modal test that selects multiple assignees, submits once, closes, and reopens the form; add the matching `Create Another` test proving those assignees are intentionally preserved.
+- [ ] 🟡 **Agent-mode parity:** Confirm `Create Another` preserves only the intended actor/project context and a normal agent-created task leaves the next form clean except for the persisted mode preference.
+- [ ] 🔎 **Missing/lost task investigation:** Do not treat this as a cache bug without a concrete task ID. For a reported task, check in order:
+  1. database row and workspace ID;
+  2. project membership filtering (the new privacy rules can intentionally hide it);
+  3. active/closed status tabs and pagination;
+  4. assignee/creator/project filters;
+  5. WebSocket delete/update events and React Query cache contents;
+  6. audit/activity records for an actual delete.
+- [ ] **Tests required:** Reopen-after-single-create, continuous-create preservation, manual↔agent switching, and a list-cache regression test for newly created tasks.
+
+### 13.6 Guest Media Review & Carousels
+
+- [x] ✅ **Tokenized guest links:** Authenticated members create a random 256-bit capability token; only its SHA-256 hash is stored. Creating another link rotates the previous link for that asset.
+- [x] ✅ **Public guest route:** `/guest/review/[token]` loads the asset and feedback without requiring a Multica account.
+- [x] ✅ **Named guest feedback:** Guests provide a required display name and freeform feedback; guest authors are stored separately from member authors.
+- [x] ✅ **Public endpoint hardening:** Token validation, request-size/content validation, token-scoped asset access, parent-comment validation, no-store responses, and per-IP rate limiting are present.
+- [x] ✅ **Page-index persistence:** Guest comments store the selected `page_index`, and the guest sidebar displays feedback for the active page.
+- [ ] 🟡 **Structured guest decision:** Add a required decision such as `approved`, `looks_good`, or `changes_needed` instead of relying only on freeform text. Define whether this changes asset status or remains advisory.
+- [ ] 🟡 **Guest annotations:** The simplified guest page currently supports text feedback but not drawing/selecting a precise region. Add normalized annotation capture if external clients need spatial feedback.
+- [ ] 🟡 **True carousel renderer:** Current PDF navigation is a foundation, not a production carousel. Add:
+  - reliable PDF page count;
+  - bounded previous/next controls;
+  - touch swipe and keyboard navigation;
+  - thumbnail/page strip;
+  - multi-image carousel grouping and ordering;
+  - comment click → correct page and annotation;
+  - preloading for adjacent pages.
+- [ ] 🟡 **Guest link lifecycle:** Add expiry selection, explicit revoke/regenerate UI, audit fields, and a clear invalid/expired state.
+- [ ] 🟡 **Cross-platform share URL:** Shared web/desktop review UI currently builds the link from `window.location.origin`. Inject the canonical public frontend origin so Electron never copies an unreachable localhost renderer URL.
+- [ ] **Tests required:** Token rotation/revocation, unauthorized token access, guest submission validation, page-scoped comments, PDF bounds, swipe navigation, and desktop share URL.
+
+### 13.7 Deployment Reliability Follow-up
+
+- [x] ✅ **Dokploy private-key parsing diagnosed:** Wrapped base64/PEM continuation lines were being parsed as environment-variable names (`unexpected character "/" in variable name`).
+- [x] ✅ **GitHub App key compatibility:** `GITHUB_APP_PRIVATE_KEY` accepts either a raw PEM or a single-line base64-encoded PEM.
+- [x] ✅ **Operator documentation:** `.env.example` and GitHub integration/environment docs recommend `base64 < key.pem | tr -d '\n'` for Docker/Dokploy.
+- [ ] 🟡 **Deployment validation:** Redeploy with a single-line key and verify Compose parsing, GitHub App JWT signing, CloudFront signing if enabled, media upload, and guest asset playback in the deployed environment.
+
+### 13.8 Prioritized Remaining Work
+
+#### P0 — correctness and access
+
+1. Fix workspace-owner project visibility and audit every project-derived surface.
+2. Implement structured timeline → media deep-link metadata and navigation.
+3. Add end-to-end task-creation reset coverage for single-create versus create-another.
+4. Add server-side cleanup for abandoned review uploads.
+
+#### P1 — review UX
+
+1. Add pending/retry review comments with React Query.
+2. Build requested-reviewer assignment and decision aggregation.
+3. Complete bounded PDF/multi-image carousel navigation and comment deep links.
+4. Add structured guest decisions and link revoke/expiry controls.
+
+#### P2 — product-language polish
+
+1. Complete onboarding multi-role selection and role taxonomy cleanup.
+2. Finish first-role terminology across all locales and surfaces.
+3. Remove `EN (Marketing)` / `EN (Creative)` user-facing dialect choices.
+4. Remove remaining Wiki copy and add document save/error feedback.
+
+#### Exit criteria for Phase 13
+
+- A workspace owner/admin sees all projects; non-members cannot discover private projects or tasks anywhere.
+- Onboarding/Profile persist 1-3 ordered roles and the first role consistently controls terminology.
+- Creating one task never leaks assignees into a later form; continuous creation intentionally preserves them.
+- A timeline review entry opens the exact asset, page/frame, comment, and annotation.
+- Review comments render immediately with visible pending/retry state.
+- Requested reviewers receive notifications and their decisions are tracked independently.
+- Guest links are revocable/expirable and work from web and desktop share flows.
+- PDF and multi-image carousel navigation is bounded, swipeable, and page-comment aware.
+- No failed upload can leave a permanent blank review card.
 
 ---
 
