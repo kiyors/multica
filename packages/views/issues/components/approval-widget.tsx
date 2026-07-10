@@ -5,6 +5,7 @@ import { useAuthStore } from "@multica/core/auth";
 import { listApprovalsByIssueOptions } from "@multica/core/approvals/queries";
 import { useCreateApproval, useApproveApproval, useRejectApproval } from "@multica/core/approvals/mutations";
 import { Button } from "@multica/ui/components/ui/button";
+import { Textarea } from "@multica/ui/components/ui/textarea";
 import { Check, X, ShieldAlert, ShieldCheck, ShieldX } from "lucide-react";
 import type { Approval, IssueAssigneeType } from "@multica/core/types";
 import { AssigneePicker } from "./pickers";
@@ -15,6 +16,7 @@ export function ApprovalWidget({ issueId }: { issueId: string }) {
   const { data = [] } = useQuery(listApprovalsByIssueOptions(wsId, issueId));
   const approvals = data as Approval[];
   const [requesting, setRequesting] = useState(false);
+  const [comment, setComment] = useState("");
 
   const createApproval = useCreateApproval();
   const approveApproval = useApproveApproval();
@@ -45,13 +47,21 @@ export function ApprovalWidget({ issueId }: { issueId: string }) {
               <span>Pending Approval</span>
             </div>
             {isApprover ? (
-              <div className="flex gap-2 mt-2">
-                <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => approveApproval.mutateAsync({ workspaceId: wsId, approvalId: approval.id, comment: "" })}>
-                  <Check className="mr-1 h-3.5 w-3.5" /> Approve
-                </Button>
-                <Button size="sm" variant="outline" className="text-red-600 hover:bg-red-50" onClick={() => rejectApproval.mutateAsync({ workspaceId: wsId, approvalId: approval.id, comment: "" })}>
-                  <X className="mr-1 h-3.5 w-3.5" /> Reject
-                </Button>
+              <div className="flex flex-col gap-2 mt-2">
+                <Textarea
+                  placeholder="Add a comment (optional)..."
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  className="min-h-[60px] text-sm resize-none bg-background"
+                />
+                <div className="flex gap-2">
+                  <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white flex-1" onClick={() => approveApproval.mutateAsync({ workspaceId: wsId, approvalId: approval.id, comment })}>
+                    <Check className="mr-1 h-3.5 w-3.5" /> Approve
+                  </Button>
+                  <Button size="sm" variant="outline" className="text-red-600 hover:bg-red-50 flex-1 border-red-200" onClick={() => rejectApproval.mutateAsync({ workspaceId: wsId, approvalId: approval.id, comment })}>
+                    <X className="mr-1 h-3.5 w-3.5" /> Reject
+                  </Button>
+                </div>
               </div>
             ) : (
               <p className="text-xs text-muted-foreground">Waiting for reviewer...</p>

@@ -236,6 +236,20 @@ func (h *Handler) CreateApproval(w http.ResponseWriter, r *http.Request) {
 	res := approvalToResponse(a)
 	h.publish(protocol.EventApprovalRequested, wsIDStr, "system", "", res)
 
+	details, _ := json.Marshal(map[string]any{
+		"approver_type": body.ApproverType,
+		"approver_id":   approverID,
+		"approval_id":   a.ID,
+	})
+	_, _ = h.Queries.CreateActivity(r.Context(), db.CreateActivityParams{
+		WorkspaceID: wsID,
+		IssueID:     issueID,
+		ActorType:   actorType,
+		ActorID:     actorID,
+		Action:      "approval_requested",
+		Details:     details,
+	})
+
 	// Create inbox notification for the approver
 	_, _ = h.Queries.CreateInboxItem(r.Context(), db.CreateInboxItemParams{
 		WorkspaceID:   wsID,
@@ -345,6 +359,19 @@ func (h *Handler) handleApprovalDecision(w http.ResponseWriter, r *http.Request,
 
 	res := approvalToResponse(updated)
 	h.publish(eventType, wsIDStr, actorType, actorIDStr, res)
+
+	details, _ := json.Marshal(map[string]any{
+		"approval_id": approvalID,
+		"comment":     body.Comment,
+	})
+	_, _ = h.Queries.CreateActivity(r.Context(), db.CreateActivityParams{
+		WorkspaceID: wsID,
+		IssueID:     a.IssueID,
+		ActorType:   actorType,
+		ActorID:     actorID,
+		Action:      "approval_" + action,
+		Details:     details,
+	})
 
 	// Create inbox notification for the requester
 	title := "Approval Approved"

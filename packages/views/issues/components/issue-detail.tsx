@@ -283,6 +283,16 @@ function formatActivity(
       return t(($) => $.activity.pr_merged, { repo: details.repo ?? "?", pr_number: details.pr_number ?? "?" });
     case "pr_closed":
       return t(($) => $.activity.pr_closed, { repo: details.repo ?? "?", pr_number: details.pr_number ?? "?" });
+    case "approval_requested":
+      return t(($) => $.activity.approval_requested);
+    case "approval_approved":
+      return details.comment
+        ? `${t(($) => $.activity.approval_approved)}: "${details.comment}"`
+        : t(($) => $.activity.approval_approved);
+    case "approval_rejected":
+      return details.comment
+        ? `${t(($) => $.activity.approval_rejected)}: "${details.comment}"`
+        : t(($) => $.activity.approval_rejected);
     default:
       return entry.action ?? "";
   }
