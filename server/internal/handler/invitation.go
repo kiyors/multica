@@ -124,12 +124,23 @@ func (h *Handler) CreateInvitation(w http.ResponseWriter, r *http.Request) {
 		inviteeUserID = existingUser.ID
 	}
 
+	var initialProjectsRaw []byte
+	if len(req.InitialProjects) > 0 {
+		var err error
+		initialProjectsRaw, err = json.Marshal(req.InitialProjects)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid initial_projects")
+			return
+		}
+	}
+
 	inv, err := h.Queries.CreateInvitation(r.Context(), db.CreateInvitationParams{
-		WorkspaceID:   requester.WorkspaceID,
-		InviterID:     requester.UserID,
-		InviteeEmail:  email,
-		InviteeUserID: inviteeUserID,
-		Role:          role,
+		WorkspaceID:     requester.WorkspaceID,
+		InviterID:       requester.UserID,
+		InviteeEmail:    email,
+		InviteeUserID:   inviteeUserID,
+		Role:            role,
+		InitialProjects: initialProjectsRaw,
 	})
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -425,6 +436,29 @@ func (h *Handler) AcceptInvitation(w http.ResponseWriter, r *http.Request) {
 		}
 		writeError(w, http.StatusInternalServerError, "failed to create membership")
 		return
+	}
+
+	if accepted.InitialProjects != nil && len(accepted.InitialProjects) > 0 {
+		var initialProjects []InitialProjectAssignment
+		if err := json.Unmarshal(accepted.InitialProjects, &initialProjects); err == nil {
+			for _, p := range initialProjects {
+				projectUUID, ok := h.parseUUIDOrZero(p.ProjectID)
+				if !ok {
+					continue
+				}
+				role := p.Role
+				if role == "" {
+					role = "viewer" // default
+				}
+				_, _ = qtx.AddProjectMember(r.Context(), db.AddProjectMemberParams{
+					ProjectID:   projectUUID,
+					WorkspaceID: accepted.WorkspaceID,
+					MemberID:    member.ID,
+					Role:        role,
+					CreatedBy:   user.ID,
+				})
+			}
+		}
 	}
 
 	// Accepting an invite marks the invitee as onboarded. The web /

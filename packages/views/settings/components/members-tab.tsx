@@ -41,6 +41,7 @@ import { useAuthStore } from "@multica/core/auth";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { useCurrentWorkspace } from "@multica/core/paths";
 import { memberListOptions, invitationListOptions, workspaceKeys } from "@multica/core/workspace/queries";
+import { projectListOptions } from "@multica/core/projects/queries";
 import { api } from "@multica/core/api";
 import { useT } from "../../i18n";
 
@@ -235,9 +236,12 @@ export function MembersTab() {
   const wsId = useWorkspaceId();
   const { data: members = [] } = useQuery(memberListOptions(wsId));
   const { data: invitations = [] } = useQuery(invitationListOptions(wsId));
+  const { data: projectsData } = useQuery(projectListOptions(wsId));
+  const projects = projectsData ?? [];
 
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<MemberRole>("member");
+  const [initialProjects, setInitialProjects] = useState<Array<{project_id: string, role: string}>>([]);
   const [inviteLoading, setInviteLoading] = useState(false);
   const [memberActionId, setMemberActionId] = useState<string | null>(null);
   const [invitationActionId, setInvitationActionId] = useState<string | null>(null);
@@ -260,9 +264,11 @@ export function MembersTab() {
       await api.createMember(workspace.id, {
         email: inviteEmail,
         role: inviteRole,
+        initial_projects: initialProjects.length > 0 ? initialProjects : undefined,
       });
       setInviteEmail("");
       setInviteRole("member");
+      setInitialProjects([]);
       qc.invalidateQueries({ queryKey: workspaceKeys.invitations(wsId) });
       toast.success(t(($) => $.members.toast_invitation_sent));
     } catch (e) {
@@ -371,6 +377,53 @@ export function MembersTab() {
                   {inviteLoading ? t(($) => $.members.inviting) : t(($) => $.members.invite_button)}
                 </Button>
               </div>
+
+              {projects.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-border/50">
+                  <div className="text-sm font-medium mb-2">Assign to Projects (Optional)</div>
+                  <div className="space-y-2 max-h-40 overflow-y-auto pr-2">
+                    {projects.map((p: any) => {
+                      const assignment = initialProjects.find(a => a.project_id === p.id);
+                      return (
+                        <div key={p.id} className="flex items-center gap-3">
+                          <label className="flex items-center gap-2 flex-1 cursor-pointer">
+                            <input 
+                              type="checkbox" 
+                              className="rounded border-input text-primary focus:ring-primary"
+                              checked={!!assignment}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setInitialProjects(prev => [...prev, { project_id: p.id, role: "viewer" }]);
+                                } else {
+                                  setInitialProjects(prev => prev.filter(a => a.project_id !== p.id));
+                                }
+                              }}
+                            />
+                            <span className="text-sm">{p.title}</span>
+                          </label>
+                          {assignment && (
+                            <Select 
+                              value={assignment.role} 
+                              onValueChange={(val) => {
+                                setInitialProjects(prev => prev.map(a => a.project_id === p.id ? { ...a, role: val || "viewer" } : a));
+                              }}
+                            >
+                              <SelectTrigger size="sm" className="w-[110px] h-7 text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="viewer">Viewer</SelectItem>
+                                <SelectItem value="editor">Editor</SelectItem>
+                                <SelectItem value="admin">Admin</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

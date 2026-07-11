@@ -233,6 +233,10 @@ export interface UpdateMeRequest {
 export interface CreateMemberRequest {
   email: string;
   role?: MemberRole;
+  initial_projects?: {
+    project_id: string;
+    role: string;
+  }[];
 }
 
 export interface UpdateMemberRequest {

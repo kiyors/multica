@@ -421,9 +421,15 @@ func (h *Handler) ListMembersWithUser(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
+type InitialProjectAssignment struct {
+	ProjectID string `json:"project_id"`
+	Role      string `json:"role"`
+}
+
 type CreateMemberRequest struct {
-	Email string `json:"email"`
-	Role  string `json:"role"`
+	Email           string                     `json:"email"`
+	Role            string                     `json:"role"`
+	InitialProjects []InitialProjectAssignment `json:"initial_projects,omitempty"`
 }
 
 func memberWithUserResponse(member db.Member, user db.User) MemberWithUserResponse {
