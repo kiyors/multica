@@ -52,7 +52,7 @@ export function InvitationsPage() {
   const [error, setError] = useState<string | null>(null);
   const currentUser = useAuthStore((state) => state.user);
   const [profileName, setProfileName] = useState(currentUser?.name ?? "");
-  const [department, setDepartment] = useState("");
+  const [role, setRole] = useState("");
 
   const {
     data: invitations,
@@ -80,7 +80,7 @@ export function InvitationsPage() {
       return;
     }
 
-    if (!profileName.trim() || !department.trim()) {
+    if (!profileName.trim() || !role.trim()) {
       setError(t(($) => $.profile.required));
       return;
     }
@@ -90,7 +90,7 @@ export function InvitationsPage() {
     try {
       await api.updateMe({
         name: profileName.trim(),
-        profile_description: inviteeProfileDescription(department),
+        profile_description: inviteeProfileDescription(role),
       });
       await api.patchOnboarding({
         questionnaire: { source: [], source_other: null, source_skipped: true },
@@ -233,9 +233,9 @@ export function InvitationsPage() {
             <InviteeProfileFields
               name={profileName}
               email={currentUser?.email ?? ""}
-              department={department}
+              role={role}
               onNameChange={setProfileName}
-              onDepartmentChange={setDepartment}
+              onRoleChange={setRole}
             />
           ) : null}
 

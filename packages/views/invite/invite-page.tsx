@@ -54,7 +54,7 @@ export function InvitePage({ invitationId, onBack }: InvitePageProps) {
   const [done, setDone] = useState<"accepted" | "declined" | null>(null);
   const currentUser = useAuthStore((state) => state.user);
   const [profileName, setProfileName] = useState(currentUser?.name ?? "");
-  const [department, setDepartment] = useState("");
+  const [role, setRole] = useState("");
 
   const { data: invitation, isLoading, error: fetchError } = useQuery({
     queryKey: ["invitation", invitationId],
@@ -68,7 +68,7 @@ export function InvitePage({ invitationId, onBack }: InvitePageProps) {
   const fallbackDest = resolvePostAuthDestination(wsList, hasOnboarded);
 
   const handleAccept = async () => {
-    if (!hasOnboarded && (!profileName.trim() || !department.trim())) {
+    if (!hasOnboarded && (!profileName.trim() || !role.trim())) {
       setError(t(($) => $.profile.required));
       return;
     }
@@ -78,7 +78,7 @@ export function InvitePage({ invitationId, onBack }: InvitePageProps) {
       if (!hasOnboarded) {
         await api.updateMe({
           name: profileName.trim(),
-          profile_description: inviteeProfileDescription(department),
+          profile_description: inviteeProfileDescription(role),
         });
         await api.patchOnboarding({
           questionnaire: { source: [], source_other: null, source_skipped: true },
@@ -230,9 +230,9 @@ export function InvitePage({ invitationId, onBack }: InvitePageProps) {
             <InviteeProfileFields
               name={profileName}
               email={currentUser?.email ?? invitation.invitee_email}
-              department={department}
+              role={role}
               onNameChange={setProfileName}
-              onDepartmentChange={setDepartment}
+              onRoleChange={setRole}
             />
           ) : null}
 

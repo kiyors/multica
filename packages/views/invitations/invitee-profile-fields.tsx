@@ -2,25 +2,49 @@
 
 import { Input } from "@multica/ui/components/ui/input";
 import { Label } from "@multica/ui/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@multica/ui/components/ui/select";
 import { useT } from "../i18n";
+import type { Role } from "@multica/core/onboarding";
 
 export interface InviteeProfileFieldsProps {
   name: string;
   email: string;
-  department: string;
+  role: string;
   onNameChange: (value: string) => void;
-  onDepartmentChange: (value: string) => void;
+  onRoleChange: (value: string) => void;
 }
 
 /** Profile details collected only for a user's first workspace invitation. */
 export function InviteeProfileFields({
   name,
   email,
-  department,
+  role,
   onNameChange,
-  onDepartmentChange,
+  onRoleChange,
 }: InviteeProfileFieldsProps) {
   const { t } = useT("invite");
+  const { t: tOnboarding } = useT("onboarding");
+
+  const roles: Role[] = [
+    "engineer",
+    "product",
+    "designer",
+    "founder",
+    "marketing",
+    "creative",
+    "graphic_designer",
+    "marketing_team",
+    "social_media",
+    "video_writer",
+    "video_editor",
+    "videographer",
+    "content_writer",
+    "writer",
+    "research",
+    "ops",
+    "student",
+    "other",
+  ];
 
   return (
     <div className="w-full space-y-3 rounded-md border border-border bg-muted/20 p-4 text-left">
@@ -58,22 +82,26 @@ export function InviteeProfileFields({
         </div>
       </div>
       <div>
-        <Label htmlFor="invitee-department" className="text-xs text-muted-foreground">
-          {t(($) => $.profile.department_label)}
+        <Label htmlFor="invitee-role" className="text-xs text-muted-foreground">
+          Role
         </Label>
-        <Input
-          id="invitee-department"
-          value={department}
-          onChange={(event) => onDepartmentChange(event.target.value)}
-          placeholder={t(($) => $.profile.department_placeholder)}
-          autoComplete="organization-title"
-          className="mt-1"
-        />
+        <Select value={role} onValueChange={(val) => onRoleChange(val ?? "")}>
+          <SelectTrigger id="invitee-role" className="mt-1">
+            <SelectValue placeholder="Select a role" />
+          </SelectTrigger>
+          <SelectContent>
+            {roles.map((r) => (
+              <SelectItem key={r} value={r}>
+                {tOnboarding(($) => $.questions.role[r] as string)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
     </div>
   );
 }
 
-export function inviteeProfileDescription(department: string): string {
-  return `Department / role: ${department.trim()}`;
+export function inviteeProfileDescription(role: string): string {
+  return `Role: ${role.trim()}`;
 }

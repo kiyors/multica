@@ -68,9 +68,28 @@ vi.mock("@multica/core/api", () => ({
 import { I18nProvider } from "@multica/core/i18n/react";
 import enCommon from "../locales/en/common.json";
 import enInvite from "../locales/en/invite.json";
+import enOnboarding from "../locales/en/onboarding.json";
 import { InvitationsPage } from "./invitations-page";
 
-const TEST_RESOURCES = { en: { common: enCommon, invite: enInvite } };
+vi.mock("./invitee-profile-fields", () => ({
+  InviteeProfileFields: ({ name, role, onNameChange, onRoleChange }: any) => (
+    <div>
+      <input 
+        data-testid="mock-name-input" 
+        value={name} 
+        onChange={(e) => onNameChange(e.target.value)} 
+      />
+      <input 
+        data-testid="mock-role-input" 
+        value={role} 
+        onChange={(e) => onRoleChange(e.target.value)} 
+      />
+    </div>
+  ),
+  inviteeProfileDescription: (role: string) => `Role: ${role.trim()}`
+}));
+
+const TEST_RESOURCES = { en: { common: enCommon, invite: enInvite, onboarding: enOnboarding } };
 
 function renderWithClient(client: QueryClient = new QueryClient()) {
   return render(
@@ -163,8 +182,10 @@ describe("InvitationsPage", () => {
     await waitFor(() => screen.getByText("Acme"));
     // Select Acme via its label/checkbox row.
     fireEvent.click(screen.getByText("Acme"));
-    fireEvent.change(screen.getByLabelText("Department or role"), {
-      target: { value: "Marketing" },
+    
+    // Type into the mocked input
+    fireEvent.change(screen.getByTestId("mock-role-input"), {
+      target: { value: "marketing" },
     });
 
     fireEvent.click(screen.getByRole("button", { name: /join 1 workspace/i }));
@@ -172,7 +193,7 @@ describe("InvitationsPage", () => {
     await waitFor(() => {
       expect(updateMe).toHaveBeenCalledWith({
         name: "Jordan Lee",
-        profile_description: "Department / role: Marketing",
+        profile_description: "Role: marketing",
       });
       expect(patchOnboarding).toHaveBeenCalledWith({
         questionnaire: { source: [], source_other: null, source_skipped: true },
