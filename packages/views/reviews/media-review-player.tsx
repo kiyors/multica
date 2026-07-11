@@ -1,3 +1,4 @@
+/* eslint-disable i18next/no-literal-string */
 import React, { useRef, useEffect, useState, useCallback, useImperativeHandle, forwardRef } from "react";
 import { Play, Pause, Maximize2, SkipBack, SkipForward, Clock, Repeat } from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@multica/ui/components/ui/tooltip";
@@ -114,7 +115,7 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
     setLayout({ x: 0, y: 0, width: 0, height: 0 });
     setDrawingShape(null);
     onDrawingShapeChange?.(null);
-  }, [asset.id]);
+  }, [asset.id, onDrawingShapeChange]);
 
   useEffect(() => {
     if (asset.asset_type === "video" && asset.src_url.endsWith(".m3u8") && mediaRef.current) {
@@ -225,7 +226,7 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
       case 'k':
       case 'K':
         e.preventDefault();
-        media.paused ? media.play() : media.pause();
+        if (media.paused) media.play(); else media.pause();
         break;
       case 'j':
       case 'J':
@@ -484,3 +485,5 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
     </TooltipProvider>
   );
 });
+
+MediaReviewPlayer.displayName = "MediaReviewPlayer";

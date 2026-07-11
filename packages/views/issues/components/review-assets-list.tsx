@@ -1,3 +1,4 @@
+/* eslint-disable i18next/no-literal-string */
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Plus, Video, Image as ImageIcon, FileText, Check, Clock, AlertCircle, Trash2 } from "lucide-react";

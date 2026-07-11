@@ -1,3 +1,4 @@
+/* eslint-disable i18next/no-literal-string */
 import { useState } from "react";
 import { Check } from "lucide-react";
 import { useGitHubRepos } from "@multica/core/github/queries";

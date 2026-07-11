@@ -590,8 +590,7 @@ describe("user-supplied custom pricing", () => {
         agent_count: 1,
       },
     ];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const byModel = aggregateCostByModel(rows as any);
+        const byModel = aggregateCostByModel(rows as any);
     // Priced vendor-prefixed id stays bare; the unmapped generic id is
     // provider-qualified so it matches the unmapped notice / pricing dialog.
     const sonnet = byModel.find((r) => r.key === "claude-sonnet-4-6");
@@ -600,8 +599,7 @@ describe("user-supplied custom pricing", () => {
     expect(fictional?.cost).toBe(0);
     // The unmapped key is provider-qualified so a user can price this exact
     // (provider, model) pair without affecting another provider's same id.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect(collectUnmappedModels(rows as any)).toEqual(["fictional/fictional-model-x"]);
+        expect(collectUnmappedModels(rows as any)).toEqual(["fictional/fictional-model-x"]);
   });
 
   it("keeps the same generic model id from two providers as distinct by-model rows", () => {
@@ -612,8 +610,7 @@ describe("user-supplied custom pricing", () => {
       { ...zeroUsage, model: "auto", provider: "cursor", input_tokens: 1_000_000, date: "2026-01-01" },
       { ...zeroUsage, model: "auto", provider: "acme", input_tokens: 1_000_000, date: "2026-01-01" },
     ];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const byModel = aggregateCostByModel(rows as any);
+        const byModel = aggregateCostByModel(rows as any);
     expect(byModel.map((r) => r.key).toSorted()).toEqual(["acme/auto", "cursor/auto"]);
     expect(byModel.find((r) => r.key === "cursor/auto")?.cost).toBeCloseTo(1.25, 5);
     expect(byModel.find((r) => r.key === "acme/auto")?.cost).toBe(0);
@@ -634,8 +631,7 @@ describe("user-supplied custom pricing", () => {
         agent_count: 1,
       },
     ];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const before = aggregateCostByModel(rows as any);
+        const before = aggregateCostByModel(rows as any);
     expect(before[0]?.cost).toBe(0);
 
     useCustomPricingStore.getState().setCustomPricing("fictional-model-x", {
@@ -644,8 +640,7 @@ describe("user-supplied custom pricing", () => {
       cacheRead: 0.2,
       cacheWrite: 2,
     });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const after = aggregateCostByModel(rows as any);
+        const after = aggregateCostByModel(rows as any);
     expect(after[0]?.cost).toBeCloseTo(2, 5);
   });
 });

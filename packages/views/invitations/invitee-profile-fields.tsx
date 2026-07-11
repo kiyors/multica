@@ -82,7 +82,7 @@ export function InviteeProfileFields({
       </div>
       <div>
         <Label className="text-xs text-muted-foreground">
-          What is your role?
+          {tOnboarding(($) => $.questions.role.question)}
         </Label>
         <div className="mt-2 flex flex-wrap gap-2">
           {roles.map((r) => {

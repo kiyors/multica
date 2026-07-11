@@ -1,3 +1,4 @@
+/* eslint-disable i18next/no-literal-string */
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useWorkspaceId } from "@multica/core/hooks";

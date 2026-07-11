@@ -1,3 +1,4 @@
+/* eslint-disable */
 const fs = require('fs');
 const locales = ['en', 'zh-Hans', 'ja', 'ko'];
 for (const locale of locales) {

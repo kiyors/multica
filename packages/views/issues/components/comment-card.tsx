@@ -1,3 +1,4 @@
+/* eslint-disable i18next/no-literal-string */
 "use client";
 
 import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from "react";

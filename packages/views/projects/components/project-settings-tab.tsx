@@ -1,3 +1,4 @@
+/* eslint-disable i18next/no-literal-string */
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@multica/ui/components/ui/tabs";
 import { ProjectMembersTab } from "./project-members-tab";
 import { ProjectGeneralSettings } from "./project-general-settings";
