@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -3947,10 +3948,22 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string, slot i
 	// Some runtimes (e.g. Codex) run in an isolated sandbox that may not
 	// inherit the daemon's PATH. Prepend the directory of the running
 	// multica binary so that `multica` commands in the agent always resolve.
+	var pathComponents []string
 	if selfBin, err := os.Executable(); err == nil {
-		binDir := filepath.Dir(selfBin)
-		agentEnv["PATH"] = binDir + string(os.PathListSeparator) + os.Getenv("PATH")
+		pathComponents = append(pathComponents, filepath.Dir(selfBin))
 	}
+
+	// Bind Nix to the agent's environment so agents can install applications
+	// and CLIs using Nix. This is especially useful for sandboxed agents.
+	if runtime.GOOS != "windows" {
+		if homeDir, err := os.UserHomeDir(); err == nil && homeDir != "" {
+			pathComponents = append(pathComponents, filepath.Join(homeDir, ".nix-profile", "bin"))
+		}
+		pathComponents = append(pathComponents, "/nix/var/nix/profiles/default/bin")
+	}
+
+	pathComponents = append(pathComponents, os.Getenv("PATH"))
+	agentEnv["PATH"] = strings.Join(pathComponents, string(os.PathListSeparator))
 	// Point Codex to the per-task CODEX_HOME so it discovers skills natively
 	// without polluting the system ~/.codex/skills/.
 	if env.CodexHome != "" {

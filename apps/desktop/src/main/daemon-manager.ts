@@ -816,7 +816,27 @@ function profileArgs(active: ActiveProfile): string[] {
 // applied by fix-path in main/index.ts — as a top-level const it would
 // snapshot process.env at import time, before that block runs.
 function desktopSpawnEnv(): NodeJS.ProcessEnv {
-  return { ...process.env, MULTICA_LAUNCHED_BY: "desktop" };
+  const env: NodeJS.ProcessEnv = { ...process.env, MULTICA_LAUNCHED_BY: "desktop" };
+  
+  // Bind Nix to the daemon environment on non-Windows so agents
+  // and the daemon itself can install/use Nix applications and CLIs.
+  if (process.platform !== "win32") {
+    const homedir = require("os").homedir();
+    const nixPaths = [
+      `${homedir}/.nix-profile/bin`,
+      `/nix/var/nix/profiles/default/bin`
+    ];
+    
+    let path = env.PATH || "";
+    for (const np of nixPaths) {
+      if (!path.includes(np)) {
+        path = `${np}:${path}`;
+      }
+    }
+    env.PATH = path.replace(/:$/, "");
+  }
+  
+  return env;
 }
 
 async function startDaemon(): Promise<{ success: boolean; error?: string }> {
