@@ -2,7 +2,6 @@
 
 import { Input } from "@multica/ui/components/ui/input";
 import { Label } from "@multica/ui/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@multica/ui/components/ui/select";
 import { useT } from "../i18n";
 import type { Role } from "@multica/core/onboarding";
 
@@ -82,21 +81,28 @@ export function InviteeProfileFields({
         </div>
       </div>
       <div>
-        <Label htmlFor="invitee-role" className="text-xs text-muted-foreground">
-          Role
+        <Label className="text-xs text-muted-foreground">
+          What is your role?
         </Label>
-        <Select value={role} onValueChange={(val) => onRoleChange(val ?? "")}>
-          <SelectTrigger id="invitee-role" className="mt-1">
-            <SelectValue placeholder="Select a role" />
-          </SelectTrigger>
-          <SelectContent>
-            {roles.map((r) => (
-              <SelectItem key={r} value={r}>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {roles.map((r) => {
+            const isSelected = role === r;
+            return (
+              <button
+                key={r}
+                type="button"
+                onClick={() => onRoleChange(r)}
+                className={`inline-flex items-center justify-center rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                  isSelected
+                    ? "border-transparent bg-primary text-primary-foreground shadow"
+                    : "border-border bg-background text-muted-foreground hover:bg-muted"
+                }`}
+              >
                 {tOnboarding(($) => $.questions.role[r] as string)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
