@@ -11,9 +11,9 @@ import { Plus, Trash2, Edit2 } from "lucide-react";
 import { IssueTypeIcon } from "../../issues/components/issue-type-icon";
 import type { IssueType } from "@multica/core/types";
 
-export function IssueTypesTab() {
+export function IssueTypesTab({ projectId }: { projectId?: string } = {}) {
   const wsId = useWorkspaceId();
-  const { data = [] } = useQuery(listIssueTypesOptions(wsId));
+  const { data = [] } = useQuery(listIssueTypesOptions(wsId, projectId));
   const issueTypes = data as IssueType[];
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -52,7 +52,7 @@ export function IssueTypesTab() {
       await updateMutation.mutateAsync({
         workspaceId: wsId,
         issueTypeId: editingId,
-        ...{ name, description, icon, color },
+        ...{ name, description, icon, color, project_id: projectId },
       });
     } else {
       await createMutation.mutateAsync({
@@ -61,6 +61,7 @@ export function IssueTypesTab() {
         description,
         icon,
         color,
+        project_id: projectId,
         is_default: false,
         position: issueTypes.length,
       });

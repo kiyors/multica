@@ -542,29 +542,29 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
           <Tabs defaultValue="issues" className="flex-1 flex flex-col min-h-0">
             <div className="border-b px-4 py-2">
               <TabsList>
-                <TabsTrigger value="issues">Issues</TabsTrigger>
+                <TabsTrigger value="issues">Tasks</TabsTrigger>
                 <TabsTrigger value="docs">Document</TabsTrigger>
                 <TabsTrigger value="milestones">Milestones</TabsTrigger>
                 <TabsTrigger value="settings">Settings</TabsTrigger>
               </TabsList>
             </div>
             
-            <TabsContent value="issues" className="flex-1 min-h-0 m-0 border-none p-0 outline-none data-[state=inactive]:hidden">
+            <TabsContent value="issues" className="flex-1 min-h-0 m-0 border-none p-0 outline-none data-[state=inactive]:hidden flex flex-col">
               <IssueSurface
                 scope={issueScope}
                 modes={["board", "list", "swimlane", "gantt"]}
               />
             </TabsContent>
             
-            <TabsContent value="docs" className="flex-1 min-h-0 m-0 border-none p-0 outline-none data-[state=inactive]:hidden">
+            <TabsContent value="docs" className="flex-1 min-h-0 m-0 border-none p-0 outline-none data-[state=inactive]:hidden flex flex-col">
               <ProjectDocsTab projectId={projectId} />
             </TabsContent>
             
-            <TabsContent value="milestones" className="flex-1 overflow-y-auto m-0 border-none p-0 outline-none data-[state=inactive]:hidden">
+            <TabsContent value="milestones" className="flex-1 overflow-y-auto m-0 border-none p-0 outline-none data-[state=inactive]:hidden flex flex-col">
               <ProjectMilestonesTab projectId={projectId} />
             </TabsContent>
             
-            <TabsContent value="settings" className="flex-1 overflow-y-auto m-0 border-none p-0 outline-none data-[state=inactive]:hidden">
+            <TabsContent value="settings" className="flex-1 overflow-y-auto m-0 border-none p-0 outline-none data-[state=inactive]:hidden flex flex-col">
               <ProjectSettingsTab projectId={projectId} />
             </TabsContent>
           </Tabs>
