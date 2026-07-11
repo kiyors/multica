@@ -16,6 +16,8 @@ interface DesktopAPI {
   onSystemLocaleChanged: (callback: (locale: string) => void) => () => void;
   /** Validated runtime endpoint config, or a blocking config error. */
   runtimeConfig: RuntimeConfigResult;
+  /** Persist a new runtime configuration host to desktop.json. */
+  setRuntimeConfig: (apiUrl: string) => Promise<RuntimeConfigResult>;
   /** Read + clear any freeze/crash breadcrumb from a previous session, so the
    *  renderer can flush it to telemetry on boot. Null when nothing's pending. */
   getLastFreeze: () => FreezeBreadcrumb | null;

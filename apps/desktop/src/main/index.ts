@@ -10,8 +10,10 @@ import { openExternalSafely, downloadURLSafely } from "./external-url";
 import { installContextMenu } from "./context-menu";
 import { handleAppShortcut } from "./keyboard-shortcuts";
 import { installNavigationGestures } from "./navigation-gestures";
+import { readFile, writeFile, mkdir } from "fs/promises";
+import { dirname } from "path";
 import { getAppVersion } from "./app-version";
-import { loadRuntimeConfig } from "./runtime-config-loader";
+import { loadRuntimeConfig, desktopConfigPath } from "./runtime-config-loader";
 import type { RuntimeConfigResult } from "../shared/runtime-config";
 import {
   RENDERER_ROUTE_CONTEXT_CHANNEL,
@@ -471,6 +473,43 @@ if (!gotTheLock) {
     // blocking error and must not silently fall back to the cloud defaults.
     ipcMain.on("runtime-config:get", (event) => {
       event.returnValue = runtimeConfigResult;
+    });
+
+    ipcMain.handle("runtime-config:set", async (_event, apiUrl: string) => {
+      const configPath = desktopConfigPath();
+      let current = {};
+      try {
+        const raw = await readFile(configPath, "utf-8");
+        current = JSON.parse(raw);
+      } catch {
+        // file might not exist or be invalid JSON, start fresh
+      }
+      
+      const next = { ...current, schemaVersion: 1, apiUrl };
+      try {
+        await mkdir(dirname(configPath), { recursive: true });
+        await writeFile(configPath, JSON.stringify(next, null, 2), "utf-8");
+      } catch (err) {
+        return { ok: false, error: { message: `Failed to save config: ${err instanceof Error ? err.message : String(err)}` } };
+      }
+
+      // Reload config
+      const viteEnv = import.meta.env as ImportMetaEnv & {
+        readonly VITE_API_URL?: string;
+        readonly VITE_WS_URL?: string;
+        readonly VITE_APP_URL?: string;
+      };
+
+      runtimeConfigResult = await loadRuntimeConfig({
+        isDev: is.dev,
+        env: {
+          apiUrl: viteEnv.VITE_API_URL,
+          wsUrl: viteEnv.VITE_WS_URL,
+          appUrl: viteEnv.VITE_APP_URL,
+        },
+      });
+
+      return runtimeConfigResult;
     });
 
     ipcMain.on(RENDERER_ROUTE_CONTEXT_CHANNEL, (event, context: unknown) => {

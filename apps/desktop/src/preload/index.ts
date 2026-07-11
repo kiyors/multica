@@ -79,6 +79,10 @@ const desktopAPI = {
   },
   /** Validated runtime endpoint config, or a blocking config error. */
   runtimeConfig,
+  /** Persist a new runtime configuration host to desktop.json. */
+  setRuntimeConfig: (apiUrl: string): Promise<RuntimeConfigResult> => {
+    return ipcRenderer.invoke("runtime-config:set", apiUrl);
+  },
   /** Read + clear any freeze/crash breadcrumb left by a previous session, so
    *  the renderer can flush it to telemetry on boot. Returns null when there's
    *  nothing pending (the normal case). */
