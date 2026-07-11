@@ -25,6 +25,7 @@ import {
   InviteeProfileFields,
   inviteeProfileDescription,
 } from "../invitations/invitee-profile-fields";
+import { seedRoleBasedWelcomeIssue } from "../onboarding/templates";
 
 export interface InvitePageProps {
   invitationId: string;
@@ -95,6 +96,17 @@ export function InvitePage({ invitationId, onBack }: InvitePageProps) {
       });
       await useAuthStore.getState().refreshMe();
       setDone("accepted");
+      
+      const refreshedUser = useAuthStore.getState().user;
+      if (invitation?.workspace_id && refreshedUser) {
+        await seedRoleBasedWelcomeIssue(
+          invitation.workspace_id,
+          role,
+          refreshedUser.id,
+          document.documentElement.lang || "en",
+        );
+      }
+
       // Fetch the refreshed workspace list so we know the joined workspace's slug.
       const nextList = await qc.fetchQuery({
         ...workspaceListOptions(),

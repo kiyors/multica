@@ -24,6 +24,7 @@ import {
   InviteeProfileFields,
   inviteeProfileDescription,
 } from "./invitee-profile-fields";
+import { seedRoleBasedWelcomeIssue } from "../onboarding/templates";
 
 /**
  * Batch invitation handling page for first-contact users who land here
@@ -114,6 +115,17 @@ export function InvitationsPage() {
         workspace_id: firstAcceptedInvite?.workspace_id,
       });
       await useAuthStore.getState().refreshMe();
+      
+      const refreshedUser = useAuthStore.getState().user;
+      if (firstAcceptedInvite && refreshedUser) {
+        await seedRoleBasedWelcomeIssue(
+          firstAcceptedInvite.workspace_id,
+          role,
+          refreshedUser.id,
+          // Use the frontend's current language if available
+          document.documentElement.lang || "en",
+        );
+      }
 
       qc.invalidateQueries({ queryKey: workspaceKeys.myInvitations() });
       const wsList = await qc.fetchQuery({

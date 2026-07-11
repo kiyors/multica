@@ -27,6 +27,11 @@ export {
   type UserContextLabels,
   type QuestionnaireRaw,
 } from "./user-context";
+export {
+  MARKETING_TEAM_GUIDE_TITLE,
+  MARKETING_TEAM_GUIDE_BODY,
+  seedRoleBasedWelcomeIssue,
+} from "./marketing-team-guide";
 
 type ContentLang = "en" | "zh" | "ko" | "ja";
 
