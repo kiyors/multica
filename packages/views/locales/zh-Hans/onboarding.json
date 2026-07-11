@@ -86,7 +86,9 @@
       "ops": "运营 / 项目管理",
       "student": "学生 / 个人使用",
       "other": "其他",
-      "other_placeholder": "例如：教师、支持负责人"
+      "other_placeholder": "例如：教师、支持负责人",
+      "video_editor": "Video Editor",
+      "content_writer": "Content Writer"
     },
     "use_case": {
       "question": "你打算用 Multica 做什么？",

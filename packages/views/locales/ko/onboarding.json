@@ -86,7 +86,9 @@
       "ops": "운영 / 프로젝트 관리",
       "student": "학생 / 개인 사용",
       "other": "기타",
-      "other_placeholder": "예: 교사, 지원팀 리드"
+      "other_placeholder": "예: 교사, 지원팀 리드",
+      "video_editor": "Video Editor",
+      "content_writer": "Content Writer"
     },
     "use_case": {
       "question": "Multica를 무엇에 쓰고 싶으신가요?",

@@ -46,7 +46,9 @@ export function StepRole({
     { slug: "marketing_team", icon: <Megaphone className="h-4 w-4" />, label: t(($) => $.questions.role.marketing_team) },
     { slug: "social_media", icon: <Megaphone className="h-4 w-4" />, label: t(($) => $.questions.role.social_media) },
     { slug: "video_writer", icon: <PenLine className="h-4 w-4" />, label: t(($) => $.questions.role.video_writer) },
+    { slug: "video_editor", icon: <Rocket className="h-4 w-4" />, label: t(($) => $.questions.role.video_editor) },
     { slug: "videographer", icon: <Rocket className="h-4 w-4" />, label: t(($) => $.questions.role.videographer) },
+    { slug: "content_writer", icon: <PenLine className="h-4 w-4" />, label: t(($) => $.questions.role.content_writer) },
     { slug: "writer", icon: <PenLine className="h-4 w-4" />, label: t(($) => $.questions.role.writer) },
     { slug: "research", icon: <Search className="h-4 w-4" />, label: t(($) => $.questions.role.research) },
     { slug: "ops", icon: <Settings2 className="h-4 w-4" />, label: t(($) => $.questions.role.ops) },
@@ -81,7 +83,7 @@ export function StepRole({
         if (newSlugs.includes(slug)) {
           newSlugs = newSlugs.filter((s) => s !== slug);
         } else {
-          if (newSlugs.length >= 3) return; // max 3
+          if (newSlugs.length >= 5) return; // max 5
           newSlugs.push(slug);
         }
 
