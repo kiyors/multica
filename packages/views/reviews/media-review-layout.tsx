@@ -4,11 +4,10 @@ import { ChevronLeft, ChevronRight, Trash2, Share2, X } from "lucide-react";
 import { toast } from "sonner";
 import type { ReviewAsset } from "@multica/core/types";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@multica/ui/components/ui/carousel";
-import { pdfjs } from "react-pdf";
 
-if (typeof window !== "undefined") {
-  pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
-}
+// pdfjs-dist crashes at module-evaluation time under webpack dev mode
+// (Object.defineProperty called on non-object). It is dynamically imported
+// inside the PDF useEffect instead of a top-level static import.
 
 import {
   AlertDialog,
@@ -50,9 +49,12 @@ export function MediaReviewLayout({ workspaceId, asset, onAssetChange, onClose, 
   useEffect(() => {
     if (asset.asset_type === "pdf") {
       setPdfNumPages(null);
-      pdfjs.getDocument(asset.src_url).promise.then((pdf) => {
-        setPdfNumPages(pdf.numPages);
-      }).catch(console.error);
+      import("react-pdf").then(({ pdfjs }) => {
+        pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
+        pdfjs.getDocument(asset.src_url).promise.then((pdf) => {
+          setPdfNumPages(pdf.numPages);
+        }).catch(console.error);
+      });
     }
   }, [asset.src_url, asset.asset_type]);
 
