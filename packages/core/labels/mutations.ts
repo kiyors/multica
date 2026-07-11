@@ -12,20 +12,20 @@ import type {
   IssueLabelsResponse,
 } from "../types";
 
-export function useCreateLabel() {
+export function useCreateLabel(projectId?: string) {
   const qc = useQueryClient();
   const wsId = useWorkspaceId();
   return useMutation({
     mutationFn: (data: CreateLabelRequest) => api.createLabel(data),
     onSuccess: (label) => {
-      qc.setQueryData<ListLabelsResponse>(labelKeys.list(wsId), (old) =>
+      qc.setQueryData<ListLabelsResponse>(labelKeys.list(wsId, projectId), (old) =>
         old && !old.labels.some((l) => l.id === label.id)
           ? { ...old, labels: [...old.labels, label], total: old.total + 1 }
           : old,
       );
     },
     onSettled: () => {
-      qc.invalidateQueries({ queryKey: labelKeys.list(wsId) });
+      qc.invalidateQueries({ queryKey: labelKeys.list(wsId, projectId) });
     },
   });
 }
@@ -35,16 +35,16 @@ export function useCreateLabel() {
  * change locally, snapshot for rollback, invalidate on settle. Without this
  * the UI freezes for the round-trip on every edit.
  */
-export function useUpdateLabel() {
+export function useUpdateLabel(projectId?: string) {
   const qc = useQueryClient();
   const wsId = useWorkspaceId();
   return useMutation({
     mutationFn: ({ id, ...data }: { id: string } & UpdateLabelRequest) =>
       api.updateLabel(id, data),
     onMutate: async ({ id, ...data }) => {
-      await qc.cancelQueries({ queryKey: labelKeys.list(wsId) });
-      const prevList = qc.getQueryData<ListLabelsResponse>(labelKeys.list(wsId));
-      qc.setQueryData<ListLabelsResponse>(labelKeys.list(wsId), (old) =>
+      await qc.cancelQueries({ queryKey: labelKeys.list(wsId, projectId) });
+      const prevList = qc.getQueryData<ListLabelsResponse>(labelKeys.list(wsId, projectId));
+      qc.setQueryData<ListLabelsResponse>(labelKeys.list(wsId, projectId), (old) =>
         old
           ? {
               ...old,
@@ -55,7 +55,7 @@ export function useUpdateLabel() {
       return { prevList, id };
     },
     onError: (_err, _vars, ctx) => {
-      if (ctx?.prevList) qc.setQueryData(labelKeys.list(wsId), ctx.prevList);
+      if (ctx?.prevList) qc.setQueryData(labelKeys.list(wsId, projectId), ctx.prevList);
     },
     onSettled: () => {
       // Invalidate the entire labels scope so any byIssue cache holding a
@@ -69,15 +69,15 @@ export function useUpdateLabel() {
   });
 }
 
-export function useDeleteLabel() {
+export function useDeleteLabel(projectId?: string) {
   const qc = useQueryClient();
   const wsId = useWorkspaceId();
   return useMutation({
     mutationFn: (id: string) => api.deleteLabel(id),
     onMutate: async (id) => {
-      await qc.cancelQueries({ queryKey: labelKeys.list(wsId) });
-      const prev = qc.getQueryData<ListLabelsResponse>(labelKeys.list(wsId));
-      qc.setQueryData<ListLabelsResponse>(labelKeys.list(wsId), (old) =>
+      await qc.cancelQueries({ queryKey: labelKeys.list(wsId, projectId) });
+      const prev = qc.getQueryData<ListLabelsResponse>(labelKeys.list(wsId, projectId));
+      qc.setQueryData<ListLabelsResponse>(labelKeys.list(wsId, projectId), (old) =>
         old
           ? { ...old, labels: old.labels.filter((l) => l.id !== id), total: old.total - 1 }
           : old,
@@ -85,7 +85,7 @@ export function useDeleteLabel() {
       return { prev };
     },
     onError: (_err, _id, ctx) => {
-      if (ctx?.prev) qc.setQueryData(labelKeys.list(wsId), ctx.prev);
+      if (ctx?.prev) qc.setQueryData(labelKeys.list(wsId, projectId), ctx.prev);
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: labelKeys.all(wsId) });
@@ -111,7 +111,9 @@ export function useAttachLabel(issueId: string) {
       // fetched), skip the optimistic patch and rely on onSettled refetch.
       if (!prev) return { prev };
       if (prev.labels.some((l) => l.id === labelId)) return { prev };
-      const list = qc.getQueryData<ListLabelsResponse>(labelKeys.list(wsId));
+      // Note: we can't cleanly get the label from list cache if we don't know the projectId
+      // but in this optimistic update, we just want to avoid crashing.
+      const list = qc.getQueryData<ListLabelsResponse>(labelKeys.list(wsId)); // might not exist
       const label = list?.labels.find((l) => l.id === labelId);
       if (!label) return { prev };
       const next: IssueLabelsResponse = { ...prev, labels: [...prev.labels, label] };

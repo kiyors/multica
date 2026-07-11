@@ -3,14 +3,15 @@ import { api } from "../api";
 
 export const issueTypeKeys = {
   all: (wsId: string) => ["issue-types", wsId] as const,
-  detail: (wsId: string, id: string) => [...issueTypeKeys.all(wsId), id] as const,
+  list: (wsId: string, projectId?: string) => [...issueTypeKeys.all(wsId), "list", projectId] as const,
+  detail: (wsId: string, id: string) => [...issueTypeKeys.all(wsId), "detail", id] as const,
 };
 
-export function listIssueTypesOptions(workspaceId: string) {
+export function listIssueTypesOptions(workspaceId: string, projectId?: string) {
   return queryOptions({
-    queryKey: issueTypeKeys.all(workspaceId),
+    queryKey: issueTypeKeys.list(workspaceId, projectId),
     queryFn: async () => {
-      return await api.listIssueTypes(workspaceId);
+      return await api.listIssueTypes(workspaceId, projectId);
     },
     enabled: !!workspaceId,
   });

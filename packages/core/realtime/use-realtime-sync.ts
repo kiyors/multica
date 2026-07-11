@@ -212,6 +212,9 @@ export function applyWorkspaceUpdatedToCache(
       return old.map((w) => (w.id === next.id ? next : w));
     });
 
+    // We also invalidate to ensure server state is definitively resynchronized
+    qc.invalidateQueries({ queryKey: workspaceKeys.list() });
+
     if (!cached || cached.issue_prefix !== next.issue_prefix) {
       qc.invalidateQueries({ queryKey: issueKeys.all(next.id) });
     }
@@ -477,6 +480,14 @@ export function useRealtimeSync(
       project: () => {
         const wsId = getCurrentWsId();
         if (wsId) qc.invalidateQueries({ queryKey: projectKeys.all(wsId) });
+      },
+      project_member: () => {
+        const wsId = getCurrentWsId();
+        if (wsId) {
+          qc.invalidateQueries({ queryKey: projectKeys.all(wsId) });
+          // Invalidate issues since project membership affects issue visibility
+          qc.invalidateQueries({ queryKey: issueKeys.all(wsId) });
+        }
       },
       squad: () => {
         const wsId = getCurrentWsId();

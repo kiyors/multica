@@ -664,6 +664,14 @@ export function ManualCreatePanel({
 
             {/* Property toolbar */}
             <div className="flex items-center gap-1.5 px-4 py-2 shrink-0 flex-wrap">
+              {/* Project */}
+              <ProjectPicker
+                projectId={projectId ?? null}
+                onUpdate={(u) => setProjectId(u.project_id ?? undefined)}
+                triggerRender={<PillButton />}
+                align="start"
+              />
+
               {/* Status */}
               <StatusPicker
                 status={status}
@@ -678,6 +686,7 @@ export function ManualCreatePanel({
                 onUpdate={(u) => { if (u.issue_type_id !== undefined) updateIssueType(u.issue_type_id || null); }}
                 triggerRender={<PillButton />}
                 align="start"
+                projectId={projectId ?? undefined}
               />
 
               {/* Priority */}
@@ -713,15 +722,10 @@ export function ManualCreatePanel({
                 onSelectedIdsChange={updateLabelIds}
                 triggerRender={<PillButton />}
                 align="start"
+                projectId={projectId ?? undefined}
               />
 
-              {/* Project */}
-              <ProjectPicker
-                projectId={projectId ?? null}
-                onUpdate={(u) => setProjectId(u.project_id ?? undefined)}
-                triggerRender={<PillButton />}
-                align="start"
-              />
+              {/* Project picker was moved to the front */}
 
               {/* Stage — only relevant when creating a sub-issue under a parent */}
               {parentIssueId && (

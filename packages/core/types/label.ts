@@ -8,6 +8,7 @@
 export interface Label {
   id: string;
   workspace_id: string;
+  project_id?: string;
   name: string;
   /** Normalized lowercase hex color, e.g. `#3b82f6`. */
   color: string;
@@ -18,11 +19,13 @@ export interface Label {
 export interface CreateLabelRequest {
   name: string;
   color: string;
+  project_id?: string;
 }
 
 export interface UpdateLabelRequest {
   name?: string;
   color?: string;
+  project_id?: string;
 }
 
 export interface ListLabelsResponse {

@@ -16,7 +16,7 @@ function requireRuntimeAppUrl(): string {
   return runtimeConfig.config.appUrl;
 }
 
-function HostSetup({ onDone }: { onDone: () => void }) {
+function HostSetup() {
   const [url, setUrl] = useState("https://api.multica.ai");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,7 +80,7 @@ export function DesktopLoginPage() {
   );
 
   if (!setupDone) {
-    return <HostSetup onDone={() => setSetupDone(true)} />;
+    return <HostSetup />;
   }
 
   const webUrl = requireRuntimeAppUrl();

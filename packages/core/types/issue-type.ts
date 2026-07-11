@@ -1,6 +1,7 @@
 export interface IssueType {
   id: string;
   workspace_id: string;
+  project_id?: string;
   name: string;
   description: string | null;
   icon: string;
@@ -18,6 +19,7 @@ export interface CreateIssueTypeRequest {
   color?: string;
   is_default?: boolean;
   position?: number;
+  project_id?: string;
 }
 
 export interface UpdateIssueTypeRequest {
@@ -27,4 +29,5 @@ export interface UpdateIssueTypeRequest {
   color?: string;
   is_default?: boolean;
   position?: number;
+  project_id?: string;
 }

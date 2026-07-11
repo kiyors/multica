@@ -2018,8 +2018,9 @@ export class ApiClient {
   }
 
   // Labels
-  async listLabels(): Promise<ListLabelsResponse> {
-    return this.fetch(`/api/labels`);
+  async listLabels(projectId?: string): Promise<ListLabelsResponse> {
+    const url = projectId ? `/api/labels?project_id=${projectId}` : `/api/labels`;
+    return this.fetch(url);
   }
 
   async getLabel(id: string): Promise<Label> {
@@ -2560,8 +2561,9 @@ export class ApiClient {
 
   // --- Issue Types ---
 
-  async listIssueTypes(workspaceId: string): Promise<IssueType[]> {
-    return this.fetch(`/api/issue-types`, {
+  async listIssueTypes(workspaceId: string, projectId?: string): Promise<IssueType[]> {
+    const url = projectId ? `/api/issue-types?project_id=${projectId}` : `/api/issue-types`;
+    return this.fetch(url, {
       method: "GET",
       headers: { "X-Workspace-ID": workspaceId },
     });

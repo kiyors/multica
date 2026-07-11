@@ -14,6 +14,7 @@ import (
 type IssueTypeResponse struct {
 	ID          string  `json:"id"`
 	WorkspaceID string  `json:"workspace_id"`
+	ProjectID   *string `json:"project_id,omitempty"`
 	Name        string  `json:"name"`
 	Description *string `json:"description"`
 	Icon        string  `json:"icon"`
@@ -29,7 +30,7 @@ func issueTypeToResponse(i db.IssueType) IssueTypeResponse {
 	if i.Description.Valid {
 		desc = &i.Description.String
 	}
-	return IssueTypeResponse{
+	resp := IssueTypeResponse{
 		ID:          i.ID.String(),
 		WorkspaceID: i.WorkspaceID.String(),
 		Name:        i.Name,
@@ -41,6 +42,11 @@ func issueTypeToResponse(i db.IssueType) IssueTypeResponse {
 		CreatedAt:   timestampToString(i.CreatedAt),
 		UpdatedAt:   timestampToString(i.UpdatedAt),
 	}
+	if i.ProjectID.Valid {
+		pid := i.ProjectID.String()
+		resp.ProjectID = &pid
+	}
+	return resp
 }
 
 func (h *Handler) ListIssueTypes(w http.ResponseWriter, r *http.Request) {
@@ -50,7 +56,19 @@ func (h *Handler) ListIssueTypes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	issueTypes, err := h.Queries.ListIssueTypes(r.Context(), wsID)
+	projectID := r.URL.Query().Get("project_id")
+	params := db.ListIssueTypesParams{
+		WorkspaceID: wsID,
+	}
+	if projectID != "" {
+		if pid, ok := parseUUIDOrBadRequest(w, projectID, "project_id"); ok {
+			params.ProjectID = pgtype.UUID{Bytes: pid.Bytes, Valid: true}
+		} else {
+			return
+		}
+	}
+
+	issueTypes, err := h.Queries.ListIssueTypes(r.Context(), params)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to list issue types")
 		return
@@ -104,6 +122,7 @@ func (h *Handler) CreateIssueType(w http.ResponseWriter, r *http.Request) {
 		Color       string  `json:"color"`
 		IsDefault   bool    `json:"is_default"`
 		Position    int32   `json:"position"`
+		ProjectID   *string `json:"project_id"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -123,7 +142,7 @@ func (h *Handler) CreateIssueType(w http.ResponseWriter, r *http.Request) {
 		body.Color = "#6B7280"
 	}
 
-	it, err := h.Queries.CreateIssueType(r.Context(), db.CreateIssueTypeParams{
+	params := db.CreateIssueTypeParams{
 		WorkspaceID: wsID,
 		Name:        body.Name,
 		Description: desc,
@@ -131,7 +150,16 @@ func (h *Handler) CreateIssueType(w http.ResponseWriter, r *http.Request) {
 		Color:       body.Color,
 		IsDefault:   body.IsDefault,
 		Position:    body.Position,
-	})
+	}
+	if body.ProjectID != nil && *body.ProjectID != "" {
+		if pid, ok := parseUUIDOrBadRequest(w, *body.ProjectID, "project_id"); ok {
+			params.ProjectID = pgtype.UUID{Bytes: pid.Bytes, Valid: true}
+		} else {
+			return
+		}
+	}
+
+	it, err := h.Queries.CreateIssueType(r.Context(), params)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to create issue type")
 		return
@@ -162,6 +190,7 @@ func (h *Handler) UpdateIssueType(w http.ResponseWriter, r *http.Request) {
 		Color       *string `json:"color"`
 		IsDefault   *bool   `json:"is_default"`
 		Position    *int32  `json:"position"`
+		ProjectID   *string `json:"project_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
@@ -198,6 +227,13 @@ func (h *Handler) UpdateIssueType(w http.ResponseWriter, r *http.Request) {
 	}
 	if body.Position != nil {
 		arg.Position = pgtype.Int4{Int32: *body.Position, Valid: true}
+	}
+	if body.ProjectID != nil && *body.ProjectID != "" {
+		if pid, ok := parseUUIDOrBadRequest(w, *body.ProjectID, "project_id"); ok {
+			arg.ProjectID = pgtype.UUID{Bytes: pid.Bytes, Valid: true}
+		} else {
+			return
+		}
 	}
 
 	it, err := h.Queries.UpdateIssueType(r.Context(), arg)

@@ -114,13 +114,13 @@ func (q *Queries) GetWorkspaceBySlug(ctx context.Context, slug string) (Workspac
 }
 
 const incrementIssueCounter = `-- name: IncrementIssueCounter :one
-UPDATE workspace SET issue_counter = issue_counter + 1
+UPDATE workspace SET issue_counter = GREATEST(issue_counter, (SELECT COALESCE(MAX(number), 0) FROM issue WHERE workspace_id = $1)) + 1
 WHERE id = $1
 RETURNING issue_counter
 `
 
-func (q *Queries) IncrementIssueCounter(ctx context.Context, id pgtype.UUID) (int32, error) {
-	row := q.db.QueryRow(ctx, incrementIssueCounter, id)
+func (q *Queries) IncrementIssueCounter(ctx context.Context, workspaceID pgtype.UUID) (int32, error) {
+	row := q.db.QueryRow(ctx, incrementIssueCounter, workspaceID)
 	var issue_counter int32
 	err := row.Scan(&issue_counter)
 	return issue_counter, err

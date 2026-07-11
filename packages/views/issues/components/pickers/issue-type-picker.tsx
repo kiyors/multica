@@ -18,6 +18,7 @@ export function IssueTypePicker({
   open: controlledOpen,
   onOpenChange: controlledOnOpenChange,
   align,
+  projectId,
 }: {
   issueTypeId: string | null;
   onUpdate: (updates: { issue_type_id: string | null }) => void;
@@ -26,13 +27,14 @@ export function IssueTypePicker({
   open?: boolean;
   onOpenChange?: (v: boolean) => void;
   align?: "start" | "center" | "end";
+  projectId?: string | null;
 }) {
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen ?? internalOpen;
   const setOpen = controlledOnOpenChange ?? setInternalOpen;
   const wsId = useWorkspaceId();
 
-  const { data = [] } = useQuery(listIssueTypesOptions(wsId));
+  const { data = [] } = useQuery(listIssueTypesOptions(wsId, projectId ?? undefined));
   const issueTypes = data as IssueType[];
   const selectedType = issueTypes.find((t: IssueType) => t.id === issueTypeId);
 

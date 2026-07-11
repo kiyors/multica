@@ -73,6 +73,9 @@ export type WSEventType =
   | "project:created"
   | "project:updated"
   | "project:deleted"
+  | "project_member:added"
+  | "project_member:updated"
+  | "project_member:removed"
   | "squad:created"
   | "squad:updated"
   | "squad:deleted"
@@ -466,6 +469,9 @@ export interface WSEventPayloadMap {
   "project:created": ProjectCreatedPayload;
   "project:updated": ProjectUpdatedPayload;
   "project:deleted": ProjectDeletedPayload;
+  "project_member:added": unknown;
+  "project_member:updated": unknown;
+  "project_member:removed": unknown;
   "invitation:created": InvitationCreatedPayload;
   "invitation:accepted": InvitationAcceptedPayload;
   "invitation:declined": InvitationDeclinedPayload;

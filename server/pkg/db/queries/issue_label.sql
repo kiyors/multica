@@ -1,6 +1,7 @@
 -- name: ListLabels :many
 SELECT * FROM issue_label
 WHERE workspace_id = $1
+  AND (project_id IS NULL OR project_id = sqlc.narg('project_id')::uuid)
 ORDER BY LOWER(name) ASC;
 
 -- name: GetLabel :one
@@ -12,14 +13,15 @@ SELECT * FROM issue_label
 WHERE name = $1 AND workspace_id = $2;
 
 -- name: CreateLabel :one
-INSERT INTO issue_label (workspace_id, name, color)
-VALUES ($1, $2, $3)
+INSERT INTO issue_label (workspace_id, project_id, name, color)
+VALUES ($1, sqlc.narg('project_id')::uuid, $2, $3)
 RETURNING *;
 
 -- name: UpdateLabel :one
 UPDATE issue_label SET
     name = COALESCE(sqlc.narg('name'), name),
     color = COALESCE(sqlc.narg('color'), color),
+    project_id = COALESCE(sqlc.narg('project_id')::uuid, project_id),
     updated_at = now()
 WHERE id = $1 AND workspace_id = $2
 RETURNING *;

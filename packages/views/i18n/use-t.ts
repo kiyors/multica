@@ -7,12 +7,24 @@ import "./resources-types";
 import { useTranslation } from "react-i18next";
 import { useCallback } from "react";
 import type { FlatNamespace } from "i18next";
+import { useAuthStore } from "@multica/core/auth";
 
 export function useT<
   Ns extends FlatNamespace | readonly [FlatNamespace, ...FlatNamespace[]]
 >(ns?: Ns) {
   const { t, i18n } = useTranslation(ns);
-  const useTasks = typeof i18n.language === "string" && ["en-marketing", "en-creative"].includes(i18n.language);
+  
+  // Try i18n language first
+  let useTasks = typeof i18n.language === "string" && ["en-marketing", "en-creative"].includes(i18n.language);
+
+  // If not explicitly set via locale, check user role via auth store
+  const user = useAuthStore((s) => s.user);
+  if (!useTasks && user?.onboarding_questionnaire?.role) {
+    const role = user.onboarding_questionnaire.role;
+    if (typeof role === "string" && ["marketing", "marketing_team", "social_media", "creative", "graphic_designer", "video_editor", "videographer", "content_writer", "writer"].includes(role)) {
+      useTasks = true;
+    }
+  }
 
   const customT = useCallback(
     (...args: any[]) => {

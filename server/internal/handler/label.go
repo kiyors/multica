@@ -23,16 +23,17 @@ import (
 // ---------------------------------------------------------------------------
 
 type LabelResponse struct {
-	ID          string `json:"id"`
-	WorkspaceID string `json:"workspace_id"`
-	Name        string `json:"name"`
-	Color       string `json:"color"`
-	CreatedAt   string `json:"created_at"`
-	UpdatedAt   string `json:"updated_at"`
+	ID          string  `json:"id"`
+	WorkspaceID string  `json:"workspace_id"`
+	ProjectID   *string `json:"project_id,omitempty"`
+	Name        string  `json:"name"`
+	Color       string  `json:"color"`
+	CreatedAt   string  `json:"created_at"`
+	UpdatedAt   string  `json:"updated_at"`
 }
 
 func labelToResponse(l db.IssueLabel) LabelResponse {
-	return LabelResponse{
+	resp := LabelResponse{
 		ID:          uuidToString(l.ID),
 		WorkspaceID: uuidToString(l.WorkspaceID),
 		Name:        l.Name,
@@ -40,6 +41,11 @@ func labelToResponse(l db.IssueLabel) LabelResponse {
 		CreatedAt:   timestampToString(l.CreatedAt),
 		UpdatedAt:   timestampToString(l.UpdatedAt),
 	}
+	if l.ProjectID.Valid {
+		pid := uuidToString(l.ProjectID)
+		resp.ProjectID = &pid
+	}
+	return resp
 }
 
 func labelsToResponse(list []db.IssueLabel) []LabelResponse {
@@ -51,13 +57,15 @@ func labelsToResponse(list []db.IssueLabel) []LabelResponse {
 }
 
 type CreateLabelRequest struct {
-	Name  string `json:"name"`
-	Color string `json:"color"`
+	Name      string  `json:"name"`
+	Color     string  `json:"color"`
+	ProjectID *string `json:"project_id"`
 }
 
 type UpdateLabelRequest struct {
-	Name  *string `json:"name"`
-	Color *string `json:"color"`
+	Name      *string `json:"name"`
+	Color     *string `json:"color"`
+	ProjectID *string `json:"project_id"`
 }
 
 // 6-digit hex, with or without leading '#'.
@@ -106,7 +114,20 @@ func validateLabelName(raw string) (string, error) {
 
 func (h *Handler) ListLabels(w http.ResponseWriter, r *http.Request) {
 	workspaceID := h.resolveWorkspaceID(r)
-	labels, err := h.Queries.ListLabels(r.Context(), parseUUID(workspaceID))
+	projectID := r.URL.Query().Get("project_id")
+
+	params := db.ListLabelsParams{
+		WorkspaceID: parseUUID(workspaceID),
+	}
+	if projectID != "" {
+		if pid, ok := parseUUIDOrBadRequest(w, projectID, "project_id"); ok {
+			params.ProjectID = pgtype.UUID{Bytes: pid.Bytes, Valid: true}
+		} else {
+			return
+		}
+	}
+
+	labels, err := h.Queries.ListLabels(r.Context(), params)
 	if err != nil {
 		slog.Warn("ListLabels failed", append(logger.RequestAttrs(r), "error", err)...)
 		writeError(w, http.StatusInternalServerError, "failed to list labels")
@@ -164,11 +185,20 @@ func (h *Handler) CreateLabel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	label, err := h.Queries.CreateLabel(r.Context(), db.CreateLabelParams{
+	params := db.CreateLabelParams{
 		WorkspaceID: parseUUID(workspaceID),
 		Name:        name,
 		Color:       color,
-	})
+	}
+	if req.ProjectID != nil && *req.ProjectID != "" {
+		if pid, ok := parseUUIDOrBadRequest(w, *req.ProjectID, "project_id"); ok {
+			params.ProjectID = pgtype.UUID{Bytes: pid.Bytes, Valid: true}
+		} else {
+			return
+		}
+	}
+
+	label, err := h.Queries.CreateLabel(r.Context(), params)
 	if err != nil {
 		if isUniqueViolation(err) {
 			writeError(w, http.StatusConflict, "a label with that name already exists")
@@ -224,6 +254,13 @@ func (h *Handler) UpdateLabel(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		params.Color = pgtype.Text{String: color, Valid: true}
+	}
+	if req.ProjectID != nil && *req.ProjectID != "" {
+		if pid, ok := parseUUIDOrBadRequest(w, *req.ProjectID, "project_id"); ok {
+			params.ProjectID = pgtype.UUID{Bytes: pid.Bytes, Valid: true}
+		} else {
+			return
+		}
 	}
 
 	// Branch on pgx.ErrNoRows directly from the UPDATE — the WHERE clause

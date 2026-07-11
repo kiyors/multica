@@ -12,9 +12,9 @@ import (
 )
 
 const createIssueType = `-- name: CreateIssueType :one
-INSERT INTO issue_types (workspace_id, name, description, icon, color, is_default, position)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, workspace_id, name, description, icon, color, is_default, position, created_at, updated_at
+INSERT INTO issue_types (workspace_id, project_id, name, description, icon, color, is_default, position)
+VALUES ($1, $8::uuid, $2, $3, $4, $5, $6, $7)
+RETURNING id, workspace_id, name, description, icon, color, is_default, position, created_at, updated_at, project_id
 `
 
 type CreateIssueTypeParams struct {
@@ -25,6 +25,7 @@ type CreateIssueTypeParams struct {
 	Color       string      `json:"color"`
 	IsDefault   bool        `json:"is_default"`
 	Position    int32       `json:"position"`
+	ProjectID   pgtype.UUID `json:"project_id"`
 }
 
 func (q *Queries) CreateIssueType(ctx context.Context, arg CreateIssueTypeParams) (IssueType, error) {
@@ -36,6 +37,7 @@ func (q *Queries) CreateIssueType(ctx context.Context, arg CreateIssueTypeParams
 		arg.Color,
 		arg.IsDefault,
 		arg.Position,
+		arg.ProjectID,
 	)
 	var i IssueType
 	err := row.Scan(
@@ -49,6 +51,7 @@ func (q *Queries) CreateIssueType(ctx context.Context, arg CreateIssueTypeParams
 		&i.Position,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ProjectID,
 	)
 	return i, err
 }
@@ -63,7 +66,7 @@ func (q *Queries) DeleteIssueType(ctx context.Context, id pgtype.UUID) error {
 }
 
 const getIssueType = `-- name: GetIssueType :one
-SELECT id, workspace_id, name, description, icon, color, is_default, position, created_at, updated_at FROM issue_types WHERE id = $1
+SELECT id, workspace_id, name, description, icon, color, is_default, position, created_at, updated_at, project_id FROM issue_types WHERE id = $1
 `
 
 func (q *Queries) GetIssueType(ctx context.Context, id pgtype.UUID) (IssueType, error) {
@@ -80,16 +83,25 @@ func (q *Queries) GetIssueType(ctx context.Context, id pgtype.UUID) (IssueType, 
 		&i.Position,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ProjectID,
 	)
 	return i, err
 }
 
 const listIssueTypes = `-- name: ListIssueTypes :many
-SELECT id, workspace_id, name, description, icon, color, is_default, position, created_at, updated_at FROM issue_types WHERE workspace_id = $1 ORDER BY position ASC, name ASC
+SELECT id, workspace_id, name, description, icon, color, is_default, position, created_at, updated_at, project_id FROM issue_types
+WHERE workspace_id = $1
+  AND (project_id IS NULL OR project_id = $2::uuid)
+ORDER BY position ASC, name ASC
 `
 
-func (q *Queries) ListIssueTypes(ctx context.Context, workspaceID pgtype.UUID) ([]IssueType, error) {
-	rows, err := q.db.Query(ctx, listIssueTypes, workspaceID)
+type ListIssueTypesParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	ProjectID   pgtype.UUID `json:"project_id"`
+}
+
+func (q *Queries) ListIssueTypes(ctx context.Context, arg ListIssueTypesParams) ([]IssueType, error) {
+	rows, err := q.db.Query(ctx, listIssueTypes, arg.WorkspaceID, arg.ProjectID)
 	if err != nil {
 		return nil, err
 	}
@@ -108,6 +120,7 @@ func (q *Queries) ListIssueTypes(ctx context.Context, workspaceID pgtype.UUID) (
 			&i.Position,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ProjectID,
 		); err != nil {
 			return nil, err
 		}
@@ -145,9 +158,10 @@ SET name = COALESCE($2, name),
     color = COALESCE($5, color),
     is_default = COALESCE($6, is_default),
     position = COALESCE($7, position),
+    project_id = COALESCE($8::uuid, project_id),
     updated_at = now()
 WHERE id = $1
-RETURNING id, workspace_id, name, description, icon, color, is_default, position, created_at, updated_at
+RETURNING id, workspace_id, name, description, icon, color, is_default, position, created_at, updated_at, project_id
 `
 
 type UpdateIssueTypeParams struct {
@@ -158,6 +172,7 @@ type UpdateIssueTypeParams struct {
 	Color       pgtype.Text `json:"color"`
 	IsDefault   pgtype.Bool `json:"is_default"`
 	Position    pgtype.Int4 `json:"position"`
+	ProjectID   pgtype.UUID `json:"project_id"`
 }
 
 func (q *Queries) UpdateIssueType(ctx context.Context, arg UpdateIssueTypeParams) (IssueType, error) {
@@ -169,6 +184,7 @@ func (q *Queries) UpdateIssueType(ctx context.Context, arg UpdateIssueTypeParams
 		arg.Color,
 		arg.IsDefault,
 		arg.Position,
+		arg.ProjectID,
 	)
 	var i IssueType
 	err := row.Scan(
@@ -182,6 +198,7 @@ func (q *Queries) UpdateIssueType(ctx context.Context, arg UpdateIssueTypeParams
 		&i.Position,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ProjectID,
 	)
 	return i, err
 }

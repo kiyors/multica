@@ -1,12 +1,15 @@
 -- name: ListIssueTypes :many
-SELECT * FROM issue_types WHERE workspace_id = $1 ORDER BY position ASC, name ASC;
+SELECT * FROM issue_types
+WHERE workspace_id = $1
+  AND (project_id IS NULL OR project_id = sqlc.narg('project_id')::uuid)
+ORDER BY position ASC, name ASC;
 
 -- name: GetIssueType :one
 SELECT * FROM issue_types WHERE id = $1;
 
 -- name: CreateIssueType :one
-INSERT INTO issue_types (workspace_id, name, description, icon, color, is_default, position)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO issue_types (workspace_id, project_id, name, description, icon, color, is_default, position)
+VALUES ($1, sqlc.narg('project_id')::uuid, $2, $3, $4, $5, $6, $7)
 RETURNING *;
 
 -- name: UpdateIssueType :one
@@ -17,6 +20,7 @@ SET name = COALESCE(sqlc.narg('name'), name),
     color = COALESCE(sqlc.narg('color'), color),
     is_default = COALESCE(sqlc.narg('is_default'), is_default),
     position = COALESCE(sqlc.narg('position'), position),
+    project_id = COALESCE(sqlc.narg('project_id')::uuid, project_id),
     updated_at = now()
 WHERE id = $1
 RETURNING *;

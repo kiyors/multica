@@ -41,7 +41,7 @@ WHERE repos IS NOT NULL AND repos <> '[]'::jsonb
 ORDER BY id;
 
 -- name: IncrementIssueCounter :one
-UPDATE workspace SET issue_counter = issue_counter + 1
+UPDATE workspace SET issue_counter = GREATEST(issue_counter, (SELECT COALESCE(MAX(number), 0) FROM issue WHERE workspace_id = $1)) + 1
 WHERE id = $1
 RETURNING issue_counter;
 
