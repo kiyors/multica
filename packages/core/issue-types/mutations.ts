@@ -8,7 +8,13 @@ export function useCreateIssueType() {
   return useMutation({
     mutationFn: ({ workspaceId, ...data }: { workspaceId: string } & CreateIssueTypeRequest) =>
       api.createIssueType(workspaceId, data),
-    onSuccess: (_data, variables) => {
+    onSuccess: (newType, variables) => {
+      qc.setQueryData(
+        issueTypeKeys.list(variables.workspaceId, variables.project_id),
+        (old: any) => (old ? [...old, newType] : old)
+      );
+    },
+    onSettled: (_data, _error, variables) => {
       qc.invalidateQueries({ queryKey: issueTypeKeys.all(variables.workspaceId) });
     },
   });
@@ -19,7 +25,13 @@ export function useUpdateIssueType() {
   return useMutation({
     mutationFn: ({ workspaceId, issueTypeId, ...data }: { workspaceId: string; issueTypeId: string } & UpdateIssueTypeRequest) =>
       api.updateIssueType(workspaceId, issueTypeId, data),
-    onSuccess: (_data, variables) => {
+    onSuccess: (updatedType, variables) => {
+      qc.setQueryData(
+        issueTypeKeys.list(variables.workspaceId, variables.project_id),
+        (old: any) => (old ? old.map((t: any) => (t.id === variables.issueTypeId ? updatedType : t)) : old)
+      );
+    },
+    onSettled: (_data, _error, variables) => {
       qc.invalidateQueries({ queryKey: issueTypeKeys.all(variables.workspaceId) });
     },
   });

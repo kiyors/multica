@@ -1,9 +1,9 @@
 export const MARKETING_TEAM_GUIDE_TITLE: Record<string, string> = {
-  en: "Marketing & Creative Team Guide \uD83D\uDCD8",
+  en: "Welcome to Multica Guide 🚀",
 };
 
 export const MARKETING_TEAM_GUIDE_BODY: Record<string, string> = {
-  en: `Welcome to Multica! If you're running marketing campaigns, reviewing video assets, or approving design mockups, this guide will show you how to use Multica's task tracking and media review features to get your work done faster.
+  en: `Welcome to Multica! This guide will show you how to use Multica's task tracking and media review features to get your work done faster.
 
 ---
 
@@ -59,14 +59,12 @@ Feedback left on media assets is instantly synced to the task timeline for every
 
 export async function seedRoleBasedWelcomeIssue(
   workspaceId: string,
-  role: string,
+  _role: string,
   assigneeId: string,
   lang: string = "en",
 ) {
-  // Check if role is related to marketing or creative
-  if (role !== "marketing" && role !== "marketing_team" && role !== "creative" && role !== "writer") {
-    return; // Do nothing for other roles right now, can be expanded later
-  }
+  // We now want to seed this welcome issue for ALL users who join the workspace,
+  // not just marketing/creative, so they get a guide on how to use Multica.
 
   try {
     const title = MARKETING_TEAM_GUIDE_TITLE[lang] || MARKETING_TEAM_GUIDE_TITLE["en"];
