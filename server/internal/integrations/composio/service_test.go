@@ -11,9 +11,9 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/multica-ai/multica/server/internal/util"
-	sdk "github.com/multica-ai/multica/server/pkg/composio"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
+	"github.com/kiyors/multica/server/internal/util"
+	sdk "github.com/kiyors/multica/server/pkg/composio"
+	db "github.com/kiyors/multica/server/pkg/db/generated"
 )
 
 // ---- fakes ---------------------------------------------------------------

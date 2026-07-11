@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/multica-ai/multica/server/internal/analytics"
-	"github.com/multica-ai/multica/server/internal/featureflags"
+	"github.com/kiyors/multica/server/internal/analytics"
+	"github.com/kiyors/multica/server/internal/featureflags"
 )
 
 type AppConfig struct {

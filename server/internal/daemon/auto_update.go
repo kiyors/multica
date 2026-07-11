@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/multica-ai/multica/server/internal/cli"
+	"github.com/kiyors/multica/server/internal/cli"
 )
 
 // Indirections over the real release / version helpers so tests can run the

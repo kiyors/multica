@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/multica-ai/multica/server/internal/daemon/repocache"
+	"github.com/kiyors/multica/server/internal/daemon/repocache"
 )
 
 func TestHealthHandlerReportsCLIVersionAndActiveTaskCount(t *testing.T) {

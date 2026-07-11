@@ -10,8 +10,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/multica-ai/multica/server/internal/integrations/channel"
-	"github.com/multica-ai/multica/server/internal/service"
+	"github.com/kiyors/multica/server/internal/integrations/channel"
+	"github.com/kiyors/multica/server/internal/service"
 )
 
 // Router is the channel-agnostic inbound pipeline — the generalization of the

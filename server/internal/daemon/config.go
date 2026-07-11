@@ -14,7 +14,7 @@ import (
 
 	"github.com/mattn/go-shellwords"
 
-	"github.com/multica-ai/multica/server/internal/cli"
+	"github.com/kiyors/multica/server/internal/cli"
 )
 
 const (

@@ -6,11 +6,11 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/multica-ai/multica/server/internal/events"
-	"github.com/multica-ai/multica/server/internal/scheduler"
-	"github.com/multica-ai/multica/server/internal/service"
-	"github.com/multica-ai/multica/server/internal/util"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
+	"github.com/kiyors/multica/server/internal/events"
+	"github.com/kiyors/multica/server/internal/scheduler"
+	"github.com/kiyors/multica/server/internal/service"
+	"github.com/kiyors/multica/server/internal/util"
+	db "github.com/kiyors/multica/server/pkg/db/generated"
 )
 
 // setupAutopilotScheduleJob creates the test fixture for the

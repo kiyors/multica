@@ -10,12 +10,12 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/multica-ai/multica/server/internal/events"
-	"github.com/multica-ai/multica/server/internal/featureflags"
-	"github.com/multica-ai/multica/server/internal/runtimeapps"
-	"github.com/multica-ai/multica/server/internal/util"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
-	"github.com/multica-ai/multica/server/pkg/featureflag"
+	"github.com/kiyors/multica/server/internal/events"
+	"github.com/kiyors/multica/server/internal/featureflags"
+	"github.com/kiyors/multica/server/internal/runtimeapps"
+	"github.com/kiyors/multica/server/internal/util"
+	db "github.com/kiyors/multica/server/pkg/db/generated"
+	"github.com/kiyors/multica/server/pkg/featureflag"
 )
 
 // newResolveOriginatorPool mirrors the local-postgres pattern used in

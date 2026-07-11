@@ -18,8 +18,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
-	"github.com/multica-ai/multica/server/internal/auth"
-	"github.com/multica-ai/multica/server/internal/cli"
+	"github.com/kiyors/multica/server/internal/auth"
+	"github.com/kiyors/multica/server/internal/cli"
 )
 
 // loginTokenPrefixes are the token prefixes `multica login --token` accepts.

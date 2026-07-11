@@ -6,8 +6,8 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/multica-ai/multica/server/internal/integrations/channel"
-	"github.com/multica-ai/multica/server/internal/integrations/channel/engine"
+	"github.com/kiyors/multica/server/internal/integrations/channel"
+	"github.com/kiyors/multica/server/internal/integrations/channel/engine"
 )
 
 // fakeSender embeds the APIClient interface (nil) and overrides only

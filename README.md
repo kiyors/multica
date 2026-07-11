@@ -17,8 +17,8 @@
 The open-source managed agents platform.<br/>
 Turn coding agents into real teammates — assign tasks, track progress, compound skills.
 
-[![CI](https://github.com/multica-ai/multica/actions/workflows/ci.yml/badge.svg)](https://github.com/multica-ai/multica/actions/workflows/ci.yml)
-[![GitHub stars](https://img.shields.io/github/stars/multica-ai/multica?style=flat)](https://github.com/multica-ai/multica/stargazers)
+[![CI](https://github.com/kiyors/multica/actions/workflows/ci.yml/badge.svg)](https://github.com/kiyors/multica/actions/workflows/ci.yml)
+[![GitHub stars](https://img.shields.io/github/stars/kiyors/multica?style=flat)](https://github.com/kiyors/multica/stargazers)
 [![Discord](https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&logoColor=white)](https://discord.gg/W8gYBn226t)
 
 [Website](https://multica.ai) · [Cloud](https://multica.ai) · [Discord](https://discord.gg/W8gYBn226t) · [X](https://x.com/MulticaAI) · [Self-Hosting](SELF_HOSTING.md) · [Contributing](CONTRIBUTING.md)
@@ -78,7 +78,7 @@ Use `brew upgrade multica-ai/tap/multica` to keep the CLI current.
 ### macOS / Linux (install script)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/multica-ai/multica/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/kiyors/multica/main/scripts/install.sh | bash
 ```
 
 Use this if Homebrew is not available. The script installs the Multica CLI on macOS and Linux by using Homebrew when it is on `PATH`, otherwise it downloads the binary directly.
@@ -86,7 +86,7 @@ Use this if Homebrew is not available. The script installs the Multica CLI on ma
 ### Windows (PowerShell)
 
 ```powershell
-irm https://raw.githubusercontent.com/multica-ai/multica/main/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/kiyors/multica/main/scripts/install.ps1 | iex
 ```
 
 Then configure, authenticate, and start the daemon in one command:
@@ -98,7 +98,7 @@ multica setup          # Connect to Multica Cloud, log in, start daemon
 > **Self-hosting?** Add `--with-server` to deploy a full Multica server on your machine:
 >
 > ```bash
-> curl -fsSL https://raw.githubusercontent.com/multica-ai/multica/main/scripts/install.sh | bash -s -- --with-server
+> curl -fsSL https://raw.githubusercontent.com/kiyors/multica/main/scripts/install.sh | bash -s -- --with-server
 > multica setup self-host
 > ```
 >

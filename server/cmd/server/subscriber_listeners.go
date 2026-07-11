@@ -4,10 +4,10 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/multica-ai/multica/server/internal/events"
-	"github.com/multica-ai/multica/server/internal/handler"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
-	"github.com/multica-ai/multica/server/pkg/protocol"
+	"github.com/kiyors/multica/server/internal/events"
+	"github.com/kiyors/multica/server/internal/handler"
+	db "github.com/kiyors/multica/server/pkg/db/generated"
+	"github.com/kiyors/multica/server/pkg/protocol"
 )
 
 // registerSubscriberListeners wires up event bus listeners that auto-subscribe

@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/multica-ai/multica/server/internal/auth"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
+	"github.com/kiyors/multica/server/internal/auth"
+	db "github.com/kiyors/multica/server/pkg/db/generated"
 )
 
 // Daemon context keys.

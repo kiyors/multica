@@ -16,14 +16,14 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/multica-ai/multica/server/internal/analytics"
-	"github.com/multica-ai/multica/server/internal/logger"
-	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
-	"github.com/multica-ai/multica/server/internal/runtimeapps"
-	"github.com/multica-ai/multica/server/internal/service"
-	"github.com/multica-ai/multica/server/pkg/agent"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
-	"github.com/multica-ai/multica/server/pkg/protocol"
+	"github.com/kiyors/multica/server/internal/analytics"
+	"github.com/kiyors/multica/server/internal/logger"
+	obsmetrics "github.com/kiyors/multica/server/internal/metrics"
+	"github.com/kiyors/multica/server/internal/runtimeapps"
+	"github.com/kiyors/multica/server/internal/service"
+	"github.com/kiyors/multica/server/pkg/agent"
+	db "github.com/kiyors/multica/server/pkg/db/generated"
+	"github.com/kiyors/multica/server/pkg/protocol"
 )
 
 // Mirrors AGENT_DESCRIPTION_MAX_LENGTH in packages/core/agents/constants.ts

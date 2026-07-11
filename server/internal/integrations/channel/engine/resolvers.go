@@ -6,9 +6,9 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/multica-ai/multica/server/internal/integrations/channel"
-	"github.com/multica-ai/multica/server/internal/service"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
+	"github.com/kiyors/multica/server/internal/integrations/channel"
+	"github.com/kiyors/multica/server/internal/service"
+	db "github.com/kiyors/multica/server/pkg/db/generated"
 )
 
 // This file defines the pluggable seams the Router runs the inbound pipeline

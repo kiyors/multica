@@ -19,9 +19,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/multica-ai/multica/server/internal/daemon/execenv"
-	"github.com/multica-ai/multica/server/internal/daemon/repocache"
-	"github.com/multica-ai/multica/server/pkg/agent"
+	"github.com/kiyors/multica/server/internal/daemon/execenv"
+	"github.com/kiyors/multica/server/internal/daemon/repocache"
+	"github.com/kiyors/multica/server/pkg/agent"
 )
 
 func createDaemonTestRepo(t *testing.T) string {

@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/multica-ai/multica/server/pkg/taskfailure"
+	"github.com/kiyors/multica/server/pkg/taskfailure"
 )
 
 const (

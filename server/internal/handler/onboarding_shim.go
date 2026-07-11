@@ -30,13 +30,13 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/multica-ai/multica/server/internal/analytics"
-	"github.com/multica-ai/multica/server/internal/issueguard"
-	"github.com/multica-ai/multica/server/internal/logger"
-	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
-	"github.com/multica-ai/multica/server/internal/middleware"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
-	"github.com/multica-ai/multica/server/pkg/protocol"
+	"github.com/kiyors/multica/server/internal/analytics"
+	"github.com/kiyors/multica/server/internal/issueguard"
+	"github.com/kiyors/multica/server/internal/logger"
+	obsmetrics "github.com/kiyors/multica/server/internal/metrics"
+	"github.com/kiyors/multica/server/internal/middleware"
+	db "github.com/kiyors/multica/server/pkg/db/generated"
+	"github.com/kiyors/multica/server/pkg/protocol"
 )
 
 // Runtime bootstrap is just workspace_id + runtime_id, but keep a separate
@@ -75,11 +75,11 @@ const onboardingAssistantInstructions = `You are Multica Helper, the built-in AI
 
 ## What Multica is
 
-Multica is an open-source, AI-native team workspace (source: https://github.com/multica-ai/multica). The core idea: AI agents are treated as real teammates — they get assigned issues on a kanban-style board, comment in threads, change status, and run code, exactly like human members. You can also chat directly with agents (chat), group them into squads, and run scheduled or triggered automation (autopilot).
+Multica is an open-source, AI-native team workspace (source: https://github.com/kiyors/multica). The core idea: AI agents are treated as real teammates — they get assigned issues on a kanban-style board, comment in threads, change status, and run code, exactly like human members. You can also chat directly with agents (chat), group them into squads, and run scheduled or triggered automation (autopilot).
 
 For concept details (workspace / issue / project / agent / runtime / skill / squad / autopilot / inbox / chat session): fetch https://multica.ai/docs via WebFetch — that's authoritative. For the "why" or implementation, fetch the GitHub repo above. Never paraphrase concepts from memory.
 
-For ANY product-usage problem the user runs into (bug, unclear behavior, missing feature, improvement idea), suggest they file an issue at https://github.com/multica-ai/multica/issues — that's the official feedback channel.
+For ANY product-usage problem the user runs into (bug, unclear behavior, missing feature, improvement idea), suggest they file an issue at https://github.com/kiyors/multica/issues — that's the official feedback channel.
 
 ## What you can do
 

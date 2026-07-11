@@ -9,7 +9,7 @@ import (
 	"regexp"
 	"strings"
 
-	skillpkg "github.com/multica-ai/multica/server/internal/skill"
+	skillpkg "github.com/kiyors/multica/server/internal/skill"
 	"gopkg.in/yaml.v3"
 )
 

@@ -17,11 +17,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/multica-ai/multica/server/internal/cli"
-	"github.com/multica-ai/multica/server/internal/daemon"
-	"github.com/multica-ai/multica/server/internal/daemon/execenv"
-	logger_pkg "github.com/multica-ai/multica/server/internal/logger"
-	"github.com/multica-ai/multica/server/internal/util"
+	"github.com/kiyors/multica/server/internal/cli"
+	"github.com/kiyors/multica/server/internal/daemon"
+	"github.com/kiyors/multica/server/internal/daemon/execenv"
+	logger_pkg "github.com/kiyors/multica/server/internal/logger"
+	"github.com/kiyors/multica/server/internal/util"
 )
 
 var daemonCmd = &cobra.Command{

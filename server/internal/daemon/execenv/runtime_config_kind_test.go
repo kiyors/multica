@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/multica-ai/multica/server/pkg/featureflag"
+	"github.com/kiyors/multica/server/pkg/featureflag"
 )
 
 // withSlimBrief enables the `runtime_brief_slim` feature flag for the
@@ -254,8 +254,8 @@ func TestSlimBriefIsSubstantiallyShorter(t *testing.T) {
 		AgentName: "Eve", AgentID: "eve-1",
 		InitiatorName: "Yushen", InitiatorType: "member", InitiatorEmail: "yushen@devv.ai",
 		Repos: []RepoContextForEnv{
-			{URL: "https://github.com/multica-ai/multica", Description: "Managed agents platform"},
-			{URL: "git@github.com:multica-ai/multica-cloud.git", Description: "Internal cloud platform"},
+			{URL: "https://github.com/kiyors/multica", Description: "Managed agents platform"},
+			{URL: "git@github.com:kiyors/multica-cloud.git", Description: "Internal cloud platform"},
 		},
 		AgentSkills: []SkillContextForEnv{
 			{Name: "Multica Git Workflow", Description: "Multica development workflow"},

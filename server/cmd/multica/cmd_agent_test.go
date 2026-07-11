@@ -14,8 +14,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/multica-ai/multica/server/internal/cli"
-	"github.com/multica-ai/multica/server/internal/daemon/execenv"
+	"github.com/kiyors/multica/server/internal/cli"
+	"github.com/kiyors/multica/server/internal/daemon/execenv"
 )
 
 // freshAgentEnvSetCmd returns a standalone cobra.Command with the three

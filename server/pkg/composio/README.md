@@ -32,7 +32,7 @@ import (
     "context"
     "os"
 
-    "github.com/multica-ai/multica/server/pkg/composio"
+    "github.com/kiyors/multica/server/pkg/composio"
 )
 
 client, err := composio.NewClient(composio.Options{

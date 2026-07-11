@@ -22,11 +22,11 @@ import (
 	"sync"
 	"time"
 
-	sdk "github.com/multica-ai/multica/server/pkg/composio"
+	sdk "github.com/kiyors/multica/server/pkg/composio"
 
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/multica-ai/multica/server/internal/util"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
+	"github.com/kiyors/multica/server/internal/util"
+	db "github.com/kiyors/multica/server/pkg/db/generated"
 )
 
 // Service-level errors surfaced to the handler layer.

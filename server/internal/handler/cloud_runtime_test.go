@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/multica-ai/multica/server/internal/cloudruntime"
+	"github.com/kiyors/multica/server/internal/cloudruntime"
 )
 
 type fakeCloudRuntimeProxy struct {

@@ -10,10 +10,10 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/multica-ai/multica/server/internal/analytics"
-	"github.com/multica-ai/multica/server/internal/logger"
-	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
+	"github.com/kiyors/multica/server/internal/analytics"
+	"github.com/kiyors/multica/server/internal/logger"
+	obsmetrics "github.com/kiyors/multica/server/internal/metrics"
+	db "github.com/kiyors/multica/server/pkg/db/generated"
 )
 
 // Public, unauthenticated endpoint for the landing-page "Contact Sales"

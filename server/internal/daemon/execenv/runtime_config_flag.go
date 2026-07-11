@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync/atomic"
 
-	"github.com/multica-ai/multica/server/pkg/featureflag"
+	"github.com/kiyors/multica/server/pkg/featureflag"
 )
 
 // runtimeBriefSlimFlag is the feature-flag key that switches the runtime

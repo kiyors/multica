@@ -9,8 +9,8 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5/pgtype"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
-	"github.com/multica-ai/multica/server/pkg/protocol"
+	db "github.com/kiyors/multica/server/pkg/db/generated"
+	"github.com/kiyors/multica/server/pkg/protocol"
 )
 
 // notifyParentOfChildDone posts a top-level system comment on the parent

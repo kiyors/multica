@@ -20,7 +20,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/multica-ai/multica/server/internal/logger"
+	"github.com/kiyors/multica/server/internal/logger"
 )
 
 const rollupAdvisoryLockID = 4246

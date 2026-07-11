@@ -3,7 +3,7 @@ package daemon
 import (
 	"encoding/json"
 
-	"github.com/multica-ai/multica/server/internal/runtimeapps"
+	"github.com/kiyors/multica/server/internal/runtimeapps"
 )
 
 // AgentEntry describes a single available agent CLI.

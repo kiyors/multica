@@ -7,14 +7,14 @@ import (
 	"log/slog"
 
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/multica-ai/multica/server/internal/analytics"
-	"github.com/multica-ai/multica/server/internal/events"
-	"github.com/multica-ai/multica/server/internal/issueguard"
-	"github.com/multica-ai/multica/server/internal/issueposition"
-	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
-	"github.com/multica-ai/multica/server/internal/util"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
-	"github.com/multica-ai/multica/server/pkg/protocol"
+	"github.com/kiyors/multica/server/internal/analytics"
+	"github.com/kiyors/multica/server/internal/events"
+	"github.com/kiyors/multica/server/internal/issueguard"
+	"github.com/kiyors/multica/server/internal/issueposition"
+	obsmetrics "github.com/kiyors/multica/server/internal/metrics"
+	"github.com/kiyors/multica/server/internal/util"
+	db "github.com/kiyors/multica/server/pkg/db/generated"
+	"github.com/kiyors/multica/server/pkg/protocol"
 )
 
 // IssueService is the single service-layer entry point for creating issues.

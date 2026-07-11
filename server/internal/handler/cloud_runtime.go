@@ -11,8 +11,8 @@ import (
 	"net/url"
 
 	chimw "github.com/go-chi/chi/v5/middleware"
-	"github.com/multica-ai/multica/server/internal/cloudruntime"
-	"github.com/multica-ai/multica/server/internal/logger"
+	"github.com/kiyors/multica/server/internal/cloudruntime"
+	"github.com/kiyors/multica/server/internal/logger"
 )
 
 const maxCloudRuntimeRequestBodySize = 1 << 20

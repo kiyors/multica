@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/multica-ai/multica/server/internal/runtimeapps"
+	"github.com/kiyors/multica/server/internal/runtimeapps"
 )
 
 // This file holds the slim runtime brief — the post-MUL-3560 path that

@@ -4,10 +4,10 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/multica-ai/multica/server/internal/events"
-	"github.com/multica-ai/multica/server/internal/handler"
-	"github.com/multica-ai/multica/server/internal/service"
-	"github.com/multica-ai/multica/server/pkg/protocol"
+	"github.com/kiyors/multica/server/internal/events"
+	"github.com/kiyors/multica/server/internal/handler"
+	"github.com/kiyors/multica/server/internal/service"
+	"github.com/kiyors/multica/server/pkg/protocol"
 )
 
 // registerAutopilotListeners hooks into issue and task events to keep

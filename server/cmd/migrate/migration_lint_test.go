@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/multica-ai/multica/server/internal/migrations"
+	"github.com/kiyors/multica/server/internal/migrations"
 )
 
 // stripSQLComments removes -- line comments so the statement count below

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"sync/atomic"
 
-	"github.com/multica-ai/multica/server/pkg/featureflag"
-	"github.com/multica-ai/multica/server/pkg/protocol"
+	"github.com/kiyors/multica/server/pkg/featureflag"
+	"github.com/kiyors/multica/server/pkg/protocol"
 )
 
 // ServerSnapshot is the daemon-local copy of the server-evaluated

@@ -13,10 +13,10 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
-	"github.com/multica-ai/multica/server/internal/analytics"
-	"github.com/multica-ai/multica/server/internal/auth"
-	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
+	"github.com/kiyors/multica/server/internal/analytics"
+	"github.com/kiyors/multica/server/internal/auth"
+	obsmetrics "github.com/kiyors/multica/server/internal/metrics"
+	db "github.com/kiyors/multica/server/pkg/db/generated"
 )
 
 func getGoogleOAuthConfig() *oauth2.Config {

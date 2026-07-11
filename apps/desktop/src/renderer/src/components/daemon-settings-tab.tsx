@@ -177,7 +177,7 @@ export function DaemonSettingsTab() {
               className="mt-2"
               onClick={() =>
                 window.desktopAPI.openExternal(
-                  "https://github.com/multica-ai/multica#cli-installation",
+                  "https://github.com/kiyors/multica#cli-installation",
                 )
               }
             >

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
+	db "github.com/kiyors/multica/server/pkg/db/generated"
 )
 
 type RegisterDeviceTokenRequest struct {
