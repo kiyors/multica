@@ -473,10 +473,14 @@ describe("CreateIssueModal", () => {
     expect(mockToastDismiss).toHaveBeenCalledWith("toast-1");
   });
 
-  it("keeps manual mode open and clears content when create another is enabled", async () => {
+  it("keeps manual mode open and preserves assignees while clearing content when create another is enabled", async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
     mockQuickCreateStore.keepOpen = true;
+    mockDraftStore.draft.assignees = [
+      { type: "member", id: "user-1" },
+      { type: "agent", id: "agent-1" },
+    ];
 
     renderModal(<CreateIssueModal onClose={onClose} />);
 
@@ -490,8 +494,12 @@ describe("CreateIssueModal", () => {
         description: "Description to clear",
         status: "todo",
         priority: "none",
-        assignee_type: undefined,
-        assignee_id: undefined,
+        assignee_type: "member", // the first assignee's type is sent as single assignee_type (backward compat)
+        assignee_id: "user-1",
+        assignees: [
+          { assignee_type: "member", assignee_id: "user-1" },
+          { assignee_type: "agent", assignee_id: "agent-1" },
+        ],
         start_date: undefined,
         due_date: undefined,
         attachment_ids: undefined,
@@ -510,13 +518,39 @@ describe("CreateIssueModal", () => {
       description: "",
       status: "todo",
       priority: "none",
-      assignees: [],
+      assignees: [
+        { type: "member", id: "user-1" },
+        { type: "agent", id: "agent-1" },
+      ],
       issueTypeId: null,
       startDate: null,
       dueDate: null,
       labelIds: [],
       attachments: [],
     });
+  });
+
+  it("clears assignees from draft and closes modal on single create", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    mockQuickCreateStore.keepOpen = false; // single create mode
+    mockDraftStore.draft.assignees = [
+      { type: "member", id: "user-1" },
+    ];
+
+    renderModal(<CreateIssueModal onClose={onClose} />);
+
+    await user.type(screen.getByPlaceholderText("Issue title"), "Single issue");
+    await user.click(screen.getByRole("button", { name: "Create Issue" }));
+
+    await waitFor(() => {
+      expect(mockCreateIssue).toHaveBeenCalledWith(
+        expect.objectContaining({ title: "Single issue" })
+      );
+    });
+
+    expect(mockClearDraft).toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalled();
   });
 
   it("persists manual-mode uploads in the issue draft", async () => {

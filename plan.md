@@ -1151,7 +1151,7 @@ Once the GHCR images are built, you simply go into the Dokploy UI and click **Re
   - show retry on failure;
   - avoid silent rollback that makes feedback disappear.
   TanStack DB is not required; React Query remains the server-state owner.
-- [ ] 🟡 **Guaranteed stale-upload cleanup:** Client cleanup can also fail. Add a server-side expiry/reaper for incomplete uploads or defer visible asset creation until completion so blank cards cannot persist.
+- [x] ✅ **Guaranteed stale-upload cleanup:** `DeleteStaleIncompleteReviewAssets` runs lazily when new uploads are requested, reaping abandoned pending review_assets rows older than 24h.
 - [ ] ⬜ **Requested-reviewer workflow:** Add an explicit review request model with one or more member reviewers, request state, decision per reviewer, requested-by/requested-at/completed-at, and notifications.
 - [ ] ⬜ **Task/media status policy:** Keep the main task independently `in_progress` while an asset is `pending`, `changes_requested`, or `approved`. The recommended product flow is:
   1. creator uploads a version and requests review;
@@ -1176,7 +1176,7 @@ Once the GHCR images are built, you simply go into the Dokploy UI and click **Re
 - [x] ✅ **Agent/manual mode persistence:** `useCreateModeStore` persists the last selected creation mode and generic entry points reopen that mode.
 - [x] ✅ **Create-another branch records intent:** The manual form records assignees only when `Create Another` is enabled and clears the remembered-assignee fields on a single create.
 - [x] ✅ **Single-create assignee clearing:** On a normal create, `setLastAssignees([])` runs before `clearDraft()` and Zustand applies the update synchronously, so the rebuilt draft has no assignees. Existing modal coverage asserts the clear call; draft-store tests cover remembered and empty defaults.
-- [ ] 🟡 **Strengthen end-to-end reset coverage:** Add one integration-style store/modal test that selects multiple assignees, submits once, closes, and reopens the form; add the matching `Create Another` test proving those assignees are intentionally preserved.
+- [x] ✅ **Strengthen end-to-end reset coverage:** Add one integration-style store/modal test that selects multiple assignees, submits once, closes, and reopens the form; add the matching `Create Another` test proving those assignees are intentionally preserved.
 - [ ] 🟡 **Agent-mode parity:** Confirm `Create Another` preserves only the intended actor/project context and a normal agent-created task leaves the next form clean except for the persisted mode preference.
 - [ ] 🔎 **Missing/lost task investigation:** Do not treat this as a cache bug without a concrete task ID. For a reported task, check in order:
   1. database row and workspace ID;
@@ -1215,14 +1215,18 @@ Once the GHCR images are built, you simply go into the Dokploy UI and click **Re
 - [x] ✅ **Operator documentation:** `.env.example` and GitHub integration/environment docs recommend `base64 < key.pem | tr -d '\n'` for Docker/Dokploy.
 - [ ] 🟡 **Deployment validation:** Redeploy with a single-line key and verify Compose parsing, GitHub App JWT signing, CloudFront signing if enabled, media upload, and guest asset playback in the deployed environment.
 
-### 13.8 Prioritized Remaining Work
+### 13.8 GitHub Repository Migration (Completed)
+
+- [x] ✅ **Global Repository Reference Update:** Successfully replaced all occurrences of the old `multica-ai/multica` repository URL with `kiyors/multica` across the entire codebase. This ensures the desktop application downloads fetch from the correct GitHub releases, and aligns all CI workflows, documentation, and external API requests with the new repository origin.
+
+### 13.9 Prioritized Remaining Work
 
 #### P0 — correctness and access
 
 1. Fix workspace-owner project visibility and audit every project-derived surface.
 2. Implement structured timeline → media deep-link metadata and navigation.
-3. Add end-to-end task-creation reset coverage for single-create versus create-another.
-4. Add server-side cleanup for abandoned review uploads.
+3. ~~Add end-to-end task-creation reset coverage for single-create versus create-another.~~ (Completed)
+4. ~~Add server-side cleanup for abandoned review uploads.~~ (Completed)
 
 #### P1 — review UX
 
