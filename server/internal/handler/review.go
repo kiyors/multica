@@ -933,7 +933,7 @@ func (h *Handler) UpdateGuestReviewStatus(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	h.publish(protocol.EventReviewAssetUpdated, asset.WorkspaceID.String(), "system", "", reviewAssetToResponse(updated))
+	h.publish(protocol.EventReviewAssetUpdated, asset.WorkspaceID.String(), "system", "", h.reviewAssetToResponse(updated))
 	w.WriteHeader(http.StatusNoContent)
 }
 

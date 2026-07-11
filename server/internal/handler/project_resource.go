@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/kiyors/multica/server/internal/middleware"
 	db "github.com/kiyors/multica/server/pkg/db/generated"
 	"github.com/kiyors/multica/server/pkg/protocol"
 )
@@ -273,6 +274,19 @@ func (h *Handler) loadProjectForResource(w http.ResponseWriter, r *http.Request,
 		writeError(w, http.StatusNotFound, "project not found")
 		return db.Project{}, false
 	}
+
+	member, _ := middleware.MemberFromContext(r.Context())
+	if !isWorkspaceManagerRole(member.Role) {
+		_, err := h.Queries.GetProjectMember(r.Context(), db.GetProjectMemberParams{
+			ProjectID: project.ID,
+			MemberID:  member.ID,
+		})
+		if err != nil {
+			writeError(w, http.StatusNotFound, "project not found")
+			return db.Project{}, false
+		}
+	}
+
 	return project, true
 }
 

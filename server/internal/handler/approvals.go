@@ -244,7 +244,7 @@ func (h *Handler) CreateApproval(w http.ResponseWriter, r *http.Request) {
 	_, _ = h.Queries.CreateActivity(r.Context(), db.CreateActivityParams{
 		WorkspaceID: wsID,
 		IssueID:     issueID,
-		ActorType:   actorType,
+		ActorType:   pgtype.Text{String: actorType, Valid: true},
 		ActorID:     actorID,
 		Action:      "approval_requested",
 		Details:     details,
@@ -367,7 +367,7 @@ func (h *Handler) handleApprovalDecision(w http.ResponseWriter, r *http.Request,
 	_, _ = h.Queries.CreateActivity(r.Context(), db.CreateActivityParams{
 		WorkspaceID: wsID,
 		IssueID:     a.IssueID,
-		ActorType:   actorType,
+		ActorType:   pgtype.Text{String: actorType, Valid: true},
 		ActorID:     actorID,
 		Action:      "approval_" + action,
 		Details:     details,

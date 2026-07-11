@@ -158,18 +158,35 @@ func (q *Queries) ArchiveInboxItem(ctx context.Context, id pgtype.UUID) (InboxIt
 }
 
 const countUnreadInbox = `-- name: CountUnreadInbox :one
-SELECT count(*) FROM inbox_item
-WHERE workspace_id = $1 AND recipient_type = $2 AND recipient_id = $3 AND read = false AND archived = false
+SELECT count(*) FROM inbox_item i
+LEFT JOIN issue iss ON iss.id = i.issue_id
+JOIN member m ON m.workspace_id = i.workspace_id AND m.user_id = i.recipient_id
+WHERE i.workspace_id = $1 AND i.recipient_type = $2 AND i.recipient_id = $3 AND i.read = false AND i.archived = false
+AND (
+    i.issue_id IS NULL
+    OR iss.project_id IS NULL
+    OR $4::boolean = true
+    OR EXISTS (
+        SELECT 1 FROM project_member pm 
+        WHERE pm.project_id = iss.project_id AND pm.member_id = m.id
+    )
+)
 `
 
 type CountUnreadInboxParams struct {
 	WorkspaceID   pgtype.UUID `json:"workspace_id"`
 	RecipientType string      `json:"recipient_type"`
 	RecipientID   pgtype.UUID `json:"recipient_id"`
+	Column4       bool        `json:"column_4"`
 }
 
 func (q *Queries) CountUnreadInbox(ctx context.Context, arg CountUnreadInboxParams) (int64, error) {
-	row := q.db.QueryRow(ctx, countUnreadInbox, arg.WorkspaceID, arg.RecipientType, arg.RecipientID)
+	row := q.db.QueryRow(ctx, countUnreadInbox,
+		arg.WorkspaceID,
+		arg.RecipientType,
+		arg.RecipientID,
+		arg.Column4,
+	)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -182,14 +199,29 @@ FROM (
         i.workspace_id, i.read
     FROM inbox_item i
     JOIN member m ON m.workspace_id = i.workspace_id AND m.user_id = i.recipient_id
+    LEFT JOIN issue iss ON iss.id = i.issue_id
     WHERE i.recipient_type = 'member'
       AND i.recipient_id = $1
       AND i.archived = false
+      AND (
+          i.issue_id IS NULL
+          OR iss.project_id IS NULL
+          OR $2::boolean = true
+          OR EXISTS (
+              SELECT 1 FROM project_member pm 
+              WHERE pm.project_id = iss.project_id AND pm.member_id = m.id
+          )
+      )
     ORDER BY i.workspace_id, COALESCE(i.issue_id, i.id), i.created_at DESC
 ) newest
 WHERE newest.read = false
 GROUP BY newest.workspace_id
 `
+
+type CountUnreadInboxByWorkspaceParams struct {
+	RecipientID pgtype.UUID `json:"recipient_id"`
+	Column2     bool        `json:"column_2"`
+}
 
 type CountUnreadInboxByWorkspaceRow struct {
 	WorkspaceID pgtype.UUID `json:"workspace_id"`
@@ -206,8 +238,8 @@ type CountUnreadInboxByWorkspaceRow struct {
 // member join keeps counts scoped to workspaces the user still belongs to,
 // so a stale item left behind in a workspace the user has since left cannot
 // light the dot.
-func (q *Queries) CountUnreadInboxByWorkspace(ctx context.Context, recipientID pgtype.UUID) ([]CountUnreadInboxByWorkspaceRow, error) {
-	rows, err := q.db.Query(ctx, countUnreadInboxByWorkspace, recipientID)
+func (q *Queries) CountUnreadInboxByWorkspace(ctx context.Context, arg CountUnreadInboxByWorkspaceParams) ([]CountUnreadInboxByWorkspaceRow, error) {
+	rows, err := q.db.Query(ctx, countUnreadInboxByWorkspace, arg.RecipientID, arg.Column2)
 	if err != nil {
 		return nil, err
 	}
@@ -350,7 +382,17 @@ SELECT i.id, i.workspace_id, i.recipient_type, i.recipient_id, i.type, i.severit
        iss.status as issue_status
 FROM inbox_item i
 LEFT JOIN issue iss ON iss.id = i.issue_id
+JOIN member m ON m.workspace_id = i.workspace_id AND m.user_id = i.recipient_id
 WHERE i.workspace_id = $1 AND i.recipient_type = $2 AND i.recipient_id = $3 AND i.archived = false
+AND (
+    i.issue_id IS NULL
+    OR iss.project_id IS NULL
+    OR $4::boolean = true
+    OR EXISTS (
+        SELECT 1 FROM project_member pm 
+        WHERE pm.project_id = iss.project_id AND pm.member_id = m.id
+    )
+)
 ORDER BY i.created_at DESC
 `
 
@@ -358,6 +400,7 @@ type ListInboxItemsParams struct {
 	WorkspaceID   pgtype.UUID `json:"workspace_id"`
 	RecipientType string      `json:"recipient_type"`
 	RecipientID   pgtype.UUID `json:"recipient_id"`
+	Column4       bool        `json:"column_4"`
 }
 
 type ListInboxItemsRow struct {
@@ -380,7 +423,12 @@ type ListInboxItemsRow struct {
 }
 
 func (q *Queries) ListInboxItems(ctx context.Context, arg ListInboxItemsParams) ([]ListInboxItemsRow, error) {
-	rows, err := q.db.Query(ctx, listInboxItems, arg.WorkspaceID, arg.RecipientType, arg.RecipientID)
+	rows, err := q.db.Query(ctx, listInboxItems,
+		arg.WorkspaceID,
+		arg.RecipientType,
+		arg.RecipientID,
+		arg.Column4,
+	)
 	if err != nil {
 		return nil, err
 	}

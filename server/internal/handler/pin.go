@@ -105,10 +105,7 @@ func (h *Handler) CreatePin(w http.ResponseWriter, r *http.Request) {
 	// Verify the item exists in this workspace
 	switch req.ItemType {
 	case "issue":
-		if _, err := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{
-			ID: itemUUID, WorkspaceID: wsUUID,
-		}); err != nil {
-			writeError(w, http.StatusNotFound, "issue not found")
+		if _, ok := h.loadIssueForUser(w, r, req.ItemID); !ok {
 			return
 		}
 	case "project":

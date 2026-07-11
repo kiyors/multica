@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/kiyors/multica/server/internal/logger"
+	"github.com/kiyors/multica/server/internal/middleware"
 	db "github.com/kiyors/multica/server/pkg/db/generated"
 	"github.com/kiyors/multica/server/pkg/protocol"
 )
@@ -95,11 +96,14 @@ func (h *Handler) ListInbox(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	member, _ := middleware.MemberFromContext(r.Context())
+	isAdmin := isWorkspaceManagerRole(member.Role)
 
 	items, err := h.Queries.ListInboxItems(r.Context(), db.ListInboxItemsParams{
 		WorkspaceID:   wsUUID,
 		RecipientType: "member",
 		RecipientID:   parseUUID(userID),
+		Column4:       isAdmin,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to list inbox")
@@ -181,11 +185,14 @@ func (h *Handler) CountUnreadInbox(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	member, _ := middleware.MemberFromContext(r.Context())
+	isAdmin := isWorkspaceManagerRole(member.Role)
 
 	count, err := h.Queries.CountUnreadInbox(r.Context(), db.CountUnreadInboxParams{
 		WorkspaceID:   wsUUID,
 		RecipientType: "member",
 		RecipientID:   parseUUID(userID),
+		Column4:       isAdmin,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to count unread inbox")
@@ -213,8 +220,13 @@ func (h *Handler) UnreadInboxSummary(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	member, _ := middleware.MemberFromContext(r.Context())
+	isAdmin := isWorkspaceManagerRole(member.Role)
 
-	rows, err := h.Queries.CountUnreadInboxByWorkspace(r.Context(), parseUUID(userID))
+	rows, err := h.Queries.CountUnreadInboxByWorkspace(r.Context(), db.CountUnreadInboxByWorkspaceParams{
+		RecipientID: parseUUID(userID),
+		Column2:     isAdmin,
+	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to summarize unread inbox")
 		return
