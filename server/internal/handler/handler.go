@@ -635,33 +635,58 @@ func (h *Handler) loadIssueForUser(w http.ResponseWriter, r *http.Request, issue
 		return db.Issue{}, false
 	}
 
+	var issue db.Issue
+	var found bool
+
 	// Try identifier format first (e.g., "JIA-42"). resolveIssueByIdentifier
 	// silently returns false for non-identifier strings, falling through to
 	// the UUID path below.
-	if issue, ok := h.resolveIssueByIdentifier(r.Context(), issueID, workspaceID); ok {
-		return issue, true
+	if i, ok := h.resolveIssueByIdentifier(r.Context(), issueID, workspaceID); ok {
+		issue = i
+		found = true
+	} else {
+		issueUUID, err := util.ParseUUID(issueID)
+		if err != nil {
+			// Not a valid UUID and didn't match identifier format → 404 (consistent
+			// with previous silent-zero behavior, which would also have produced 404).
+			writeError(w, http.StatusNotFound, "issue not found")
+			return db.Issue{}, false
+		}
+		wsUUID, err := util.ParseUUID(workspaceID)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid workspace_id")
+			return db.Issue{}, false
+		}
+		issue, err = h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{
+			ID:          issueUUID,
+			WorkspaceID: wsUUID,
+		})
+		if err != nil {
+			writeError(w, http.StatusNotFound, "issue not found")
+			return db.Issue{}, false
+		}
+		found = true
 	}
 
-	issueUUID, err := util.ParseUUID(issueID)
-	if err != nil {
-		// Not a valid UUID and didn't match identifier format → 404 (consistent
-		// with previous silent-zero behavior, which would also have produced 404).
-		writeError(w, http.StatusNotFound, "issue not found")
+	if !found {
 		return db.Issue{}, false
 	}
-	wsUUID, err := util.ParseUUID(workspaceID)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid workspace_id")
-		return db.Issue{}, false
+
+	if issue.ProjectID.Valid {
+		member, _ := middleware.MemberFromContext(r.Context())
+		if !isWorkspaceManagerRole(member.Role) {
+			_, err := h.Queries.GetProjectMember(r.Context(), db.GetProjectMemberParams{
+				ProjectID: issue.ProjectID,
+				MemberID:  member.ID,
+			})
+			if err != nil {
+				// Do not leak existence if not accessible
+				writeError(w, http.StatusNotFound, "issue not found")
+				return db.Issue{}, false
+			}
+		}
 	}
-	issue, err := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{
-		ID:          issueUUID,
-		WorkspaceID: wsUUID,
-	})
-	if err != nil {
-		writeError(w, http.StatusNotFound, "issue not found")
-		return db.Issue{}, false
-	}
+
 	return issue, true
 }
 
@@ -746,6 +771,9 @@ func (h *Handler) getIssuePrefixForIssue(ctx context.Context, workspaceID pgtype
 	if projectID.Valid {
 		p, err := h.Queries.GetProject(ctx, projectID)
 		if err == nil {
+			if p.Prefix.Valid && p.Prefix.String != "" {
+				return p.Prefix.String
+			}
 			return generateIssuePrefix(p.Title)
 		}
 	}

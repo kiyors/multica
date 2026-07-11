@@ -29,6 +29,7 @@ type ProjectResponse struct {
 	Priority    string  `json:"priority"`
 	LeadType    *string `json:"lead_type"`
 	LeadID      *string `json:"lead_id"`
+	Prefix      *string `json:"prefix"`
 	CreatedAt   string  `json:"created_at"`
 	UpdatedAt   string  `json:"updated_at"`
 	IssueCount  int64   `json:"issue_count"`
@@ -49,7 +50,20 @@ func (h *Handler) projectExistsInWorkspace(
 		ID:          projectID,
 		WorkspaceID: workspaceID,
 	})
-	return err == nil
+	if err != nil {
+		return false
+	}
+	member, ok := middleware.MemberFromContext(ctx)
+	if ok && !isWorkspaceManagerRole(member.Role) {
+		_, err := h.Queries.GetProjectMember(ctx, db.GetProjectMemberParams{
+			ProjectID: projectID,
+			MemberID:  member.ID,
+		})
+		if err != nil {
+			return false
+		}
+	}
+	return true
 }
 
 func projectToResponse(p db.Project) ProjectResponse {
@@ -63,6 +77,7 @@ func projectToResponse(p db.Project) ProjectResponse {
 		Priority:    p.Priority,
 		LeadType:    textToPtr(p.LeadType),
 		LeadID:      uuidToPtr(p.LeadID),
+		Prefix:      textToPtr(p.Prefix),
 		CreatedAt:   timestampToString(p.CreatedAt),
 		UpdatedAt:   timestampToString(p.UpdatedAt),
 	}
@@ -92,6 +107,7 @@ type CreateProjectRequest struct {
 	Priority    string                                `json:"priority"`
 	LeadType    *string                               `json:"lead_type"`
 	LeadID      *string                               `json:"lead_id"`
+	Prefix      *string                               `json:"prefix"`
 	Resources   []CreateProjectResourceRequestPayload `json:"resources,omitempty"`
 }
 
@@ -113,6 +129,7 @@ type UpdateProjectRequest struct {
 	Priority    *string `json:"priority"`
 	LeadType    *string `json:"lead_type"`
 	LeadID      *string `json:"lead_id"`
+	Prefix      *string `json:"prefix"`
 }
 
 func (h *Handler) ListProjects(w http.ResponseWriter, r *http.Request) {
@@ -354,6 +371,7 @@ func (h *Handler) CreateProject(w http.ResponseWriter, r *http.Request) {
 		LeadType:    leadType,
 		LeadID:      leadID,
 		Priority:    priority,
+		Prefix:      ptrToText(req.Prefix),
 	}
 
 	// Without resources, keep the simple non-tx path.
@@ -531,6 +549,13 @@ func (h *Handler) UpdateProject(w http.ResponseWriter, r *http.Request) {
 			params.LeadID = leadUUID
 		} else {
 			params.LeadID = pgtype.UUID{Valid: false}
+		}
+	}
+	if _, ok := rawFields["prefix"]; ok {
+		if req.Prefix != nil {
+			params.Prefix = pgtype.Text{String: *req.Prefix, Valid: true}
+		} else {
+			params.Prefix = pgtype.Text{Valid: false}
 		}
 	}
 	project, err := h.Queries.UpdateProject(r.Context(), params)

@@ -70,7 +70,7 @@ import { useT } from "../../i18n";
 import { useProjectStatusLabels, useProjectPriorityLabels } from "./labels";
 import { matchesPinyin } from "../../editor/extensions/pinyin-match";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@multica/ui/components/ui/tabs";
-import { ProjectMembersTab } from "./project-members-tab";
+import { ProjectSettingsTab } from "./project-settings-tab";
 import { ProjectMilestonesTab } from "./project-milestones-tab";
 import { ProjectDocsTab } from "./project-docs-tab";
 
@@ -544,7 +544,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
                 <TabsTrigger value="issues">Issues</TabsTrigger>
                 <TabsTrigger value="docs">Document</TabsTrigger>
                 <TabsTrigger value="milestones">Milestones</TabsTrigger>
-                <TabsTrigger value="members">Members</TabsTrigger>
+                <TabsTrigger value="settings">Settings</TabsTrigger>
               </TabsList>
             </div>
             
@@ -563,8 +563,8 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
               <ProjectMilestonesTab projectId={projectId} />
             </TabsContent>
             
-            <TabsContent value="members" className="flex-1 overflow-y-auto m-0 border-none p-0 outline-none data-[state=inactive]:hidden">
-              <ProjectMembersTab projectId={projectId} />
+            <TabsContent value="settings" className="flex-1 overflow-y-auto m-0 border-none p-0 outline-none data-[state=inactive]:hidden">
+              <ProjectSettingsTab projectId={projectId} />
             </TabsContent>
           </Tabs>
           </div>
