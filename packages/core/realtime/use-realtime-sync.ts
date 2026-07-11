@@ -200,15 +200,22 @@ export function applyWorkspaceUpdatedToCache(
 ): void {
   const next = payload.workspace;
   if (next?.id) {
-    const cached =
-      qc
-        .getQueryData<Workspace[]>(workspaceKeys.list())
-        ?.find((w) => w.id === next.id) ?? null;
+    const cachedList = qc.getQueryData<Workspace[]>(workspaceKeys.list());
+    const cached = cachedList?.find((w) => w.id === next.id) ?? null;
+    
+    // Always refresh the workspace list
+    qc.setQueryData(workspaceKeys.list(), (old: Workspace[] | undefined) => {
+      if (!old) return old;
+      // If we don't have it, we don't add it (since we don't know the order/permissions).
+      // But if we do, we replace it.
+      if (!old.some((w) => w.id === next.id)) return old;
+      return old.map((w) => (w.id === next.id ? next : w));
+    });
+
     if (!cached || cached.issue_prefix !== next.issue_prefix) {
       qc.invalidateQueries({ queryKey: issueKeys.all(next.id) });
     }
   }
-  qc.invalidateQueries({ queryKey: workspaceKeys.list() });
 }
 
 /**
