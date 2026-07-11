@@ -12,6 +12,7 @@ import (
 	"github.com/kiyors/multica/server/internal/analytics"
 	"github.com/kiyors/multica/server/internal/logger"
 	obsmetrics "github.com/kiyors/multica/server/internal/metrics"
+	"github.com/kiyors/multica/server/internal/util"
 	db "github.com/kiyors/multica/server/pkg/db/generated"
 	"github.com/kiyors/multica/server/pkg/protocol"
 )
@@ -442,8 +443,8 @@ func (h *Handler) AcceptInvitation(w http.ResponseWriter, r *http.Request) {
 		var initialProjects []InitialProjectAssignment
 		if err := json.Unmarshal(accepted.InitialProjects, &initialProjects); err == nil {
 			for _, p := range initialProjects {
-				projectUUID, ok := h.parseUUIDOrZero(p.ProjectID)
-				if !ok {
+				projectUUID, err := util.ParseUUID(p.ProjectID)
+				if err != nil {
 					continue
 				}
 				role := p.Role
@@ -452,10 +453,9 @@ func (h *Handler) AcceptInvitation(w http.ResponseWriter, r *http.Request) {
 				}
 				_, _ = qtx.AddProjectMember(r.Context(), db.AddProjectMemberParams{
 					ProjectID:   projectUUID,
-					WorkspaceID: accepted.WorkspaceID,
 					MemberID:    member.ID,
 					Role:        role,
-					CreatedBy:   user.ID,
+					InvitedBy:   user.ID,
 				})
 			}
 		}
