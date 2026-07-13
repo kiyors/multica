@@ -26,7 +26,7 @@
     "progress": "Progress",
     "lead": "Lead",
     "created": "Created",
-    "issues": "Issues"
+    "issues": "Tasks"
   },
   "status": {
     "planned": "Planned",
@@ -70,13 +70,13 @@
     "section_description": "Description",
     "description_placeholder": "Add description...",
     "description_hint": "Shared with agents as context for every task in this project.",
-    "empty_issues_title": "No issues linked",
-    "empty_issues_hint": "Create a new issue or assign existing ones to this project.",
-    "empty_issues_new_button": "New Issue",
-    "no_issues_yet": "No issues yet",
+    "empty_issues_title": "No tasks linked",
+    "empty_issues_hint": "Create a new task or assign existing ones to this project.",
+    "empty_issues_new_button": "New Task",
+    "no_issues_yet": "No tasks yet",
     "toast_link_copied": "Link copied",
     "toast_project_deleted": "Project deleted",
-    "toast_move_issue_failed": "Failed to move issue"
+    "toast_move_issue_failed": "Failed to move task"
   },
   "resources": {
     "section_header": "Resources",
@@ -123,7 +123,11 @@
     "remove": "Remove",
     "empty": "No members have been added to this project yet.",
     "unknown": "Unknown",
-    "roles": { "admin": "Admin", "editor": "Editor", "viewer": "Viewer" }
+    "roles": {
+      "admin": "Admin",
+      "editor": "Editor",
+      "viewer": "Viewer"
+    }
   },
   "milestones": {
     "title": "Milestones",
@@ -146,7 +150,11 @@
     "no_description": "No description provided.",
     "unassigned": "Unassigned",
     "no_date": "No date",
-    "status": { "active": "Active", "completed": "Completed", "cancelled": "Cancelled" }
+    "status": {
+      "active": "Active",
+      "completed": "Completed",
+      "cancelled": "Cancelled"
+    }
   },
   "docs": {
     "title": "Document",
@@ -163,7 +171,7 @@
   },
   "delete_dialog": {
     "title": "Delete project",
-    "description": "This will delete the project. Issues will not be deleted but will be unlinked.",
+    "description": "This will delete the project. Tasks will not be deleted but will be unlinked.",
     "confirm": "Delete",
     "cancel": "Cancel"
   },

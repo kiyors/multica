@@ -96,7 +96,7 @@ function ListRowContent({
           <IssueTypeBadge issueTypeId={issue.issue_type_id} />
           <span className="w-20 shrink-0 text-xs text-muted-foreground flex items-center gap-1">
             {issue.identifier}
-            {issue.parent_id && <CornerDownRight className="size-3 text-muted-foreground/60" />}
+            {issue.parent_issue_id && <CornerDownRight className="size-3 text-muted-foreground/60" />}
           </span>
           <IssueAgentActivityIndicator issueId={issue.id} />
 

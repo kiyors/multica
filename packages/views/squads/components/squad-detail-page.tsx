@@ -409,7 +409,7 @@ function SquadAvatarEditor({
     try {
       const result = await upload(file);
       if (!result) return;
-      await onUpload(result.link);
+      await onUpload(result.markdownLink || result.link);
       toast.success("Avatar updated");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to upload avatar");

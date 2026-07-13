@@ -193,7 +193,7 @@ export const BoardCardContent = memo(function BoardCardContent({
           {priorityIconNode}
           <IssueTypeBadge issueTypeId={issue.issue_type_id} />
           <p className="text-xs text-muted-foreground truncate">{issue.identifier}</p>
-          {issue.parent_id && (
+          {issue.parent_issue_id && (
             <span className="flex items-center gap-1 bg-muted/50 text-muted-foreground px-1.5 py-0.5 rounded text-[10px] font-medium ml-1">
               <CornerDownRight className="size-3" /> Subtask
             </span>
