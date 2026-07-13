@@ -118,7 +118,9 @@ export function setupAutoUpdater(getMainWindow: () => BrowserWindow | null): voi
   });
 
   ipcMain.handle("updater:install", () => {
-    autoUpdater.quitAndInstall(false, true);
+    setTimeout(() => {
+      autoUpdater.quitAndInstall(false, true);
+    }, 100);
   });
 
   ipcMain.handle("updater:check", async (): Promise<ManualUpdateCheckResult> => {

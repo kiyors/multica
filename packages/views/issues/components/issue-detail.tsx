@@ -766,7 +766,7 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
   const handleReviewAssetChange = useCallback((asset: ReviewAsset | null) => {
     setReviewAsset(asset);
     lastProcessedReviewRef.current = asset?.id || null;
-    const newParams = new URLSearchParams(window.location.search);
+    const newParams = new URLSearchParams(router.searchParams);
     if (asset) {
       newParams.set("review", asset.id);
     } else {
@@ -776,13 +776,13 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
       newParams.delete("reviewTime");
     }
     const searchStr = newParams.toString();
-    const newUrl = `${window.location.pathname}${searchStr ? `?${searchStr}` : ""}`;
+    const newUrl = `${router.pathname}${searchStr ? `?${searchStr}` : ""}`;
     router.replace(newUrl, { scroll: false });
   }, [router]);
 
   const handleOpenReviewFromTimeline = useCallback((entry: TimelineEntry) => {
     if (!entry.review_asset_id) return;
-    const newParams = new URLSearchParams(window.location.search);
+    const newParams = new URLSearchParams(router.searchParams);
     newParams.set("review", entry.review_asset_id);
     if (entry.review_comment_id) newParams.set("reviewComment", entry.review_comment_id);
     else newParams.delete("reviewComment");
@@ -790,7 +790,8 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
     else newParams.delete("reviewPage");
     if (entry.review_start_time != null) newParams.set("reviewTime", String(entry.review_start_time));
     else newParams.delete("reviewTime");
-    router.replace(`${window.location.pathname}?${newParams.toString()}`, { scroll: false });
+    const searchStr = newParams.toString();
+    router.replace(`${router.pathname}${searchStr ? `?${searchStr}` : ""}`, { scroll: false });
   }, [router]);
 
   const { data: members = [] } = useQuery(memberListOptions(wsId));

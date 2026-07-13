@@ -1,0 +1,46 @@
+name: Update Flake
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'server/go.mod'
+      - 'server/go.sum'
+      - 'package.json'
+      - 'flake.nix'
+  workflow_dispatch:
+
+jobs:
+  update-flake:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+
+      - name: Update flake.lock
+        run: nix flake update
+
+      - name: Update Go vendorHash
+        run: |
+          # If the Go dependencies changed, the vendorHash in flake.nix will be outdated.
+          # This will run a build, catch the hash mismatch, and update flake.nix.
+          if [ -f scripts/update-flake-hash.sh ]; then
+            bash scripts/update-flake-hash.sh
+          fi
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: update flake.nix vendorHash and flake.lock"
+          title: "chore: update flake.nix dependencies"
+          body: "Automatically updated `flake.lock` and `vendorHash` in `flake.nix` due to upstream dependency changes."
+          branch: "chore/update-flake"
+          delete-branch: true
