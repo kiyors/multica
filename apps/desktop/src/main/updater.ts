@@ -118,9 +118,13 @@ export function setupAutoUpdater(getMainWindow: () => BrowserWindow | null): voi
   });
 
   ipcMain.handle("updater:install", () => {
+    // Return immediately to resolve the IPC call, then wait briefly
+    // before actually triggering the quit-and-install lifecycle.
     setTimeout(() => {
-      autoUpdater.quitAndInstall(false, true);
-    }, 100);
+      // By default, quitAndInstall() performs a safe restart.
+      autoUpdater.quitAndInstall();
+    }, 300);
+    return true;
   });
 
   ipcMain.handle("updater:check", async (): Promise<ManualUpdateCheckResult> => {

@@ -1,4 +1,4 @@
-import { githubUrl, discordUrl } from "../components/shared";
+import { githubUrl } from "../components/shared";
 import { createEnDict } from "./en";
 import type { LandingDict } from "./types";
 
@@ -243,7 +243,6 @@ export function createKoDict(allowSignup: boolean): LandingDict {
             { label: "문서", href: "/docs/ko" },
             { label: "API", href: githubUrl },
             { label: "X (Twitter)", href: "https://x.com/MulticaAI" },
-            { label: "Discord", href: discordUrl },
           ],
         },
         company: {

@@ -1,4 +1,4 @@
-import { githubUrl, discordUrl } from "../components/shared";
+import { githubUrl } from "../components/shared";
 import { createEnDict } from "./en";
 import type { LandingDict } from "./types";
 
@@ -244,7 +244,6 @@ export function createJaDict(allowSignup: boolean): LandingDict {
             { label: "ドキュメント", href: "/docs/ja" },
             { label: "API", href: githubUrl },
             { label: "X (Twitter)", href: "https://x.com/MulticaAI" },
-            { label: "Discord", href: discordUrl },
           ],
         },
         company: {

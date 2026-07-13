@@ -13,6 +13,7 @@ import { useViewStore } from "@multica/core/issues/stores/view-store-context";
 import { ProjectIcon } from "../../projects/components/project-icon";
 import { PriorityIcon } from "./priority-icon";
 import { IssueTypeBadge } from "./issue-type-badge";
+import { CornerDownRight } from "lucide-react";
 import { ProgressRing } from "./progress-ring";
 import { IssueActionsContextMenu } from "../actions";
 import { LabelChip } from "../../labels/label-chip";
@@ -93,8 +94,9 @@ function ListRowContent({
           className={`flex flex-1 items-center gap-2 min-w-0 ${isDragging ? "pointer-events-none" : ""}`}
         >
           <IssueTypeBadge issueTypeId={issue.issue_type_id} />
-          <span className="w-16 shrink-0 text-xs text-muted-foreground">
+          <span className="w-20 shrink-0 text-xs text-muted-foreground flex items-center gap-1">
             {issue.identifier}
+            {issue.parent_id && <CornerDownRight className="size-3 text-muted-foreground/60" />}
           </span>
           <IssueAgentActivityIndicator issueId={issue.id} />
 

@@ -28,7 +28,7 @@ import { useIssueSurfaceActionsOptional } from "../surface/actions-context";
 import { useT } from "../../i18n";
 import { useQuery } from "@tanstack/react-query";
 import { listPendingReviewIssueIDsOptions } from "@multica/core/reviews/queries";
-import { Eye } from "lucide-react";
+import { Eye, CornerDownRight } from "lucide-react";
 
 function formatDate(date: string): string {
   return formatDateOnly(date, { month: "short", day: "numeric" }, "en-US");
@@ -193,6 +193,11 @@ export const BoardCardContent = memo(function BoardCardContent({
           {priorityIconNode}
           <IssueTypeBadge issueTypeId={issue.issue_type_id} />
           <p className="text-xs text-muted-foreground truncate">{issue.identifier}</p>
+          {issue.parent_id && (
+            <span className="flex items-center gap-1 bg-muted/50 text-muted-foreground px-1.5 py-0.5 rounded text-[10px] font-medium ml-1">
+              <CornerDownRight className="size-3" /> Subtask
+            </span>
+          )}
           {hasPendingReview && (
             <span className="flex items-center gap-1 bg-blue-500/10 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded text-[10px] font-medium ml-1">
               <Eye className="size-3" /> Review
