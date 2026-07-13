@@ -28,6 +28,7 @@ import { ReviewCommentSidebar } from "./review-comment-sidebar";
 import { UploadShowcase } from "./upload-showcase";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@multica/ui/components/ui/resizable";
 import type { UploadPhase } from "./upload-showcase";
+import { DragStrip } from "../platform";
 
 interface MediaReviewLayoutProps {
   workspaceId: string;
@@ -190,8 +191,9 @@ export function MediaReviewLayout({ workspaceId, asset, onAssetChange, onClose, 
 
   return (
     <div className="flex flex-col h-full w-full bg-background">
+      {typeof window !== "undefined" && "desktopAPI" in window && <DragStrip />}
       {/* Review Asset Header */}
-      <div className="h-14 border-b border-border bg-muted/20 flex items-center justify-between px-4 text-foreground">
+      <div className="h-14 border-b border-border bg-muted/20 flex items-center justify-between px-4 text-foreground shrink-0">
         <div className="flex items-center gap-4">
           <div className="font-medium text-sm">{asset.name}</div>
           {asset.asset_type === "pdf" && (

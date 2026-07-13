@@ -122,7 +122,7 @@ export function setupAutoUpdater(getMainWindow: () => BrowserWindow | null): voi
     // before actually triggering the quit-and-install lifecycle.
     setTimeout(() => {
       // By default, quitAndInstall() performs a safe restart.
-      autoUpdater.quitAndInstall();
+      autoUpdater.quitAndInstall(false, true);
     }, 300);
     return true;
   });
