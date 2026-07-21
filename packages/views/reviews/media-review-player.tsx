@@ -2,6 +2,7 @@
 import React, { useRef, useEffect, useState, useCallback, useImperativeHandle, forwardRef } from "react";
 import { Play, Pause, Maximize2, SkipBack, SkipForward, Clock, Repeat } from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@multica/ui/components/ui/tooltip";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@multica/ui/components/ui/select";
 import Hls from "hls.js";
 import type { ReviewAsset, ReviewComment } from "@multica/core/types";
 import { MediaScrubber, formatTimecode, formatTime, formatFrames } from "./media-scrubber";
@@ -60,6 +61,11 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
   const [isLooping, setIsLooping] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [timeFormat, setTimeFormat] = useState<"standard" | "frames" | "timecode">("standard");
+  const [localDuration, setLocalDuration] = useState<number>(asset.duration || 0);
+
+  useEffect(() => {
+    setLocalDuration(asset.duration || 0);
+  }, [asset.duration]);
 
   const calculateTrueLayout = useCallback(() => {
     if (!containerRef.current || !mediaRef.current) return;
@@ -176,6 +182,7 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
     const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
     
     setIsDrawing(true);
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
     const color = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#a855f7', '#ec4899'][Math.floor(Math.random() * 6)];
     const newShape = { type: 'rectangle', x, y, width: 0, height: 0, color, strokeWidth: 2 };
     setDrawingShape(newShape);
@@ -201,8 +208,12 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
     onDrawingShapeChange?.(newShape);
   };
 
-  const handlePointerUp = () => {
+  const handlePointerUp = (e: React.PointerEvent) => {
     setIsDrawing(false);
+    (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    if (drawingShape) {
+      window.dispatchEvent(new CustomEvent('focus-review-comment'));
+    }
   };
 
   const visibleComments = (comments || []).filter((comment) => (comment.page_index ?? 0) === pageIndex).filter((comment) =>
@@ -236,8 +247,8 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
       case 'l':
       case 'L':
         e.preventDefault();
-        if (asset.duration) {
-          media.currentTime = Math.min(asset.duration, media.currentTime + 10);
+        if (localDuration > 0) {
+          media.currentTime = Math.min(localDuration, media.currentTime + 10);
         }
         break;
       case 'ArrowLeft':
@@ -246,8 +257,8 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
         break;
       case 'ArrowRight':
         e.preventDefault();
-        if (asset.duration) {
-          media.currentTime = Math.min(asset.duration, media.currentTime + (1/30));
+        if (localDuration > 0) {
+          media.currentTime = Math.min(localDuration, media.currentTime + (1/30));
         }
         break;
     }
@@ -274,7 +285,7 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
     if (!mediaRef.current || (asset.asset_type !== "video")) return;
     const media = mediaRef.current as HTMLMediaElement;
     // Assume 30fps for stepping
-    media.currentTime = Math.max(0, Math.min(asset.duration || 0, media.currentTime + (frames * (1/30))));
+    media.currentTime = Math.max(0, Math.min(localDuration || 0, media.currentTime + (frames * (1/30))));
   };
 
   return (
@@ -296,7 +307,11 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
             ref={mediaRef as React.RefObject<HTMLVideoElement>}
             src={asset.src_url.endsWith('.m3u8') ? undefined : asset.src_url}
             className="absolute inset-0 w-full h-full object-contain shadow-lg rounded-sm"
-            onLoadedMetadata={calculateTrueLayout}
+            onLoadedMetadata={(e) => {
+              calculateTrueLayout();
+              setLocalDuration((e.target as HTMLVideoElement).duration);
+            }}
+            onDurationChange={(e) => setLocalDuration((e.target as HTMLVideoElement).duration)}
             onTimeUpdate={handleTimeUpdate}
             onPlay={() => setIsPlaying(true)}
             onPause={() => setIsPlaying(false)}
@@ -370,11 +385,11 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
         </div>
       )}
 
-      {(asset.asset_type === "video") && asset.duration && (
+      {(asset.asset_type === "video") && localDuration > 0 && (
         <div className="absolute bottom-16 left-0 right-0 z-10 px-4">
           <MediaScrubber 
             currentTime={currentTime} 
-            duration={asset.duration} 
+            duration={localDuration} 
             comments={comments} 
             streamUrl={asset.src_url}
             selectedCommentId={selectedCommentId}
@@ -409,24 +424,26 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
 
           <div className="w-px h-4 bg-border mx-1" />
 
-          <Tooltip>
-            <TooltipTrigger 
-              onClick={() => {
-                const video = mediaRef.current as HTMLVideoElement;
-                if (!video) return;
-                const speeds = [0.5, 1, 1.25, 1.5, 2];
-                let nextIndex = speeds.indexOf(video.playbackRate) + 1;
-                if (nextIndex >= speeds.length) nextIndex = 0;
-                const speed = speeds[nextIndex] || 1;
-                video.playbackRate = speed;
-                setPlaybackRate(speed);
-              }} 
-              className="px-2 py-1 text-[11px] font-mono font-medium hover:bg-muted rounded text-foreground transition-colors min-w-[36px]"
-            >
-              {playbackRate}x
-            </TooltipTrigger>
-            <TooltipContent side="top">Playback Speed</TooltipContent>
-          </Tooltip>
+          <Select 
+            value={playbackRate.toString()} 
+            onValueChange={(val) => {
+              const speed = parseFloat(val);
+              const video = mediaRef.current as HTMLVideoElement;
+              if (video) video.playbackRate = speed;
+              setPlaybackRate(speed);
+            }}
+          >
+            <SelectTrigger className="h-7 w-[60px] text-[11px] font-mono font-medium px-2 py-1 bg-transparent border-0 hover:bg-muted focus:ring-0 shadow-none">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent side="top">
+              {[0.5, 1, 1.25, 1.5, 2].map(speed => (
+                <SelectItem key={speed} value={speed.toString()} className="text-[11px] font-mono">
+                  {speed}x
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
           <Tooltip>
             <TooltipTrigger 

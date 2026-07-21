@@ -25,6 +25,8 @@ WHERE i.workspace_id = $1
       SELECT 1 FROM project_member pm
       WHERE pm.project_id = i.project_id AND pm.member_id = sqlc.arg('member_id')
     )
+    OR i.creator_id = sqlc.arg('member_id')
+    OR i.assignee_id = sqlc.arg('member_id')
   )
   AND (
     sqlc.narg('pending_approver_id')::uuid IS NULL
@@ -200,6 +202,8 @@ WHERE i.workspace_id = $1
       SELECT 1 FROM project_member pm
       WHERE pm.project_id = i.project_id AND pm.member_id = sqlc.arg('member_id')
     )
+    OR i.creator_id = sqlc.arg('member_id')
+    OR i.assignee_id = sqlc.arg('member_id')
   )
   AND (
     sqlc.narg('pending_approver_id')::uuid IS NULL

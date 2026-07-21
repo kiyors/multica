@@ -70,6 +70,14 @@ export function ReviewCommentSidebar({
     }
   }, [selectedCommentId]);
 
+  React.useEffect(() => {
+    const handleFocus = () => {
+      editorRef.current?.focus();
+    };
+    window.addEventListener('focus-review-comment', handleFocus);
+    return () => window.removeEventListener('focus-review-comment', handleFocus);
+  }, []);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!draftContent.trim()) return;

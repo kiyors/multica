@@ -516,7 +516,9 @@ func buildSearchQuery(phrase string, terms []string, queryNum int, hasNum bool, 
 			SELECT 1 FROM project_member pm
 			WHERE pm.project_id = i.project_id AND pm.member_id = %s
 		)
-	)`, isAdminParam, memberIDParam)
+		OR i.creator_id = %s
+		OR i.assignee_id = %s
+	)`, isAdminParam, memberIDParam, memberIDParam, memberIDParam)
 
 	// --- ORDER BY clause ---
 	// Build ranking CASE with fine-grained tiers.
@@ -1056,8 +1058,10 @@ func (h *Handler) ListIssues(w http.ResponseWriter, r *http.Request) {
 			i.project_id IS NULL
 			OR EXISTS (
 				SELECT 1 FROM project_member pm
-				WHERE pm.project_id = i.project_id AND pm.member_id = %s::uuid
+				WHERE pm.project_id = i.project_id AND pm.member_id = %[1]s::uuid
 			)
+			OR i.creator_id = %[1]s::uuid
+			OR i.assignee_id = %[1]s::uuid
 		)`, addArg(member.ID)))
 	}
 	if scheduledFilter.Valid {
@@ -1632,6 +1636,19 @@ func (h *Handler) ListGroupedIssues(w http.ResponseWriter, r *http.Request) {
 				addArg(assigneeID),
 			))
 		}
+	}
+
+	member, _ := middleware.MemberFromContext(r.Context())
+	if !isWorkspaceManagerRole(member.Role) {
+		where = append(where, fmt.Sprintf(`(
+			i.project_id IS NULL
+			OR EXISTS (
+				SELECT 1 FROM project_member pm
+				WHERE pm.project_id = i.project_id AND pm.member_id = %[1]s::uuid
+			)
+			OR i.creator_id = %[1]s::uuid
+			OR i.assignee_id = %[1]s::uuid
+		)`, addArg(member.ID)))
 	}
 
 	sortCol := "position"

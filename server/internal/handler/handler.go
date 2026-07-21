@@ -680,9 +680,13 @@ func (h *Handler) loadIssueForUser(w http.ResponseWriter, r *http.Request, issue
 				MemberID:  member.ID,
 			})
 			if err != nil {
-				// Do not leak existence if not accessible
-				writeError(w, http.StatusNotFound, "issue not found")
-				return db.Issue{}, false
+				isCreator := issue.CreatorID == member.ID
+				isAssignee := issue.AssigneeID.Valid && issue.AssigneeID.Bytes == member.ID.Bytes
+				if !isCreator && !isAssignee {
+					// Do not leak existence if not accessible
+					writeError(w, http.StatusNotFound, "issue not found")
+					return db.Issue{}, false
+				}
 			}
 		}
 	}

@@ -982,6 +982,8 @@ WHERE i.workspace_id = $1
       SELECT 1 FROM project_member pm
       WHERE pm.project_id = i.project_id AND pm.member_id = $13
     )
+    OR i.creator_id = $13
+    OR i.assignee_id = $13
   )
   AND (
     $14::uuid IS NULL
@@ -1160,6 +1162,8 @@ WHERE i.workspace_id = $1
       SELECT 1 FROM project_member pm
       WHERE pm.project_id = i.project_id AND pm.member_id = $9
     )
+    OR i.creator_id = $9
+    OR i.assignee_id = $9
   )
   AND (
     $10::uuid IS NULL
