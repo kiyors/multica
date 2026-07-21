@@ -43,6 +43,7 @@ import {
   insertIdByPosition,
   issueMatchesGroup,
   getMoveUpdates,
+  getIssueGroupId,
 } from "../utils/drag-utils";
 
 function isStatusGroup(
@@ -161,13 +162,48 @@ export function BoardView({
   const myIssuesOpts = myIssuesScope
     ? { scope: myIssuesScope, filter: myIssuesFilter ?? {} }
     : undefined;
-  const groupedIssues = useMemo(
-    () =>
-      grouping === "assignee" && assigneeGroups
-        ? assigneeGroups.flatMap((group) => group.issues)
-        : issues,
-    [assigneeGroups, grouping, issues],
-  );
+  const groupedIssues = useMemo(() => {
+    const baseIssues = grouping === "assignee" && assigneeGroups
+      ? assigneeGroups.flatMap((group) => group.issues)
+      : issues;
+
+    const issueMap = new Map<string, Issue>();
+    for (const issue of baseIssues) {
+      issueMap.set(issue.id, issue);
+    }
+
+    return baseIssues.filter((issue) => {
+      if (!issue.parent_issue_id) return true;
+      const parent = issueMap.get(issue.parent_issue_id);
+      if (!parent) return true;
+
+      const issueGroup = getIssueGroupId(issue, grouping);
+      const parentGroup = getIssueGroupId(parent, grouping);
+
+      // Hide subtask if it's in the same column as its parent
+      return issueGroup !== parentGroup;
+    });
+  }, [assigneeGroups, grouping, issues]);
+
+  const subtasksMap = useMemo(() => {
+    const baseIssues = grouping === "assignee" && assigneeGroups
+      ? assigneeGroups.flatMap((group) => group.issues)
+      : issues;
+      
+    const map = new Map<string, Issue[]>();
+    for (const issue of baseIssues) {
+      if (issue.parent_issue_id) {
+        let list = map.get(issue.parent_issue_id);
+        if (!list) {
+          list = [];
+          map.set(issue.parent_issue_id, list);
+        }
+        list.push(issue);
+      }
+    }
+    return map;
+  }, [assigneeGroups, grouping, issues]);
+
   const hydratedAssigneeGroups = useMemo(() => {
     if (grouping !== "assignee" || !assigneeGroups) return undefined;
     const order: Record<string, number> = {
@@ -429,6 +465,7 @@ export function BoardView({
                 issueMap={issueMapRef.current}
                 childProgressMap={childProgressMap}
                 projectMap={projectMap}
+                subtasksMap={subtasksMap}
                 myIssuesOpts={myIssuesOpts}
                 sort={sort}
                 projectId={projectId}
@@ -444,6 +481,7 @@ export function BoardView({
                   issueMap={issueMapRef.current}
                   childProgressMap={childProgressMap}
                   projectMap={projectMap}
+                  subtasksMap={subtasksMap}
                   queryKey={assigneeGroupQueryKey}
                   filter={assigneeGroupFilter}
                   sort={sort}
@@ -459,6 +497,7 @@ export function BoardView({
                   issueMap={issueMapRef.current}
                   childProgressMap={childProgressMap}
                   projectMap={projectMap}
+                  subtasksMap={subtasksMap}
                   projectId={projectId}
                   onCreateIssue={onCreateIssue}
                   totalCount={group.totalCount}
@@ -503,6 +542,7 @@ const PaginatedAssigneeBoardColumn = memo(function PaginatedAssigneeBoardColumn(
   issueMap,
   childProgressMap,
   projectMap,
+  subtasksMap,
   queryKey,
   filter,
   sort,
@@ -515,6 +555,7 @@ const PaginatedAssigneeBoardColumn = memo(function PaginatedAssigneeBoardColumn(
   issueMap: Map<string, Issue>;
   childProgressMap?: Map<string, ChildProgress>;
   projectMap?: Map<string, Project>;
+  subtasksMap?: Map<string, Issue[]>;
   queryKey: QueryKey;
   filter: AssigneeGroupedIssuesFilter;
   sort?: IssueSortParam;
@@ -539,6 +580,7 @@ const PaginatedAssigneeBoardColumn = memo(function PaginatedAssigneeBoardColumn(
       issueMap={issueMap}
       childProgressMap={childProgressMap}
       projectMap={projectMap}
+      subtasksMap={subtasksMap}
       totalCount={total}
       projectId={projectId}
       onCreateIssue={onCreateIssue}
@@ -558,6 +600,7 @@ const PaginatedBoardColumn = memo(function PaginatedBoardColumn({
   issueMap,
   childProgressMap,
   projectMap,
+  subtasksMap,
   myIssuesOpts,
   sort,
   projectId,
@@ -569,6 +612,7 @@ const PaginatedBoardColumn = memo(function PaginatedBoardColumn({
   issueMap: Map<string, Issue>;
   childProgressMap?: Map<string, ChildProgress>;
   projectMap?: Map<string, Project>;
+  subtasksMap?: Map<string, Issue[]>;
   myIssuesOpts?: { scope: string; filter: MyIssuesFilter };
   sort?: IssueSortParam;
   projectId?: string;
@@ -587,6 +631,7 @@ const PaginatedBoardColumn = memo(function PaginatedBoardColumn({
       issueMap={issueMap}
       childProgressMap={childProgressMap}
       projectMap={projectMap}
+      subtasksMap={subtasksMap}
       totalCount={total}
       projectId={projectId}
       onCreateIssue={onCreateIssue}

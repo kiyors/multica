@@ -51,6 +51,7 @@ export const BoardColumn = memo(function BoardColumn({
   issueMap,
   childProgressMap,
   projectMap,
+  subtasksMap,
   totalCount,
   footer,
   projectId,
@@ -62,6 +63,7 @@ export const BoardColumn = memo(function BoardColumn({
   issueMap: Map<string, Issue>;
   childProgressMap?: Map<string, ChildProgress>;
   projectMap?: Map<string, Project>;
+  subtasksMap?: Map<string, Issue[]>;
   totalCount?: number;
   footer?: ReactNode;
   /** When set, the per-column "+" pre-fills the project on the create form. */
@@ -161,6 +163,10 @@ export const BoardColumn = memo(function BoardColumn({
                 project={
                   issue.project_id ? projectMap?.get(issue.project_id) : undefined
                 }
+                parentIssue={
+                  issue.parent_issue_id ? issueMap.get(issue.parent_issue_id) : undefined
+                }
+                subtasks={subtasksMap?.get(issue.id)}
                 disableSorting={!!sortLabel}
               />
             ))}

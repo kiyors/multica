@@ -161,6 +161,12 @@ Multica is a powerful AI-native task management platform where AI agents are fir
 - [x] Replace dev terms with user-friendly alternatives where appropriate (e.g., "Runtime" → "Agent Environment")
 - [x] Update i18n keys for both `en` and `zh-CN` locales
 
+### 0.3 GitHub-Style Subtask Merging in Board View
+
+- [x] Update `BoardView` to dynamically hide subtasks that are in the same Kanban column as their parent task to prevent clutter.
+- [x] Keep progress tracking accurate on the parent task card (e.g., "2 / 2" completed subtasks).
+- [x] Ensure orphaned subtasks (in a different column from their parent) show the parent issue identifier as context.
+
 ---
 
 ## Phase 1 — Media Review Module (Video + Graphics)

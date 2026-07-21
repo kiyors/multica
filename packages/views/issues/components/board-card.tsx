@@ -1,7 +1,7 @@
 /* eslint-disable i18next/no-literal-string */
 "use client";
 
-import { useCallback, memo } from "react";
+import { useCallback, memo, useState } from "react";
 import { AppLink } from "../../navigation";
 import { useSortable, defaultAnimateLayoutChanges } from "@dnd-kit/sortable";
 import type { AnimateLayoutChanges } from "@dnd-kit/sortable";
@@ -17,6 +17,7 @@ import { useTimeAgo } from "../../i18n";
 import { ProjectIcon } from "../../projects/components/project-icon";
 import { PriorityIcon } from "./priority-icon";
 import { IssueTypeBadge } from "./issue-type-badge";
+import { StatusIcon } from "./status-icon";
 import { PriorityPicker, AssigneePicker, StartDatePicker, DueDatePicker } from "./pickers";
 import { useViewStore } from "@multica/core/issues/stores/view-store-context";
 import { ProgressRing } from "./progress-ring";
@@ -28,7 +29,7 @@ import { useIssueSurfaceActionsOptional } from "../surface/actions-context";
 import { useT } from "../../i18n";
 import { useQuery } from "@tanstack/react-query";
 import { listPendingReviewIssueIDsOptions } from "@multica/core/reviews/queries";
-import { Eye, CornerDownRight } from "lucide-react";
+import { Eye, CornerDownRight, ChevronDown } from "lucide-react";
 
 function formatDate(date: string): string {
   return formatDateOnly(date, { month: "short", day: "numeric" }, "en-US");
@@ -63,12 +64,18 @@ export const BoardCardContent = memo(function BoardCardContent({
   editable = false,
   childProgress,
   project,
+  parentIssue,
+  subtasks,
 }: {
   issue: Issue;
   editable?: boolean;
   childProgress?: ChildProgress;
   project?: Project;
+  parentIssue?: Issue;
+  subtasks?: Issue[];
 }) {
+  const p = useWorkspacePaths();
+  const [isExpanded, setIsExpanded] = useState(true);
   const { t } = useT("issues");
   const timeAgo = useTimeAgo();
   const storeProperties = useViewStore((s) => s.cardProperties);
@@ -194,8 +201,9 @@ export const BoardCardContent = memo(function BoardCardContent({
           <IssueTypeBadge issueTypeId={issue.issue_type_id} />
           <p className="text-xs text-muted-foreground truncate">{issue.identifier}</p>
           {issue.parent_issue_id && (
-            <span className="flex items-center gap-1 bg-muted/50 text-muted-foreground px-1.5 py-0.5 rounded text-[10px] font-medium ml-1">
-              <CornerDownRight className="size-3" /> Subtask
+            <span className="flex items-center gap-1 bg-muted/50 text-muted-foreground px-1.5 py-0.5 rounded text-[10px] font-medium ml-1 max-w-[120px]">
+              <CornerDownRight className="size-3 shrink-0" />
+              <span className="truncate">{parentIssue ? parentIssue.identifier : "Subtask"}</span>
             </span>
           )}
           {hasPendingReview && (
@@ -302,11 +310,23 @@ export const BoardCardContent = memo(function BoardCardContent({
                 )
               )}
               {showChildProgress && (
-                <div className="inline-flex shrink-0 items-center gap-1">
+                <div 
+                  className={`inline-flex shrink-0 items-center gap-1 ${subtasks && subtasks.length > 0 ? "cursor-pointer hover:bg-muted/50 rounded p-0.5 -m-0.5" : ""}`}
+                  onClick={(e) => {
+                    if (subtasks && subtasks.length > 0) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsExpanded(!isExpanded);
+                    }
+                  }}
+                >
                   <ProgressRing done={childProgress!.done} total={childProgress!.total} size={14} />
                   <span className="text-[11px] text-muted-foreground tabular-nums font-medium">
                     {childProgress!.done}/{childProgress!.total}
                   </span>
+                  {subtasks && subtasks.length > 0 && (
+                    <ChevronDown className={`size-3 text-muted-foreground transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                  )}
                 </div>
               )}
               {showUpdatedHint && (
@@ -316,6 +336,34 @@ export const BoardCardContent = memo(function BoardCardContent({
               )}
             </div>
           )}
+        </div>
+      )}
+      
+      {isExpanded && subtasks && subtasks.length > 0 && (
+        <div className="mt-3 flex flex-col gap-1.5 border-t border-border pt-2.5">
+          <div className="flex items-center gap-2 mb-0.5 px-0.5">
+            <div className="h-1.5 flex-1 bg-muted/60 overflow-hidden rounded-full relative">
+              <div 
+                className={`absolute left-0 top-0 h-full transition-all duration-500 ease-out ${childProgress!.done === childProgress!.total ? "bg-info" : "bg-primary"}`}
+                style={{ width: `${childProgress!.total > 0 ? Math.round((childProgress!.done / childProgress!.total) * 100) : 0}%` }}
+              />
+            </div>
+            <span className="text-[10px] text-muted-foreground font-medium tabular-nums w-8 text-right">
+              {childProgress!.total > 0 ? Math.round((childProgress!.done / childProgress!.total) * 100) : 0}%
+            </span>
+          </div>
+          {subtasks.map(subtask => (
+            <AppLink
+              key={subtask.id}
+              href={p.issueDetail(subtask.id)}
+              className="flex items-center gap-2 rounded px-1.5 py-1 text-xs hover:bg-muted/50 transition-colors"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <StatusIcon status={subtask.status} className="size-3.5 shrink-0" />
+              <span className="text-muted-foreground font-medium shrink-0">{subtask.identifier}</span>
+              <span className="truncate text-foreground">{subtask.title}</span>
+            </AppLink>
+          ))}
         </div>
       )}
     </div>
@@ -332,11 +380,15 @@ export const DraggableBoardCard = memo(function DraggableBoardCard({
   issue,
   childProgress,
   project,
+  parentIssue,
+  subtasks,
   disableSorting,
 }: {
   issue: Issue;
   childProgress?: ChildProgress;
   project?: Project;
+  parentIssue?: Issue;
+  subtasks?: Issue[];
   disableSorting?: boolean;
 }) {
   const p = useWorkspacePaths();
@@ -377,6 +429,8 @@ export const DraggableBoardCard = memo(function DraggableBoardCard({
             editable
             childProgress={childProgress}
             project={project}
+            parentIssue={parentIssue}
+            subtasks={subtasks}
           />
         </AppLink>
       </div>
