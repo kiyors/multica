@@ -984,6 +984,19 @@ WHERE i.workspace_id = $1
     )
     OR i.creator_id = $13
     OR i.assignee_id = $13
+    OR EXISTS (
+      SELECT 1 FROM issue_subscriber sub
+      WHERE sub.issue_id = i.id AND sub.user_id = $13
+    )
+    OR EXISTS (
+      SELECT 1 FROM comment c
+      WHERE c.issue_id = i.id
+        AND (c.author_id = $13 OR c.content LIKE '%%' || $13::text || '%%')
+    )
+    OR EXISTS (
+      SELECT 1 FROM review_assets ra
+      WHERE ra.issue_id = i.id AND ra.uploaded_by = $13
+    )
   )
   AND (
     $14::uuid IS NULL
@@ -1164,6 +1177,19 @@ WHERE i.workspace_id = $1
     )
     OR i.creator_id = $9
     OR i.assignee_id = $9
+    OR EXISTS (
+      SELECT 1 FROM issue_subscriber sub
+      WHERE sub.issue_id = i.id AND sub.user_id = $9
+    )
+    OR EXISTS (
+      SELECT 1 FROM comment c
+      WHERE c.issue_id = i.id
+        AND (c.author_id = $9 OR c.content LIKE '%%' || $9::text || '%%')
+    )
+    OR EXISTS (
+      SELECT 1 FROM review_assets ra
+      WHERE ra.issue_id = i.id AND ra.uploaded_by = $9
+    )
   )
   AND (
     $10::uuid IS NULL

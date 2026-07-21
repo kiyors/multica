@@ -1315,6 +1315,30 @@ func (h *Handler) CreateComment(w http.ResponseWriter, r *http.Request) {
 		h.linkAttachmentsByIDs(r.Context(), comment.ID, issue.ID, attachmentIDs)
 	}
 
+	// Auto-subscribe mentioned member users and commenter to the issue.
+	for _, m := range util.ParseMentions(req.Content) {
+		if m.Type == "member" {
+			if memberUUID, err := util.ParseUUID(m.ID); err == nil {
+				_ = h.Queries.AddIssueSubscriber(r.Context(), db.AddIssueSubscriberParams{
+					IssueID:  issue.ID,
+					UserType: "member",
+					UserID:   memberUUID,
+					Reason:   "mentioned",
+				})
+			}
+		}
+	}
+	if authorType == "member" {
+		if memberUUID, err := util.ParseUUID(authorID); err == nil {
+			_ = h.Queries.AddIssueSubscriber(r.Context(), db.AddIssueSubscriberParams{
+				IssueID:  issue.ID,
+				UserType: "member",
+				UserID:   memberUUID,
+				Reason:   "commenter",
+			})
+		}
+	}
+
 	// Fetch linked attachments so the response includes them.
 	groupedAtt := h.groupAttachments(r, []pgtype.UUID{comment.ID})
 	resp := commentToResponse(comment, nil, groupedAtt[uuidToString(comment.ID)])

@@ -682,10 +682,26 @@ func (h *Handler) loadIssueForUser(w http.ResponseWriter, r *http.Request, issue
 			if err != nil {
 				isCreator := issue.CreatorID == member.ID
 				isAssignee := issue.AssigneeID.Valid && issue.AssigneeID.Bytes == member.ID.Bytes
-				if !isCreator && !isAssignee {
-					// Do not leak existence if not accessible
-					writeError(w, http.StatusNotFound, "issue not found")
-					return db.Issue{}, false
+				isSubscribed, _ := h.Queries.IsIssueSubscriber(r.Context(), db.IsIssueSubscriberParams{
+					IssueID:  issue.ID,
+					UserType: "member",
+					UserID:   member.ID,
+				})
+				if !isCreator && !isAssignee && !isSubscribed {
+					var inCommentOrAsset bool
+					memIDStr := util.UUIDToString(member.ID)
+					_ = h.DB.QueryRow(r.Context(), `
+						SELECT EXISTS (
+							SELECT 1 FROM comment WHERE issue_id = $1 AND (author_id = $2 OR content LIKE '%' || $3 || '%')
+							UNION ALL
+							SELECT 1 FROM review_assets WHERE issue_id = $1 AND uploaded_by = $2
+						)
+					`, issue.ID, member.ID, memIDStr).Scan(&inCommentOrAsset)
+					if !inCommentOrAsset {
+						// Do not leak existence if not accessible
+						writeError(w, http.StatusNotFound, "issue not found")
+						return db.Issue{}, false
+					}
 				}
 			}
 		}

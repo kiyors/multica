@@ -399,6 +399,26 @@ func (h *Handler) CreateReviewComment(w http.ResponseWriter, r *http.Request) {
 			ReviewEndTime:   comment.EndTime,
 		})
 		if err == nil {
+			// Auto-subscribe mentioned member users and author to the issue
+			for _, m := range util.ParseMentions(req.Content) {
+				if m.Type == "member" {
+					if memberUUID, err := util.ParseUUID(m.ID); err == nil {
+						_ = h.Queries.AddIssueSubscriber(ctx, db.AddIssueSubscriberParams{
+							IssueID:  asset.IssueID,
+							UserType: "member",
+							UserID:   memberUUID,
+							Reason:   "mentioned",
+						})
+					}
+				}
+			}
+			_ = h.Queries.AddIssueSubscriber(ctx, db.AddIssueSubscriberParams{
+				IssueID:  asset.IssueID,
+				UserType: "member",
+				UserID:   requester.ID,
+				Reason:   "commenter",
+			})
+
 			h.triggerTasksForComment(ctx, issue, normalComment, nil, "member", util.UUIDToString(requester.ID), userID, nil)
 			h.publish(protocol.EventCommentCreated, workspaceID, "member", userID, map[string]any{
 				"comment": commentToResponse(normalComment, nil, nil),

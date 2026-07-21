@@ -1062,6 +1062,18 @@ func (h *Handler) ListIssues(w http.ResponseWriter, r *http.Request) {
 			)
 			OR i.creator_id = %[1]s::uuid
 			OR i.assignee_id = %[1]s::uuid
+			OR EXISTS (
+				SELECT 1 FROM issue_subscriber sub
+				WHERE sub.issue_id = i.id AND sub.user_id = %[1]s::uuid
+			)
+			OR EXISTS (
+				SELECT 1 FROM comment c
+				WHERE c.issue_id = i.id AND (c.author_id = %[1]s::uuid OR c.content LIKE '%%' || %[1]s::text || '%%')
+			)
+			OR EXISTS (
+				SELECT 1 FROM review_assets ra
+				WHERE ra.issue_id = i.id AND ra.uploaded_by = %[1]s::uuid
+			)
 		)`, addArg(member.ID)))
 	}
 	if scheduledFilter.Valid {
@@ -1648,6 +1660,18 @@ func (h *Handler) ListGroupedIssues(w http.ResponseWriter, r *http.Request) {
 			)
 			OR i.creator_id = %[1]s::uuid
 			OR i.assignee_id = %[1]s::uuid
+			OR EXISTS (
+				SELECT 1 FROM issue_subscriber sub
+				WHERE sub.issue_id = i.id AND sub.user_id = %[1]s::uuid
+			)
+			OR EXISTS (
+				SELECT 1 FROM comment c
+				WHERE c.issue_id = i.id AND (c.author_id = %[1]s::uuid OR c.content LIKE '%%' || %[1]s::text || '%%')
+			)
+			OR EXISTS (
+				SELECT 1 FROM review_assets ra
+				WHERE ra.issue_id = i.id AND ra.uploaded_by = %[1]s::uuid
+			)
 		)`, addArg(member.ID)))
 	}
 
@@ -2548,6 +2572,21 @@ func (h *Handler) CreateIssue(w http.ResponseWriter, r *http.Request) {
 		slog.Warn("create issue failed", append(logger.RequestAttrs(r), "error", err, "workspace_id", workspaceID)...)
 		writeError(w, http.StatusInternalServerError, "failed to create issue: "+err.Error())
 		return
+	}
+
+	if res.Issue.Description.Valid {
+		for _, m := range util.ParseMentions(res.Issue.Description.String) {
+			if m.Type == "member" {
+				if memberUUID, err := util.ParseUUID(m.ID); err == nil {
+					_ = h.Queries.AddIssueSubscriber(r.Context(), db.AddIssueSubscriberParams{
+						IssueID:  res.Issue.ID,
+						UserType: "member",
+						UserID:   memberUUID,
+						Reason:   "mentioned",
+					})
+				}
+			}
+		}
 	}
 
 	issue := res.Issue

@@ -27,6 +27,19 @@ WHERE i.workspace_id = $1
     )
     OR i.creator_id = sqlc.arg('member_id')
     OR i.assignee_id = sqlc.arg('member_id')
+    OR EXISTS (
+      SELECT 1 FROM issue_subscriber sub
+      WHERE sub.issue_id = i.id AND sub.user_id = sqlc.arg('member_id')
+    )
+    OR EXISTS (
+      SELECT 1 FROM comment c
+      WHERE c.issue_id = i.id
+        AND (c.author_id = sqlc.arg('member_id') OR c.content LIKE '%%' || sqlc.arg('member_id')::text || '%%')
+    )
+    OR EXISTS (
+      SELECT 1 FROM review_assets ra
+      WHERE ra.issue_id = i.id AND ra.uploaded_by = sqlc.arg('member_id')
+    )
   )
   AND (
     sqlc.narg('pending_approver_id')::uuid IS NULL
@@ -204,6 +217,19 @@ WHERE i.workspace_id = $1
     )
     OR i.creator_id = sqlc.arg('member_id')
     OR i.assignee_id = sqlc.arg('member_id')
+    OR EXISTS (
+      SELECT 1 FROM issue_subscriber sub
+      WHERE sub.issue_id = i.id AND sub.user_id = sqlc.arg('member_id')
+    )
+    OR EXISTS (
+      SELECT 1 FROM comment c
+      WHERE c.issue_id = i.id
+        AND (c.author_id = sqlc.arg('member_id') OR c.content LIKE '%%' || sqlc.arg('member_id')::text || '%%')
+    )
+    OR EXISTS (
+      SELECT 1 FROM review_assets ra
+      WHERE ra.issue_id = i.id AND ra.uploaded_by = sqlc.arg('member_id')
+    )
   )
   AND (
     sqlc.narg('pending_approver_id')::uuid IS NULL
