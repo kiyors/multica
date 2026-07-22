@@ -427,6 +427,7 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
           <Select 
             value={playbackRate.toString()} 
             onValueChange={(val) => {
+              if (!val) return;
               const speed = parseFloat(val);
               const video = mediaRef.current as HTMLVideoElement;
               if (video) video.playbackRate = speed;
