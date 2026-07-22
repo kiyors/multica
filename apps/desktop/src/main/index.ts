@@ -551,7 +551,7 @@ if (!gotTheLock) {
         },
       ) => {
         if (!Notification.isSupported()) return;
-        const notification = new Notification({ title, body });
+        const notification = new Notification({ title, body, silent: false });
         notification.on("click", () => {
           if (!mainWindow) return;
           if (mainWindow.isMinimized()) mainWindow.restore();

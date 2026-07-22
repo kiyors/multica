@@ -62,31 +62,34 @@ export function ApprovalWidget({ issueId }: { issueId: string }) {
         const isApprover = approval.approver_id === currentUserId;
         const approverName = getActorName(approval.approver_type || "member", approval.approver_id);
         return (
-          <div key={approval.id} className="flex flex-col gap-2 p-3 border rounded-md bg-yellow-50/50">
-            <div className="flex items-center gap-2 text-sm font-medium text-yellow-800">
-              <ShieldAlert className="h-4 w-4" />
+          <div key={approval.id} className="flex flex-col gap-3 p-4 border border-amber-200/60 rounded-xl bg-gradient-to-br from-amber-50/50 to-orange-50/50 shadow-sm backdrop-blur-sm transition-all hover:shadow-md">
+            <div className="flex items-center gap-2 text-sm font-semibold text-amber-900">
+              <ShieldAlert className="h-4 w-4 text-amber-600" />
               <span>Pending Approval</span>
             </div>
             {isApprover ? (
-              <div className="flex flex-col gap-2 mt-2">
+              <div className="flex flex-col gap-3 mt-1">
                 <Textarea
                   placeholder="Add a comment (optional)..."
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
-                  className="min-h-[60px] text-sm resize-none bg-background"
+                  className="min-h-[72px] text-sm resize-none bg-white/70 border-amber-200 focus-visible:ring-amber-500 shadow-inner"
                 />
                 <div className="flex gap-2">
-                  <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white flex-1" onClick={() => approveApproval.mutateAsync({ workspaceId: wsId, approvalId: approval.id, comment })}>
-                    <Check className="mr-1 h-3.5 w-3.5" /> Approve
+                  <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white flex-1 shadow-sm transition-all active:scale-95" onClick={() => approveApproval.mutateAsync({ workspaceId: wsId, approvalId: approval.id, comment })}>
+                    <Check className="mr-1.5 h-4 w-4" /> Approve
                   </Button>
-                  <Button size="sm" variant="outline" className="text-red-600 hover:bg-red-50 flex-1 border-red-200" onClick={() => rejectApproval.mutateAsync({ workspaceId: wsId, approvalId: approval.id, comment })}>
-                    <X className="mr-1 h-3.5 w-3.5" /> Reject
+                  <Button size="sm" variant="outline" className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 flex-1 border-rose-200 shadow-sm transition-all active:scale-95" onClick={() => rejectApproval.mutateAsync({ workspaceId: wsId, approvalId: approval.id, comment })}>
+                    <X className="mr-1.5 h-4 w-4" /> Reject
                   </Button>
                 </div>
               </div>
             ) : (
-              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                Waiting for <ActorAvatar actorType={approval.approver_type || "member"} actorId={approval.approver_id} size={16} /> {approverName}
+              <p className="text-xs text-amber-800/80 flex items-center gap-2 bg-amber-100/40 p-2 rounded-lg border border-amber-200/30">
+                <span className="flex-1">Waiting for review from</span>
+                <span className="flex items-center gap-1.5 font-medium text-amber-950">
+                  <ActorAvatar actorType={approval.approver_type || "member"} actorId={approval.approver_id} size={20} /> {approverName}
+                </span>
               </p>
             )}
           </div>
