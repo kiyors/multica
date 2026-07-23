@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { AlertCircle, ArrowDownToLine, Check, Loader2 } from "lucide-react";
 import { Button } from "@multica/ui/components/ui/button";
 import { useT } from "@multica/views/i18n";
@@ -8,6 +8,7 @@ type CheckState =
   | { status: "checking" }
   | { status: "up-to-date" }
   | { status: "available"; latestVersion: string }
+  | { status: "ready"; latestVersion: string }
   | { status: "error"; message: string };
 
 export function UpdatesSettingsTab() {
@@ -27,6 +28,13 @@ export function UpdatesSettingsTab() {
         ? { status: "available", latestVersion: result.latestVersion }
         : { status: "up-to-date" },
     );
+  }, []);
+
+  useEffect(() => {
+    const cleanup = window.updater.onUpdateDownloaded((info) => {
+      setState({ status: "ready", latestVersion: info.version });
+    });
+    return cleanup;
   }, []);
 
   return (
@@ -64,6 +72,12 @@ export function UpdatesSettingsTab() {
                 {t(($) => $.desktop.updates.downloading, { version: state.latestVersion })}
               </p>
             )}
+            {state.status === "ready" && (
+              <p className="text-sm text-success mt-2 inline-flex items-center gap-1.5">
+                <Check className="size-3.5" />
+                {t(($) => $.desktop.updates.ready_to_install, { version: state.latestVersion })}
+              </p>
+            )}
             {state.status === "error" && (
               <p className="text-sm text-destructive mt-2 inline-flex items-center gap-1.5">
                 <AlertCircle className="size-3.5" />
@@ -75,7 +89,7 @@ export function UpdatesSettingsTab() {
             <Button
               variant="outline"
               size="sm"
-              onClick={handleCheck}
+              onClick={state.status === "ready" ? () => window.updater.installUpdate() : handleCheck}
               disabled={state.status === "checking"}
             >
               {state.status === "checking" ? (
@@ -83,6 +97,8 @@ export function UpdatesSettingsTab() {
                   <Loader2 className="size-3.5 animate-spin" />
                   {t(($) => $.desktop.updates.checking)}
                 </>
+              ) : state.status === "ready" ? (
+                "Restart now"
               ) : (
                 t(($) => $.desktop.updates.check_now)
               )}

@@ -1183,10 +1183,10 @@ export function setupDaemonManager(
     stopPolling();
     stopLogTail();
 
+    event.preventDefault();
+
     loadPrefs().then(async (prefs) => {
       if (prefs.autoStop) {
-        isQuitting = true;
-        event.preventDefault();
         try {
           // stopDaemon no-ops for an externally-managed daemon (WSL2 etc.), so
           // this is safe and instant in that case — the guard lives there. #3916
@@ -1194,8 +1194,9 @@ export function setupDaemonManager(
         } catch {
           // Best-effort stop on quit
         }
-        app.quit();
       }
+      isQuitting = true;
+      app.quit();
     });
   });
 }

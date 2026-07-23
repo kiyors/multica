@@ -139,7 +139,7 @@ func (h *Handler) PresignReviewAssetUpload(w http.ResponseWriter, r *http.Reques
 		slog.Info("deleted stale incomplete review uploads", "count", len(staleKeys))
 	}
 	workspaceIDStr := h.resolveWorkspaceID(r)
-	requester, ok := h.requireWorkspaceRole(w, r, workspaceIDStr, "workspace not found", "owner", "admin", "member")
+	requester, ok := h.requireWorkspaceMember(w, r, workspaceIDStr, "workspace not found")
 	if !ok {
 		return
 	}
@@ -238,7 +238,7 @@ func (h *Handler) DirectUploadReviewAsset(w http.ResponseWriter, r *http.Request
 func (h *Handler) CompleteReviewAssetUpload(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	workspaceIDStr := h.resolveWorkspaceID(r)
-	_, ok := h.requireWorkspaceRole(w, r, workspaceIDStr, "workspace not found", "owner", "admin", "member")
+	_, ok := h.requireWorkspaceMember(w, r, workspaceIDStr, "workspace not found")
 	if !ok {
 		return
 	}
@@ -314,7 +314,7 @@ type CreateReviewCommentRequest struct {
 func (h *Handler) CreateReviewComment(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	workspaceIDStr := h.resolveWorkspaceID(r)
-	requester, ok := h.requireWorkspaceRole(w, r, workspaceIDStr, "workspace not found", "owner", "admin", "member")
+	requester, ok := h.requireWorkspaceMember(w, r, workspaceIDStr, "workspace not found")
 	if !ok {
 		return
 	}
@@ -568,7 +568,7 @@ func (h *Handler) DownloadReviewAsset(w http.ResponseWriter, r *http.Request) {
 	}
 
 	workspaceIDStr := uuidToString(asset.WorkspaceID)
-	if _, ok := h.requireWorkspaceRole(w, r, workspaceIDStr, "workspace not found", "owner", "admin", "member"); !ok {
+	if _, ok := h.requireWorkspaceMember(w, r, workspaceIDStr, "workspace not found"); !ok {
 		return
 	}
 
@@ -600,7 +600,7 @@ func (h *Handler) ResolveReviewComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	workspaceIDStr := h.resolveWorkspaceID(r)
-	requester, ok := h.requireWorkspaceRole(w, r, workspaceIDStr, "workspace not found", "owner", "admin", "member")
+	requester, ok := h.requireWorkspaceMember(w, r, workspaceIDStr, "workspace not found")
 	if !ok {
 		return
 	}
@@ -718,7 +718,7 @@ func (h *Handler) UpdateReviewComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	workspaceIDStr := h.resolveWorkspaceID(r)
-	requester, ok := h.requireWorkspaceRole(w, r, workspaceIDStr, "workspace not found", "owner", "admin", "member")
+	requester, ok := h.requireWorkspaceMember(w, r, workspaceIDStr, "workspace not found")
 	if !ok {
 		return
 	}
@@ -798,7 +798,7 @@ func guestReviewTokenHash(token string) []byte {
 func (h *Handler) CreateGuestReviewLink(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	workspaceID := h.resolveWorkspaceID(r)
-	requester, ok := h.requireWorkspaceRole(w, r, workspaceID, "workspace not found", "owner", "admin", "member")
+	requester, ok := h.requireWorkspaceMember(w, r, workspaceID, "workspace not found")
 	if !ok {
 		return
 	}
@@ -964,7 +964,7 @@ func (h *Handler) DeleteReviewComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	workspaceIDStr := h.resolveWorkspaceID(r)
-	requester, ok := h.requireWorkspaceRole(w, r, workspaceIDStr, "workspace not found", "owner", "admin", "member")
+	requester, ok := h.requireWorkspaceMember(w, r, workspaceIDStr, "workspace not found")
 	if !ok {
 		return
 	}
