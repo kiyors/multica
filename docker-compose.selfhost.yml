@@ -22,6 +22,9 @@ services:
   backend:
     image: ${MULTICA_BACKEND_IMAGE:-ghcr.io/kiyors/multica-backend}:${MULTICA_IMAGE_TAG:-latest}
     pull_policy: always
+    depends_on:
+      - postgres
+      - valkey
     networks:
       - dokploy-network
     labels:
@@ -33,7 +36,7 @@ services:
     volumes:
       - backend_uploads:/app/data/uploads
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgres://${POSTGRES_USER:-multica}:${POSTGRES_PASSWORD:-multica}@postgres:5432/${POSTGRES_DB:-multica}?sslmode=disable}
+      DATABASE_URL: ${DATABASE_URL:-postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable}
       PORT: "8080"
       METRICS_ADDR: ${METRICS_ADDR:-}
       JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
@@ -123,6 +126,20 @@ services:
       HOSTNAME: "0.0.0.0"
     restart: unless-stopped
 
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    networks:
+      - dokploy-network
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
   valkey:
     image: valkey/valkey:8-alpine
     restart: unless-stopped
@@ -137,4 +154,5 @@ networks:
 
 volumes:
   backend_uploads:
+  postgres_data:
   valkey_data:
