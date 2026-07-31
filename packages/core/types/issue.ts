@@ -1,4 +1,5 @@
 import type { Label } from "./label";
+import type { IssuePropertyValues } from "./property";
 
 export type IssueStatus =
   | "backlog"

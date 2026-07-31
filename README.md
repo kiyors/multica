@@ -65,7 +65,12 @@ Multica manages the full agent lifecycle: from task assignment to execution moni
 
 ## Quick Install
 
-### macOS / Linux (Homebrew - recommended)
+<details open>
+<summary><b>macOS / Linux</b></summary>
+
+<br/>
+
+### Homebrew (recommended)
 
 ```bash
 brew install multica-ai/tap/multica
@@ -73,7 +78,7 @@ brew install multica-ai/tap/multica
 
 Use `brew upgrade multica-ai/tap/multica` to keep the CLI current.
 
-### macOS / Linux (install script)
+### Install script
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/kiyors/multica/main/scripts/install.sh | bash
@@ -103,6 +108,36 @@ multica setup          # Connect to Multica Cloud, log in, start daemon
 > This pulls the official Multica images from GHCR (latest stable by default). Requires Docker. See the [Self-Hosting Guide](SELF_HOSTING.md) for details.
 > If the selected GHCR tag has not been published yet, fall back to `make selfhost-build` from a checkout.
 
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
+
+<br/>
+
+### PowerShell
+
+```powershell
+irm https://raw.githubusercontent.com/multica-ai/multica/main/scripts/install.ps1 | iex
+```
+
+Then configure, authenticate, and start the daemon in one command:
+
+```powershell
+multica setup          # Connect to Multica Cloud, log in, start daemon
+```
+
+> **Self-hosting?** Set the `MULTICA_MODE` environment variable to `with-server` before running the installer to deploy a full Multica server on your machine:
+>
+> ```powershell
+> $env:MULTICA_MODE="with-server"; irm https://raw.githubusercontent.com/multica-ai/multica/main/scripts/install.ps1 | iex
+> multica setup self-host
+> ```
+>
+> This pulls the official Multica images from GHCR (latest stable by default). Requires Docker. See the [Self-Hosting Guide](SELF_HOSTING.md) for details.
+
+</details>
+
 ---
 
 ## Getting Started
@@ -113,7 +148,7 @@ multica setup          # Connect to Multica Cloud, log in, start daemon
 multica setup           # Configure, authenticate, and start the daemon
 ```
 
-The daemon runs in the background and auto-detects agent CLIs (`claude`, `codex`, `codebuddy`, `copilot`, `opencode`, `openclaw`, `hermes`, `pi`, `cursor-agent`, `kimi`, `kiro-cli`, `agy`, `qodercli`, `traecli`) on your PATH.
+The daemon runs in the background and auto-detects agent CLIs (`claude`, `codex`, `codebuddy`, `copilot`, `opencode`, `openclaw`, `hermes`, `pi`, `cursor-agent`, `kimi`, `kiro-cli`, `agy`, `qodercli`, `qoderclicn`, `traecli`) on your PATH.
 
 ### 2. Verify your runtime
 
@@ -190,3 +225,12 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development workflow, worktr
 
 An iOS mobile client lives in [`apps/mobile/`](apps/mobile/) — see its [README](apps/mobile/README.md) for how to build it onto your own iPhone.
 
+
+## License
+
+[Multica License](LICENSE) — the complete Apache License 2.0 text incorporated together with additional conditions — see [NOTICE](NOTICE) for attribution notices.
+
+- Providing Multica as a hosted service to third parties, or embedding it in a commercially distributed product, requires a commercial license obtained from the producer (condition 1a).
+- Unless the producer has granted a written branding waiver, the Multica LOGO, product name, and copyright information may not be removed or modified in a Multica user interface. The user interface is defined by derivation — including `apps/web/`, `apps/desktop/`, `apps/mobile/`, `packages/views/`, and `packages/ui/` — and covers raw source, the frontend container image, and compiled desktop and mobile binaries (condition 1b).
+- Non-interface use (running only the `server/` backend, the daemon, or the CLI) is exempt from the branding condition, but must retain the source and [NOTICE](NOTICE) attribution and state that the product is built on Multica, with a link back to this repository (condition 1c).
+- A branding waiver and a commercial license are separate grants; neither implies the other (condition 1d).

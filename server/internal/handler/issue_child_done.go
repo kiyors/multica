@@ -125,6 +125,15 @@ func (h *Handler) notifyParentOfChildDone(ctx context.Context, prev, issue db.Is
 		return
 	}
 	staged := siblingsAreStaged(children)
+	// When the set is staged and the barrier closed, the completed child is
+	// guaranteed to carry a stage (stageBarrierClosed returns false for an
+	// unstaged completed child in a staged set), so issue.Stage.Int32 is safe.
+	var closedStage int32
+	if staged {
+		closedStage = issue.Stage.Int32
+	}
+	h.postChildDoneComment(ctx, parent, issue, children, staged, closedStage, false)
+}
 
 	prefix := h.getIssuePrefixForIssue(ctx, issue.WorkspaceID, issue.ProjectID)
 	identifier := prefix + "-" + strconv.Itoa(int(issue.Number))
@@ -138,22 +147,32 @@ func (h *Handler) notifyParentOfChildDone(ctx context.Context, prev, issue db.Is
 	mentionPrefix := h.buildParentAssigneeMention(ctx, parent)
 
 	var content string
-	// When the set is staged and the barrier closed, the completed child is
-	// guaranteed to carry a stage (stageBarrierClosed returns false for an
-	// unstaged completed child in a staged set), so issue.Stage.Int32 is safe.
 	if staged {
-		closedStage := issue.Stage.Int32
 		summary, nextStage := stageProgressSummary(children, closedStage)
 		advance := stageAdvanceInstruction(nextStage, parentID)
-		content = fmt.Sprintf(
-			"%sStage %d of this issue is complete — its last sub-issue [%s](mention://issue/%s) — \"%s\" — just finished. Stage progress — %s.%s",
-			mentionPrefix, closedStage, identifier, childID, title, summary, advance,
-		)
+		if batch {
+			content = fmt.Sprintf(
+				"%sStage %d of this issue is complete — its sub-issues just finished together in a batch update, most recently [%s](mention://issue/%s) — \"%s\". Stage progress — %s.%s",
+				mentionPrefix, closedStage, identifier, childID, title, summary, advance,
+			)
+		} else {
+			content = fmt.Sprintf(
+				"%sStage %d of this issue is complete — its last sub-issue [%s](mention://issue/%s) — \"%s\" — just finished. Stage progress — %s.%s",
+				mentionPrefix, closedStage, identifier, childID, title, summary, advance,
+			)
+		}
 	} else {
-		content = fmt.Sprintf(
-			"%sAll sub-issues are complete — the last one, [%s](mention://issue/%s) — \"%s\", just finished. Continue the parent: synthesize the children's results and move it forward, or close it out if nothing remains.",
-			mentionPrefix, identifier, childID, title,
-		)
+		if batch {
+			content = fmt.Sprintf(
+				"%sAll sub-issues are complete — they just finished together in a batch update, most recently [%s](mention://issue/%s) — \"%s\". Continue the parent: synthesize the children's results and move it forward, or — if nothing remains — run `multica issue status %s in_review` to mark the parent ready for review.",
+				mentionPrefix, identifier, childID, title, parentID,
+			)
+		} else {
+			content = fmt.Sprintf(
+				"%sAll sub-issues are complete — the last one, [%s](mention://issue/%s) — \"%s\", just finished. Continue the parent: synthesize the children's results and move it forward, or — if nothing remains — run `multica issue status %s in_review` to mark the parent ready for review.",
+				mentionPrefix, identifier, childID, title, parentID,
+			)
+		}
 	}
 
 	// author_type='system', author_id=zero UUID. The zero UUID is a valid 16
@@ -315,7 +334,7 @@ func stageAdvanceInstruction(nextStage int32, parentID string) string {
 			nextStage, parentID, nextStage,
 		)
 	}
-	return " Completing this stage does not mean the whole issue is done. Decide whether the issue is actually complete — if so, wrap up the parent (synthesize the results and move it forward, or close it out) — or whether the next stage still needs to be created, in which case create that stage and its sub-issues now."
+	return fmt.Sprintf(" Completing this stage does not mean the whole issue is done. Decide whether the issue is actually complete — if so, synthesize the results and run `multica issue status %s in_review` to mark the parent ready for review — or whether the next stage still needs to be created, in which case create that stage and its sub-issues now.", parentID)
 }
 
 // sanitizeChildTitleForSystemComment removes mention-style markdown from a

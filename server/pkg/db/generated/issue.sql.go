@@ -378,7 +378,13 @@ func (q *Queries) CreateIssueWithOrigin(ctx context.Context, arg CreateIssueWith
 }
 
 const deleteIssue = `-- name: DeleteIssue :exec
-DELETE FROM issue WHERE id = $1 AND workspace_id = $2
+WITH target AS (
+    SELECT issue.id FROM issue WHERE issue.id = $1 AND issue.workspace_id = $2
+),
+cleared_vcs_pr_links AS (
+    DELETE FROM issue_vcs_pull_request WHERE issue_id IN (SELECT target.id FROM target)
+)
+DELETE FROM issue WHERE issue.id IN (SELECT target.id FROM target)
 `
 
 type DeleteIssueParams struct {
@@ -391,6 +397,17 @@ type DeleteIssueParams struct {
 // (loadIssueForUser / GetIssueInWorkspace) already enforce membership today,
 // but a future loader bypass or a new caller skipping the loader would be
 // silently catastrophic without this guard. See incident #1661.
+//
+// issue_vcs_pull_request (migration 213) has no FK to issue, so the link rows
+// are not cascaded away. Sweep them here so they go atomically with the issue.
+// The mirrored PR rows themselves belong to the connection, not the issue, so
+// they persist (matching the GitHub link behaviour).
+//
+// The sweep MUST route through the same workspace-checked target as the issue
+// delete: deleting links by bare issue_id would drop another tenant's link rows
+// when a caller passes a foreign issue_id with its own workspace_id (the issue
+// itself is correctly untouched, but the links are already gone) — the exact
+// cross-tenant leak the #1661 guard above exists to prevent.
 func (q *Queries) DeleteIssue(ctx context.Context, arg DeleteIssueParams) error {
 	_, err := q.db.Exec(ctx, deleteIssue, arg.ID, arg.WorkspaceID)
 	return err
@@ -723,6 +740,25 @@ func (q *Queries) GetIssueByOrigin(ctx context.Context, arg GetIssueByOriginPara
 	return i, err
 }
 
+const getIssueGCStatus = `-- name: GetIssueGCStatus :one
+SELECT workspace_id, status, updated_at
+FROM issue
+WHERE id = $1
+`
+
+type GetIssueGCStatusRow struct {
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	Status      string             `json:"status"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) GetIssueGCStatus(ctx context.Context, id pgtype.UUID) (GetIssueGCStatusRow, error) {
+	row := q.db.QueryRow(ctx, getIssueGCStatus, id)
+	var i GetIssueGCStatusRow
+	err := row.Scan(&i.WorkspaceID, &i.Status, &i.UpdatedAt)
+	return i, err
+}
+
 const getIssueInWorkspace = `-- name: GetIssueInWorkspace :one
 SELECT id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, issue_type_id, milestone_id FROM issue
 WHERE id = $1 AND workspace_id = $2
@@ -961,10 +997,48 @@ func (q *Queries) ListIssueAssignees(ctx context.Context, issueID pgtype.UUID) (
 	return items, nil
 }
 
+const listIssueGCStatuses = `-- name: ListIssueGCStatuses :many
+SELECT id, status, updated_at
+FROM issue
+WHERE workspace_id = $1
+  AND id = ANY($2::uuid[])
+`
+
+type ListIssueGCStatusesParams struct {
+	WorkspaceID pgtype.UUID   `json:"workspace_id"`
+	IssueIds    []pgtype.UUID `json:"issue_ids"`
+}
+
+type ListIssueGCStatusesRow struct {
+	ID        pgtype.UUID        `json:"id"`
+	Status    string             `json:"status"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) ListIssueGCStatuses(ctx context.Context, arg ListIssueGCStatusesParams) ([]ListIssueGCStatusesRow, error) {
+	rows, err := q.db.Query(ctx, listIssueGCStatuses, arg.WorkspaceID, arg.IssueIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListIssueGCStatusesRow{}
+	for rows.Next() {
+		var i ListIssueGCStatusesRow
+		if err := rows.Scan(&i.ID, &i.Status, &i.UpdatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listIssues = `-- name: ListIssues :many
 SELECT i.id, i.workspace_id, i.title, i.description, i.status, i.priority,
        i.assignee_type, i.assignee_id, i.creator_type, i.creator_id,
-       i.parent_issue_id, i.position, i.start_date, i.due_date, i.created_at, i.updated_at, i.number, i.project_id, i.metadata, i.stage
+       i.parent_issue_id, i.position, i.start_date, i.due_date, i.created_at, i.updated_at, i.number, i.project_id, i.metadata, i.stage, i.properties
 FROM issue i
 WHERE i.workspace_id = $1
   AND ($4::text IS NULL OR i.status = $4)
@@ -1090,6 +1164,7 @@ type ListIssuesRow struct {
 	ProjectID     pgtype.UUID        `json:"project_id"`
 	Metadata      []byte             `json:"metadata"`
 	Stage         pgtype.Int4        `json:"stage"`
+	Properties    []byte             `json:"properties"`
 }
 
 // involves_user_id widens the assignee filter to surface issues where the user
@@ -1144,6 +1219,7 @@ func (q *Queries) ListIssues(ctx context.Context, arg ListIssuesParams) ([]ListI
 			&i.ProjectID,
 			&i.Metadata,
 			&i.Stage,
+			&i.Properties,
 		); err != nil {
 			return nil, err
 		}
@@ -1158,7 +1234,7 @@ func (q *Queries) ListIssues(ctx context.Context, arg ListIssuesParams) ([]ListI
 const listOpenIssues = `-- name: ListOpenIssues :many
 SELECT i.id, i.workspace_id, i.title, i.description, i.status, i.priority,
        i.assignee_type, i.assignee_id, i.creator_type, i.creator_id,
-       i.parent_issue_id, i.position, i.start_date, i.due_date, i.created_at, i.updated_at, i.number, i.project_id, i.metadata, i.stage
+       i.parent_issue_id, i.position, i.start_date, i.due_date, i.created_at, i.updated_at, i.number, i.project_id, i.metadata, i.stage, i.properties
 FROM issue i
 WHERE i.workspace_id = $1
   AND i.status NOT IN ('done', 'cancelled')
@@ -1168,6 +1244,11 @@ WHERE i.workspace_id = $1
   AND ($5::uuid IS NULL OR i.creator_id = $5)
   AND ($6::uuid IS NULL OR i.project_id = $6)
   AND ($7::jsonb IS NULL OR i.metadata @> $7::jsonb)
+  -- properties_filter is a jsonb array of groups, each group an array of
+  -- containment patterns (built by parsePropertiesFilterParam): the issue
+  -- must match at least one pattern from EVERY group (AND of ORs). The
+  -- correlated form skips the GIN index, which is fine here: open_only is
+  -- an unpaginated workspace scan already narrowed by status.
   AND (
     i.project_id IS NULL
     OR $8::boolean = true
@@ -1270,6 +1351,7 @@ type ListOpenIssuesRow struct {
 	ProjectID     pgtype.UUID        `json:"project_id"`
 	Metadata      []byte             `json:"metadata"`
 	Stage         pgtype.Int4        `json:"stage"`
+	Properties    []byte             `json:"properties"`
 }
 
 // See ListIssues for the semantics of involves_user_id (mirrors the 4-branch
@@ -1316,6 +1398,7 @@ func (q *Queries) ListOpenIssues(ctx context.Context, arg ListOpenIssuesParams) 
 			&i.ProjectID,
 			&i.Metadata,
 			&i.Stage,
+			&i.Properties,
 		); err != nil {
 			return nil, err
 		}

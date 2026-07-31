@@ -164,6 +164,10 @@ export const ProjectSchema = z.object({
   priority: z.string(),
   lead_type: z.string().nullable(),
   lead_id: z.string().nullable(),
+  // .default(null) so a project from an older backend that omits these keys
+  // parses to null instead of degrading the batch to the empty fallback.
+  start_date: z.string().nullable().default(null),
+  due_date: z.string().nullable().default(null),
   created_at: z.string(),
   updated_at: z.string(),
   issue_count: z.number().default(0),
@@ -197,6 +201,8 @@ export const EMPTY_PROJECT: Project = {
   priority: "none",
   lead_type: null,
   lead_id: null,
+  start_date: null,
+  due_date: null,
   created_at: "",
   updated_at: "",
   issue_count: 0,
@@ -247,6 +253,10 @@ export const ChatSessionSchema: z.ZodType<ChatSession> = z.object({
   // unknown server values fall back to "active" so the row still renders.
   status: z.enum(["active", "archived"]).catch("active"),
   has_unread: z.boolean().default(false),
+  // Unread assistant messages after the read cursor. Optional (not defaulted)
+  // so the badge math can tell "older server didn't send it" from a real 0 —
+  // the tab badge sums `unread_count ?? 0`, same rule as web's sidebar.
+  unread_count: z.number().optional(),
   created_at: z.string().default(""),
   updated_at: z.string().default(""),
 }).loose();
@@ -270,6 +280,15 @@ export const ChatMessageSchema: z.ZodType<ChatMessage> = z.object({
   attachments: z.array(AttachmentSchema).optional(),
   failure_reason: z.string().nullable().optional(),
   elapsed_ms: z.number().nullable().optional(),
+  message_kind: z.enum(["message", "no_response"]).catch("message").optional(),
+  // One malformed optional suggestion must not erase an otherwise valid
+  // conversation. The server validates these too; this is mixed-version and
+  // corrupted-cache defense at the mobile boundary.
+  quick_actions: z.array(z.object({
+    label: z.string(),
+    prompt: z.string(),
+    primary: z.boolean().optional(),
+  }).loose()).catch([]).optional().default([]),
 }).loose();
 
 export const ChatMessageListSchema = z.array(ChatMessageSchema).default([]);
@@ -686,6 +705,7 @@ export const EMPTY_ISSUE_FALLBACK: import("@multica/core/types").Issue = {
   start_date: null,
   due_date: null,
   metadata: {},
+  properties: {},
   created_at: "",
   updated_at: "",
 };

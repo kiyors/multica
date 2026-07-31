@@ -632,235 +632,156 @@ func TestAcquireLocalDirectoryLock_CancelDuringWait(t *testing.T) {
 	}
 }
 
+func TestAcquireLocalDirectoryLock_ParentCancellationReportsWaitFailure(t *testing.T) {
+	t.Parallel()
 
-// TestLocalDirectoryRefModeDefaults pins the daemon-side helpers so a
-// missing mode / max_parallel silently reads as in_place / the default,
-// keeping backwards compatibility with rows written before MUL-3483.
-func TestLocalDirectoryRefModeDefaults(t *testing.T) {
-	cases := []struct {
-		name string
-		ref  localDirectoryRef
-		mode string
-		max  int
-	}{
-		{"empty mode → in_place", localDirectoryRef{}, "in_place", defaultWorktreePoolMaxParallel},
-		{"explicit in_place", localDirectoryRef{Mode: "in_place"}, "in_place", defaultWorktreePoolMaxParallel},
-		{"worktree_pool", localDirectoryRef{Mode: "worktree_pool"}, "worktree_pool", defaultWorktreePoolMaxParallel},
-		{"custom max", localDirectoryRef{Mode: "worktree_pool", MaxParallel: 8}, "worktree_pool", 8},
-		{"negative max clamped", localDirectoryRef{Mode: "worktree_pool", MaxParallel: -1}, "worktree_pool", defaultWorktreePoolMaxParallel},
+	dir := t.TempDir()
+	realDir, err := filepath.EvalSymlinks(dir)
+	if err != nil {
+		t.Fatalf("evalsymlinks: %v", err)
 	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			if got := tc.ref.modeOrDefault(); got != tc.mode {
-				t.Errorf("modeOrDefault = %q, want %q", got, tc.mode)
+
+	parked := make(chan struct{}, 1)
+	var failCalls atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		switch {
+		case strings.HasSuffix(req.URL.Path, "/wait-local-directory"):
+			select {
+			case parked <- struct{}{}:
+			default:
 			}
-			if got := tc.ref.maxParallelOrDefault(); got != tc.max {
-				t.Errorf("maxParallelOrDefault = %d, want %d", got, tc.max)
+			w.WriteHeader(http.StatusOK)
+		case strings.HasSuffix(req.URL.Path, "/status"):
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"status":"running"}`))
+		case strings.HasSuffix(req.URL.Path, "/fail"):
+			failCalls.Add(1)
+			w.WriteHeader(http.StatusOK)
+		default:
+			t.Errorf("unexpected daemon call: %s %s", req.Method, req.URL.Path)
+			w.WriteHeader(http.StatusOK)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	const daemonID = "d-test"
+	locker := NewLocalPathLocker()
+	release, err := locker.Acquire(context.Background(), realDir, "task-holder", nil)
+	if err != nil {
+		t.Fatalf("preclaim acquire: %v", err)
+	}
+	t.Cleanup(release)
+
+	d := &Daemon{
+		client:             NewClient(srv.URL),
+		logger:             slog.Default(),
+		localPathLocks:     locker,
+		cancelPollInterval: time.Hour,
+		cfg:                Config{DaemonID: daemonID},
+	}
+	ref, err := json.Marshal(localDirectoryRef{LocalPath: dir, DaemonID: daemonID})
+	if err != nil {
+		t.Fatalf("marshal ref: %v", err)
+	}
+	task := Task{
+		ID: "task-waiter",
+		ProjectResources: []ProjectResourceData{
+			{ID: "r1", ResourceType: localDirectoryResourceType, ResourceRef: ref},
+		},
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	type result struct {
+		release func()
+		abort   bool
+	}
+	done := make(chan result, 1)
+	go func() {
+		rel, abort := d.acquireLocalDirectoryLockIfNeeded(ctx, task, slog.Default())
+		done <- result{release: rel, abort: abort}
+	}()
+
+	select {
+	case <-parked:
+		cancel()
+	case <-time.After(2 * time.Second):
+		t.Fatal("task never entered local_directory wait")
+	}
+
+	select {
+	case got := <-done:
+		if !got.abort {
+			t.Fatal("expected abort=true after parent cancellation")
+		}
+		if got.release != nil {
+			t.Fatal("expected nil release after parent cancellation")
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("acquireLocalDirectoryLockIfNeeded did not return after parent cancellation")
+	}
+
+	if got := failCalls.Load(); got != 1 {
+		t.Fatalf("fail callback calls = %d, want 1", got)
+	}
+}
+
+func TestAcquireLocalDirectoryLock_EarlyFailureReportsWithCancelledParent(t *testing.T) {
+	t.Parallel()
+
+	var failCalls atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if !strings.HasSuffix(req.URL.Path, "/fail") {
+			t.Errorf("unexpected daemon call: %s %s", req.Method, req.URL.Path)
+		}
+		failCalls.Add(1)
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(srv.Close)
+
+	const daemonID = "d-test"
+	d := &Daemon{
+		client:         NewClient(srv.URL),
+		logger:         slog.Default(),
+		localPathLocks: NewLocalPathLocker(),
+		cfg:            Config{DaemonID: daemonID},
+	}
+	missingPathRef, err := json.Marshal(localDirectoryRef{
+		LocalPath: filepath.Join(t.TempDir(), "missing"),
+		DaemonID:  daemonID,
+	})
+	if err != nil {
+		t.Fatalf("marshal ref: %v", err)
+	}
+	tests := []struct {
+		name string
+		ref  json.RawMessage
+	}{
+		{name: "resource resolution", ref: json.RawMessage(`{not-json`)},
+		{name: "path validation", ref: missingPathRef},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			task := Task{
+				ID: "task-invalid-local-directory",
+				ProjectResources: []ProjectResourceData{
+					{ID: "r1", ResourceType: localDirectoryResourceType, ResourceRef: tc.ref},
+				},
+			}
+
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+			release, abort := d.acquireLocalDirectoryLockIfNeeded(ctx, task, slog.Default())
+			if !abort {
+				t.Fatal("expected local_directory failure to abort task")
+			}
+			if release != nil {
+				t.Fatal("expected nil release on local_directory failure")
 			}
 		})
 	}
-}
-
-// TestDefaultWorktreePoolRoot pins the fallback path we compose when the
-// ref left pool_root blank. Placing the pool alongside the base repo
-// (rather than inside it) prevents pool worktrees from ever showing up
-// in the parent's `git status`.
-func TestDefaultWorktreePoolRoot(t *testing.T) {
-	got := defaultWorktreePoolRoot("/home/u/code/proj")
-	want := filepath.Join("/home/u/code", ".multica-worktrees", "proj")
-	if got != want {
-		t.Errorf("defaultWorktreePoolRoot = %q, want %q", got, want)
+	if got := failCalls.Load(); got != int32(len(tests)) {
+		t.Fatalf("fail callback calls = %d, want %d", got, len(tests))
 	}
-}
-
-
-// TestAcquireLocalDirectory_WorktreePoolPublishesLease is the plumbing
-// regression guard flagged in the PR #4986 review: acquire the pool
-// mode against a real git repo, verify the lease published to
-// `d.localLeases` matches the freshly allocated worktree (so `runTask`
-// feeds the pool path — NOT the base path — into
-// `execenv.PrepareParams.LocalWorkDir`), and confirm release clears the
-// lease along with the on-disk worktree.
-//
-// The subtle-but-important contract this test pins:
-//
-//  1. runTask reads the lease via `d.localLeases.Load(task.ID)`;
-//  2. It uses `lease.WorkDir` as `prepParams.LocalWorkDir`;
-//  3. A future refactor that drops the Store call, mistypes the key,
-//     or swaps in the base assignment.AbsPath would leave the agent
-//     running in the shared tree even though a worktree was created —
-//     silently defeating the whole point of worktree_pool mode. This
-//     test catches all three regressions in one shot.
-func TestAcquireLocalDirectory_WorktreePoolPublishesLease(t *testing.T) {
-	// A real git repo is required — `git worktree add` refuses
-	// against a non-repo path, and validating the lease shape means
-	// we have to actually allocate. initGitRepo skips the test
-	// gracefully when git is missing from PATH.
-	base := t.TempDir()
-	initGitRepo(t, base)
-
-	const daemonID = "d-worktree-pool"
-	poolRoot := t.TempDir()
-	ref := localDirectoryRef{
-		LocalPath:   base,
-		DaemonID:    daemonID,
-		Mode:        localDirectoryModeWorktreePool,
-		PoolRoot:    poolRoot,
-		MaxParallel: 4,
-	}
-	raw, err := json.Marshal(ref)
-	if err != nil {
-		t.Fatalf("marshal ref: %v", err)
-	}
-	resources := []ProjectResourceData{{
-		ID:           "r-wp",
-		ResourceType: localDirectoryResourceType,
-		ResourceRef:  raw,
-	}}
-	const taskID = "task-lease-plumbing"
-	task := Task{ID: taskID, ProjectResources: resources}
-
-	d := &Daemon{
-		cfg:                Config{DaemonID: daemonID},
-		client:             newLeaseTestClient(),
-		localPathLocks:     NewLocalPathLocker(),
-		worktreePool:       NewWorktreePoolManager(discardLogger()),
-		logger:             slog.Default(),
-		cancelPollInterval: 50 * time.Millisecond,
-	}
-
-	// Pre-condition: no lease yet.
-	if _, ok := d.localLeases.Load(taskID); ok {
-		t.Fatal("lease unexpectedly present before Acquire")
-	}
-
-	release, abort := d.acquireLocalDirectoryLockIfNeeded(context.Background(), task, slog.Default())
-	if abort {
-		t.Fatal("Acquire aborted unexpectedly")
-	}
-	if release == nil {
-		t.Fatal("Acquire returned nil release")
-	}
-
-	// Contract 1: lease is present under the task ID.
-	raw2, ok := d.localLeases.Load(taskID)
-	if !ok {
-		t.Fatal("lease missing after Acquire — runTask would fall back to base path")
-	}
-	lease, ok := raw2.(localDirectoryLease)
-	if !ok {
-		t.Fatalf("lease has wrong type: %T", raw2)
-	}
-
-	// Contract 2: mode is worktree_pool so downstream branching
-	// (result reporting / GC meta) can tell them apart.
-	if lease.Mode != localDirectoryModeWorktreePool {
-		t.Errorf("lease.Mode = %q, want %q", lease.Mode, localDirectoryModeWorktreePool)
-	}
-
-	// Contract 3: WorkDir points at a fresh directory UNDER pool_root
-	// (not at the base repo). This is the exact value runTask feeds
-	// into execenv.PrepareParams.LocalWorkDir — see daemon.go's
-	// `if localLease != nil && localLease.WorkDir != ""` branch.
-	if lease.WorkDir == "" {
-		t.Fatal("lease.WorkDir empty — runTask would fall back to base path")
-	}
-	if lease.WorkDir == base {
-		t.Fatalf("lease.WorkDir == base %q (pool mode collapsed to in_place)", base)
-	}
-	if rel, err := filepath.Rel(poolRoot, lease.WorkDir); err != nil || rel == "" || rel == "." || strings.HasPrefix(rel, "..") {
-		t.Fatalf("lease.WorkDir %q is not under pool_root %q (rel=%q, err=%v)", lease.WorkDir, poolRoot, rel, err)
-	}
-	if _, err := os.Stat(lease.WorkDir); err != nil {
-		t.Fatalf("lease.WorkDir %q does not exist on disk: %v", lease.WorkDir, err)
-	}
-
-	// Contract 4: branch matches multica/<task-uuid> — pinned here so
-	// a rename in the pool manager can't drift silently from what the
-	// server-side CompleteTask flow may want to inspect later.
-	if want := "multica/" + taskID; lease.Branch != want {
-		t.Errorf("lease.Branch = %q, want %q", lease.Branch, want)
-	}
-
-	release()
-
-	// Post-condition: lease cleared, worktree removed (clean tree,
-	// no dirty files means clean-remove path fires).
-	if _, ok := d.localLeases.Load(taskID); ok {
-		t.Fatal("lease unexpectedly still present after release")
-	}
-	if _, err := os.Stat(lease.WorkDir); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("worktree %q not removed after release (stat err=%v)", lease.WorkDir, err)
-	}
-}
-
-// TestAcquireLocalDirectory_InPlaceAlsoPublishesLease covers the paired
-// contract for the default mode: even though in_place doesn't change
-// what runTask fed to LocalWorkDir historically, publishing a lease
-// keyed by task ID unifies the runTask lookup path and prevents a
-// future refactor from special-casing one mode over the other. Pinning
-// it here means anyone editing acquireLocalDirectoryInPlace who forgets
-// the Store call will fail this test rather than silently break the
-// runTask branch that reads the map.
-func TestAcquireLocalDirectory_InPlaceAlsoPublishesLease(t *testing.T) {
-	const daemonID = "d-in-place"
-	tmp := t.TempDir()
-	ref := localDirectoryRef{LocalPath: tmp, DaemonID: daemonID}
-	raw, err := json.Marshal(ref)
-	if err != nil {
-		t.Fatalf("marshal ref: %v", err)
-	}
-	resources := []ProjectResourceData{{
-		ID:           "r-inplace",
-		ResourceType: localDirectoryResourceType,
-		ResourceRef:  raw,
-	}}
-	const taskID = "task-in-place-plumbing"
-	task := Task{ID: taskID, ProjectResources: resources}
-
-	d := &Daemon{
-		cfg:                Config{DaemonID: daemonID},
-		client:             newLeaseTestClient(),
-		localPathLocks:     NewLocalPathLocker(),
-		worktreePool:       NewWorktreePoolManager(discardLogger()),
-		logger:             slog.Default(),
-		cancelPollInterval: 50 * time.Millisecond,
-	}
-	release, abort := d.acquireLocalDirectoryLockIfNeeded(context.Background(), task, slog.Default())
-	if abort {
-		t.Fatal("Acquire aborted unexpectedly")
-	}
-	if release == nil {
-		t.Fatal("Acquire returned nil release")
-	}
-	defer release()
-
-	raw2, ok := d.localLeases.Load(taskID)
-	if !ok {
-		t.Fatal("lease missing after in_place Acquire")
-	}
-	lease := raw2.(localDirectoryLease)
-	if lease.Mode != localDirectoryModeInPlace {
-		t.Errorf("lease.Mode = %q, want %q", lease.Mode, localDirectoryModeInPlace)
-	}
-	if lease.WorkDir != filepath.Clean(tmp) {
-		t.Errorf("lease.WorkDir = %q, want %q (base path)", lease.WorkDir, filepath.Clean(tmp))
-	}
-	if lease.Branch != "" {
-		t.Errorf("lease.Branch = %q, want empty for in_place mode", lease.Branch)
-	}
-}
-
-// newLeaseTestClient stubs the daemon Client just enough for
-// acquireLocalDirectory paths to run without a live server. Only the
-// endpoints acquire may hit on the fast paths under test are wired up;
-// anything else on the client remains zero-valued and will panic if the
-// test ever expands into a code path that touches it (that's a good
-// signal to add an explicit stub).
-func newLeaseTestClient() *Client {
-	// The Acquire fast path in either mode does NOT need to talk to
-	// the server (no wait, no cancel poll, no MarkTaskWaitingLocalDirectory).
-	// Point the client at a placeholder URL so any accidental HTTP dial
-	// fails fast rather than blocking test cleanup.
-	return NewClient("http://127.0.0.1:0")
 }

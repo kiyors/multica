@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"reflect"
 	"strings"
 	"testing"
@@ -164,6 +165,52 @@ func TestDerivePRState(t *testing.T) {
 	}
 }
 
+func TestIssuePullRequestResponseHidesUnavailableSnapshot(t *testing.T) {
+	fetchedAt := pgtype.Timestamptz{Time: time.Now(), Valid: true}
+	row := db.ListPullRequestsByIssueRow{
+		State:               "open",
+		HeadSha:             "B",
+		SnapshotHeadSha:     "A",
+		SnapshotFetchedAt:   fetchedAt,
+		ApiMergeable:        pgtype.Text{String: "CONFLICTING", Valid: true},
+		ApiMergeStateStatus: pgtype.Text{String: "DIRTY", Valid: true},
+		ChecksRollupState:   pgtype.Text{String: "FAILURE", Valid: true},
+		ChecksTotal:         1,
+		ChecksFailed:        1,
+		FailedCheckNames:    []string{"backend"},
+	}
+
+	// A synchronize webhook moved the row to B while the last stored snapshot
+	// still belongs to A. Old data must not be presented as fresh B data.
+	resp := issuePullRequestRowToResponse(row, true)
+	if resp.SnapshotAvailable == nil || *resp.SnapshotAvailable {
+		t.Fatal("mismatched-head snapshot must be marked unavailable")
+	}
+	if resp.Mergeable != nil || resp.ChecksRollup != nil || resp.ChecksFailed != 0 {
+		t.Fatalf("mismatched-head snapshot leaked into response: %+v", resp)
+	}
+
+	// Even a current stored snapshot is hidden when no App private key is
+	// configured. This covers deployments that disable the feature after data
+	// was already written.
+	row.SnapshotHeadSha = "B"
+	resp = issuePullRequestRowToResponse(row, false)
+	if resp.SnapshotAvailable == nil || *resp.SnapshotAvailable {
+		t.Fatal("disabled snapshot feature must be marked unavailable")
+	}
+	if resp.Mergeable != nil || resp.ChecksRollup != nil || resp.ChecksFailed != 0 {
+		t.Fatalf("disabled feature exposed last-known snapshot: %+v", resp)
+	}
+
+	resp = issuePullRequestRowToResponse(row, true)
+	if resp.SnapshotAvailable == nil || !*resp.SnapshotAvailable {
+		t.Fatal("enabled current-head snapshot must be available")
+	}
+	if resp.Mergeable == nil || *resp.Mergeable != "conflicting" || resp.ChecksFailed != 1 {
+		t.Fatalf("current snapshot was not exposed: %+v", resp)
+	}
+}
+
 func TestVerifyWebhookSignature(t *testing.T) {
 	secret := "shared-secret"
 	body := []byte(`{"action":"opened"}`)
@@ -196,6 +243,9 @@ func TestStateRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("signState: %v", err)
 	}
+	if parts := strings.Split(tok, "."); len(parts) != 3 {
+		t.Fatalf("default return state has %d parts, want legacy 3-part format", len(parts))
+	}
 	got, ok := verifyState(tok)
 	if !ok {
 		t.Fatal("verifyState rejected a freshly-signed token")
@@ -215,6 +265,103 @@ func TestStateRoundTrip(t *testing.T) {
 	t.Setenv("GITHUB_WEBHOOK_SECRET", "different")
 	if _, ok := verifyState(tok); ok {
 		t.Error("token signed with old secret should fail under a new one")
+	}
+}
+
+func TestStateRoundTripWithRepositoryReturnTarget(t *testing.T) {
+	t.Setenv("GITHUB_WEBHOOK_SECRET", "test-secret-123")
+	wsID := "11111111-2222-3333-4444-555555555555"
+
+	tok, err := signStateForReturn(wsID, githubReturnToRepositories)
+	if err != nil {
+		t.Fatalf("signStateForReturn: %v", err)
+	}
+	if parts := strings.Split(tok, "."); len(parts) != 4 {
+		t.Fatalf("repository return state has %d parts, want 4", len(parts))
+	}
+	gotWorkspaceID, gotReturnTo, ok := verifyStateWithReturn(tok)
+	if !ok {
+		t.Fatal("verifyStateWithReturn rejected a freshly-signed token")
+	}
+	if gotWorkspaceID != wsID || gotReturnTo != githubReturnToRepositories {
+		t.Errorf(
+			"verifyStateWithReturn() = (%q, %q), want (%q, %q)",
+			gotWorkspaceID,
+			gotReturnTo,
+			wsID,
+			githubReturnToRepositories,
+		)
+	}
+
+	tampered := strings.Replace(tok, ".repositories.", ".github.", 1)
+	if _, _, ok := verifyStateWithReturn(tampered); ok {
+		t.Error("tampered return target should fail verification")
+	}
+}
+
+func TestGitHubConnectRepositoryReturnTarget(t *testing.T) {
+	t.Setenv("GITHUB_APP_SLUG", "multica-test")
+	t.Setenv("GITHUB_WEBHOOK_SECRET", "test-secret-123")
+	wsID := "11111111-2222-3333-4444-555555555555"
+
+	req := httptest.NewRequest(
+		http.MethodGet,
+		"/api/workspaces/"+wsID+"/github/connect?return_to=repositories",
+		nil,
+	)
+	req = withURLParam(req, "id", wsID)
+	rec := httptest.NewRecorder()
+	(&Handler{}).GitHubConnect(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GitHubConnect: got %d (%s)", rec.Code, rec.Body.String())
+	}
+	var body GitHubConnectResponse
+	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
+		t.Fatalf("decode connect response: %v", err)
+	}
+	installURL, err := url.Parse(body.URL)
+	if err != nil {
+		t.Fatalf("parse install URL: %v", err)
+	}
+	_, returnTo, ok := verifyStateWithReturn(installURL.Query().Get("state"))
+	if !ok || returnTo != githubReturnToRepositories {
+		t.Fatalf("signed return target = %q, valid=%v, want repositories", returnTo, ok)
+	}
+
+	badReq := httptest.NewRequest(
+		http.MethodGet,
+		"/api/workspaces/"+wsID+"/github/connect?return_to=https://evil.example",
+		nil,
+	)
+	badReq = withURLParam(badReq, "id", wsID)
+	badRec := httptest.NewRecorder()
+	(&Handler{}).GitHubConnect(badRec, badReq)
+	if badRec.Code != http.StatusBadRequest {
+		t.Fatalf("invalid return target: got %d, want 400", badRec.Code)
+	}
+}
+
+func TestGitHubSetupCallbackRepositoryReturnTarget(t *testing.T) {
+	t.Setenv("GITHUB_WEBHOOK_SECRET", "test-secret-123")
+	t.Setenv("FRONTEND_ORIGIN", "https://app.multica.test/")
+	wsID := "11111111-2222-3333-4444-555555555555"
+	state, err := signStateForReturn(wsID, githubReturnToRepositories)
+	if err != nil {
+		t.Fatalf("signStateForReturn: %v", err)
+	}
+
+	req := httptest.NewRequest(
+		http.MethodGet,
+		"/api/github/setup?installation_id=not-a-number&state="+url.QueryEscape(state),
+		nil,
+	)
+	rec := httptest.NewRecorder()
+	(&Handler{}).GitHubSetupCallback(rec, req)
+	if rec.Code != http.StatusFound {
+		t.Fatalf("GitHubSetupCallback: got %d, want 302", rec.Code)
+	}
+	if got := rec.Header().Get("Location"); got != "https://app.multica.test/settings?tab=repositories&github_error=bad_installation_id" {
+		t.Fatalf("redirect = %q, want repository settings error", got)
 	}
 }
 
@@ -1477,35 +1624,6 @@ func TestDerivePRMergeableState(t *testing.T) {
 	}
 }
 
-func TestAggregateChecksConclusion(t *testing.T) {
-	str := func(p *string) string {
-		if p == nil {
-			return "<nil>"
-		}
-		return *p
-	}
-	cases := []struct {
-		name                           string
-		failed, passed, pending, total int64
-		want                           string
-	}{
-		{"no_suites_nil", 0, 0, 0, 0, "<nil>"},
-		{"any_failure_wins", 1, 5, 0, 6, "failed"},
-		{"failure_beats_pending", 1, 0, 3, 4, "failed"},
-		{"pending_when_no_failure", 0, 1, 2, 3, "pending"},
-		{"all_passed", 0, 3, 0, 3, "passed"},
-		{"counts_zero_but_total_nonzero_returns_nil", 0, 0, 0, 1, "<nil>"},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			got := aggregateChecksConclusion(tc.failed, tc.passed, tc.pending, tc.total)
-			if str(got) != tc.want {
-				t.Errorf("aggregateChecksConclusion = %s, want %s", str(got), tc.want)
-			}
-		})
-	}
-}
-
 // firePullRequestWebhookWithHead is like firePullRequestWebhook but lets the
 // caller control the head SHA and mergeable_state on the payload. The CI
 // tests need both knobs to exercise head-change semantics.
@@ -1548,54 +1666,6 @@ func firePullRequestWebhookWithHead(t *testing.T, secret, identifier string, ins
 	if rec.Code != http.StatusAccepted {
 		t.Fatalf("webhook %s pr=%d action=%s: expected 202, got %d (%s)",
 			repo, prNumber, action, rec.Code, rec.Body.String())
-	}
-}
-
-func fireCheckSuiteWebhook(t *testing.T, secret string, installationID int64, repo string, prNumbers []int32, suiteID, appID int64, headSHA, conclusion, updatedAt string) {
-	t.Helper()
-	fireCheckSuiteWebhookWithStatus(t, secret, installationID, repo, prNumbers,
-		suiteID, appID, headSHA, "completed", "completed", conclusion, updatedAt)
-}
-
-// fireCheckSuiteWebhookWithStatus is the parametric form of
-// fireCheckSuiteWebhook. Tests covering the `requested`/`rerequested` and
-// `queued`/`in_progress` matrix use it directly; the legacy completed-only
-// helper above wraps it for existing call sites.
-func fireCheckSuiteWebhookWithStatus(t *testing.T, secret string, installationID int64, repo string, prNumbers []int32, suiteID, appID int64, headSHA, action, status, conclusion, updatedAt string) {
-	t.Helper()
-	prRefs := make([]map[string]any, 0, len(prNumbers))
-	for _, n := range prNumbers {
-		prRefs = append(prRefs, map[string]any{"number": n})
-	}
-	payload := map[string]any{
-		"action": action,
-		"check_suite": map[string]any{
-			"id":            suiteID,
-			"head_sha":      headSHA,
-			"status":        status,
-			"conclusion":    conclusion,
-			"updated_at":    updatedAt,
-			"app":           map[string]any{"id": appID},
-			"pull_requests": prRefs,
-		},
-		"repository": map[string]any{
-			"name":  repo,
-			"owner": map[string]any{"login": "acme"},
-		},
-		"installation": map[string]any{"id": installationID},
-	}
-	raw, _ := json.Marshal(payload)
-	mac := hmac.New(sha256.New, []byte(secret))
-	mac.Write(raw)
-	sig := "sha256=" + hex.EncodeToString(mac.Sum(nil))
-
-	rec := httptest.NewRecorder()
-	hookReq := httptest.NewRequest("POST", "/api/webhooks/github", bytes.NewReader(raw))
-	hookReq.Header.Set("X-GitHub-Event", "check_suite")
-	hookReq.Header.Set("X-Hub-Signature-256", sig)
-	testHandler.HandleGitHubWebhook(rec, hookReq)
-	if rec.Code != http.StatusAccepted {
-		t.Fatalf("check_suite webhook: expected 202, got %d (%s)", rec.Code, rec.Body.String())
 	}
 }
 
@@ -2137,6 +2207,7 @@ func TestGitHubRoutes_RoleGating(t *testing.T) {
 
 	const slug = "github-routes-role-gating"
 	_, _ = testPool.Exec(ctx, `DELETE FROM workspace WHERE slug = $1`, slug)
+	_, _ = testPool.Exec(ctx, `DELETE FROM "user" WHERE email LIKE $1`, "github-routes-"+slug+"-%")
 
 	var wsID string
 	if err := testPool.QueryRow(ctx, `
@@ -2209,6 +2280,7 @@ INSERT INTO member (workspace_id, user_id, role) VALUES ($1, $2, $3)
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.RequireWorkspaceRoleFromURL(testHandler.Queries, "id", "owner", "admin"))
 			r.Get("/github/connect", testHandler.GitHubConnect)
+			r.Get("/github/installations/{installationId}/repositories", testHandler.ListGitHubInstallationRepositories)
 			r.Delete("/github/installations/{installationId}", testHandler.DeleteGitHubInstallation)
 		})
 	})
@@ -2250,6 +2322,16 @@ INSERT INTO member (workspace_id, user_id, role) VALUES ($1, $2, $3)
 		}
 		if code := exercise(t, http.MethodGet, "/api/workspaces/"+wsID+"/github/connect", outsiderUserID); code != http.StatusNotFound {
 			t.Errorf("outsider GET connect: want 404, got %d", code)
+		}
+	})
+
+	t.Run("GET repositories remains owner/admin only", func(t *testing.T) {
+		path := "/api/workspaces/" + wsID + "/github/installations/" + uuidToString(createdInst.ID) + "/repositories"
+		if code := exercise(t, http.MethodGet, path, memberUserID); code != http.StatusForbidden {
+			t.Errorf("member GET repositories: want 403, got %d", code)
+		}
+		if code := exercise(t, http.MethodGet, path, outsiderUserID); code != http.StatusNotFound {
+			t.Errorf("outsider GET repositories: want 404, got %d", code)
 		}
 	})
 
@@ -2920,251 +3002,93 @@ func TestSetupCallback_ConsumesPendingInstallationCreated(t *testing.T) {
 	}
 }
 
-func TestRepoIdentityFromURL(t *testing.T) {
-	cases := []struct {
-		in   string
-		want string
-	}{
-		{"https://github.com/octocat/hello-world", "github.com/octocat/hello-world"},
-		{"https://github.com/octocat/hello-world.git", "github.com/octocat/hello-world"},
-		{"https://github.com/octocat/hello-world/", "github.com/octocat/hello-world"},
-		{"https://github.com/octocat/hello-world.git/", "github.com/octocat/hello-world"}, // .git + trailing slash
-		{"git@github.com:octocat/hello-world.git", "github.com/octocat/hello-world"},
-		{"git@github.com:octocat/hello-world", "github.com/octocat/hello-world"},
-		{"ssh://git@github.com/octocat/hello-world.git", "github.com/octocat/hello-world"},
-		{"https://github.com/Octocat/Hello-World", "github.com/octocat/hello-world"}, // case-folded
-		{"  https://github.com/octocat/hello-world  ", "github.com/octocat/hello-world"},
-		{"git@gitlab.com:octocat/hello-world.git", "gitlab.com/octocat/hello-world"}, // host kept
-		{"https://bitbucket.org/octocat/hello-world", "bitbucket.org/octocat/hello-world"},
-		{"", ""},
-		{"single-segment", ""},
-		{"github.com/onlyowner", ""}, // needs host + 2 path segments
-	}
-	for _, c := range cases {
-		if got := repoIdentityFromURL(c.in); got != c.want {
-			t.Errorf("repoIdentityFromURL(%q) = %q, want %q", c.in, got, c.want)
-		}
-	}
-}
-
-// TestWebhook_RoutesToRepoOwningWorkspace is the regression test for the bug
-// where one GitHub App installation serving repos in several workspaces filed
-// every PR under the installation's single workspace — so a PR's identifier
-// was scanned against the wrong prefix and never linked. The fix routes by the
-// repository's owning workspace (workspace.repos registry).
-func TestWebhook_RoutesToRepoOwningWorkspace(t *testing.T) {
-	if testHandler == nil {
+// TestWebhook_PullRequest_FansOutToBoundWorkspaces is the MUL-4343 change: one
+// GitHub App installation bound to several workspaces must deliver a repo's PR
+// events to EVERY bound workspace. Each workspace mirrors the PR and auto-links
+// it against its own issues (its own prefix), replacing the old single-workspace
+// routing that dropped the event for every workspace but one.
+func TestWebhook_PullRequest_FansOutToBoundWorkspaces(t *testing.T) {
+	if testHandler == nil || testPool == nil {
 		t.Skip("handler test fixture not initialized (no DB?)")
 	}
 	ctx := context.Background()
-	secret := "route-by-repo-secret"
+	secret := "fanout-pr-secret"
 	t.Setenv("GITHUB_WEBHOOK_SECRET", secret)
 
-	// The issue lives in the repo-OWNING workspace B (the shared test workspace).
+	// Workspace B is the shared test workspace (prefix HAN) and owns the issue.
 	w := httptest.NewRecorder()
-	req := newRequest("POST", "/api/issues?workspace_id="+testWorkspaceID, map[string]any{
-		"title":  "route-by-repo test",
+	testHandler.CreateIssue(w, newRequest("POST", "/api/issues?workspace_id="+testWorkspaceID, map[string]any{
+		"title":  "fan-out PR test",
 		"status": "in_progress",
-	})
-	testHandler.CreateIssue(w, req)
+	}))
 	if w.Code != http.StatusCreated {
 		t.Fatalf("CreateIssue: %d %s", w.Code, w.Body.String())
 	}
 	var created IssueResponse
 	json.NewDecoder(w.Body).Decode(&created)
 
-	const repoOwner, repoName = "route-acme", "route-widget"
-	repoURL := "https://github.com/" + repoOwner + "/" + repoName
+	const repo = "fanout-repo"
+	const prNumber int32 = 4343
+	const installationID int64 = 778899101
 
-	// Register the repo in workspace B's registry; remember the prior value.
-	var prevRepos []byte
-	if err := testPool.QueryRow(ctx, `SELECT repos FROM workspace WHERE id = $1`, testWorkspaceID).Scan(&prevRepos); err != nil {
-		t.Fatalf("read repos: %v", err)
-	}
-	if _, err := testPool.Exec(ctx, `UPDATE workspace SET repos = $1 WHERE id = $2`,
-		[]byte(`[{"url":"`+repoURL+`","description":"route test"}]`), testWorkspaceID); err != nil {
-		t.Fatalf("set repos: %v", err)
-	}
-
-	// A DIFFERENT workspace A owns the App installation that delivers the
-	// webhook; the repo is NOT registered here. Pre-delete any leftover from an
-	// aborted run so the slug is free.
-	testPool.Exec(ctx, `DELETE FROM workspace WHERE slug = $1`, "route-test-install-ws")
+	// Workspace A is bound to the SAME installation but has no matching issue;
+	// it must still receive the PR mirror.
+	testPool.Exec(ctx, `DELETE FROM github_installation WHERE installation_id = $1`, installationID)
+	testPool.Exec(ctx, `DELETE FROM workspace WHERE slug = $1`, "fanout-pr-ws-a")
 	wsA, err := testHandler.Queries.CreateWorkspace(ctx, db.CreateWorkspaceParams{
-		Name:        "route-test-install-ws",
-		Slug:        "route-test-install-ws",
-		IssuePrefix: "RTW",
+		Name: "fanout-pr-ws-a", Slug: "fanout-pr-ws-a", IssuePrefix: "FPA",
 	})
 	if err != nil {
 		t.Fatalf("CreateWorkspace: %v", err)
 	}
 
-	const installationID int64 = 778899001
+	// Bind the installation to BOTH workspaces.
 	if _, err := testHandler.Queries.CreateGitHubInstallation(ctx, db.CreateGitHubInstallationParams{
-		WorkspaceID:    wsA.ID,
-		InstallationID: installationID,
-		// Account owns the repo (owner == accountLogin); the registry override
-		// is only honored for the delivering account.
-		AccountLogin: repoOwner,
-		AccountType:  "User",
+		WorkspaceID: parseUUID(testWorkspaceID), InstallationID: installationID, AccountLogin: "acme", AccountType: "User",
 	}); err != nil {
-		t.Fatalf("CreateGitHubInstallation: %v", err)
+		t.Fatalf("CreateGitHubInstallation B: %v", err)
+	}
+	if _, err := testHandler.Queries.CreateGitHubInstallation(ctx, db.CreateGitHubInstallationParams{
+		WorkspaceID: wsA.ID, InstallationID: installationID, AccountLogin: "acme", AccountType: "User",
+	}); err != nil {
+		t.Fatalf("CreateGitHubInstallation A: %v", err)
 	}
 
 	t.Cleanup(func() {
 		testPool.Exec(ctx, `DELETE FROM issue_pull_request WHERE issue_id = $1`, created.ID)
-		testPool.Exec(ctx, `DELETE FROM github_pull_request WHERE repo_owner = $1 AND repo_name = $2`, repoOwner, repoName)
+		testPool.Exec(ctx, `DELETE FROM github_pull_request WHERE repo_owner = 'acme' AND repo_name = $1`, repo)
 		testPool.Exec(ctx, `DELETE FROM github_installation WHERE installation_id = $1`, installationID)
+		testPool.Exec(ctx, `DELETE FROM activity_log WHERE issue_id = $1`, created.ID)
 		testPool.Exec(ctx, `DELETE FROM issue WHERE id = $1`, created.ID)
-		testPool.Exec(ctx, `UPDATE workspace SET repos = $1 WHERE id = $2`, prevRepos, testWorkspaceID)
 		testPool.Exec(ctx, `DELETE FROM workspace WHERE id = $1`, wsA.ID)
 	})
 
-	const prNumber = 4242
-	body := map[string]any{
-		"action": "opened",
-		"pull_request": map[string]any{
-			"number":     prNumber,
-			"html_url":   repoURL + "/pull/4242",
-			"title":      "Implement thing " + created.Identifier,
-			"body":       "Closes " + created.Identifier,
-			"state":      "open",
-			"draft":      false,
-			"merged":     false,
-			"created_at": "2026-04-28T00:00:00Z",
-			"updated_at": "2026-04-28T00:00:00Z",
-			"head":       map[string]any{"ref": "feat/thing"},
-			"user":       map[string]any{"login": "octocat", "avatar_url": ""},
-		},
-		"repository": map[string]any{
-			"name":  repoName,
-			"owner": map[string]any{"login": repoOwner},
-		},
-		"installation": map[string]any{"id": installationID},
-	}
-	raw, _ := json.Marshal(body)
-	mac := hmac.New(sha256.New, []byte(secret))
-	mac.Write(raw)
-	sig := "sha256=" + hex.EncodeToString(mac.Sum(nil))
+	// One PR whose title references workspace B's issue.
+	firePullRequestWebhook(t, secret, created.Identifier, installationID, repo, prNumber, "open")
 
-	rec := httptest.NewRecorder()
-	hookReq := httptest.NewRequest("POST", "/api/webhooks/github", bytes.NewReader(raw))
-	hookReq.Header.Set("X-GitHub-Event", "pull_request")
-	hookReq.Header.Set("X-Hub-Signature-256", sig)
-	testHandler.HandleGitHubWebhook(rec, hookReq)
-	if rec.Code != http.StatusAccepted {
-		t.Fatalf("webhook: expected 202, got %d (%s)", rec.Code, rec.Body.String())
-	}
-
-	// The PR must be filed under the repo-owning workspace B, not installation
-	// workspace A.
+	// The PR must be mirrored in BOTH bound workspaces.
 	if _, err := testHandler.Queries.GetGitHubPullRequest(ctx, db.GetGitHubPullRequestParams{
-		WorkspaceID: parseUUID(testWorkspaceID),
-		RepoOwner:   repoOwner,
-		RepoName:    repoName,
-		PrNumber:    prNumber,
+		WorkspaceID: parseUUID(testWorkspaceID), RepoOwner: "acme", RepoName: repo, PrNumber: prNumber,
 	}); err != nil {
-		t.Fatalf("expected PR filed under the repo-owning workspace: %v", err)
+		t.Fatalf("expected PR mirrored in workspace B: %v", err)
 	}
-	if _, err := testHandler.Queries.GetGitHubPullRequest(ctx, db.GetGitHubPullRequestParams{
-		WorkspaceID: wsA.ID,
-		RepoOwner:   repoOwner,
-		RepoName:    repoName,
-		PrNumber:    prNumber,
-	}); err == nil {
-		t.Fatalf("PR should NOT be filed under the installation's workspace")
+	prA, err := testHandler.Queries.GetGitHubPullRequest(ctx, db.GetGitHubPullRequestParams{
+		WorkspaceID: wsA.ID, RepoOwner: "acme", RepoName: repo, PrNumber: prNumber,
+	})
+	if err != nil {
+		t.Fatalf("expected PR fanned out to workspace A: %v", err)
 	}
 
-	// And it must be linked to the repo-owning workspace's issue.
+	// Workspace B links its own issue; workspace A (no matching issue) does not.
 	linked, err := testHandler.Queries.ListPullRequestsByIssue(ctx, parseUUID(created.ID))
 	if err != nil {
 		t.Fatalf("ListPullRequestsByIssue: %v", err)
 	}
 	if len(linked) != 1 {
-		t.Fatalf("expected 1 linked PR on the repo-owning workspace issue, got %d", len(linked))
+		t.Fatalf("expected 1 linked PR on workspace B's issue, got %d", len(linked))
 	}
-}
-
-// TestWebhook_RegistryDoesNotCaptureForeignAccount guards the security gate: a
-// workspace that registers a repo whose owner is NOT the delivering
-// installation's account must not capture that repo's webhooks.
-func TestWebhook_RegistryDoesNotCaptureForeignAccount(t *testing.T) {
-	if testHandler == nil {
-		t.Skip("handler test fixture not initialized (no DB?)")
-	}
-	ctx := context.Background()
-	secret := "foreign-acct-secret"
-	t.Setenv("GITHUB_WEBHOOK_SECRET", secret)
-
-	const repoOwner, repoName = "victim-org", "victim-repo"
-	repoURL := "https://github.com/" + repoOwner + "/" + repoName
-
-	// Squatter workspace B (the shared test workspace) registers the repo and
-	// has an issue, but the delivery is for a DIFFERENT account.
-	var prevRepos []byte
-	testPool.QueryRow(ctx, `SELECT repos FROM workspace WHERE id = $1`, testWorkspaceID).Scan(&prevRepos)
-	if _, err := testPool.Exec(ctx, `UPDATE workspace SET repos = $1 WHERE id = $2`,
-		[]byte(`[{"url":"`+repoURL+`"}]`), testWorkspaceID); err != nil {
-		t.Fatalf("set repos: %v", err)
-	}
-	w := httptest.NewRecorder()
-	testHandler.CreateIssue(w, newRequest("POST", "/api/issues?workspace_id="+testWorkspaceID, map[string]any{"title": "foreign", "status": "todo"}))
-	var created IssueResponse
-	json.NewDecoder(w.Body).Decode(&created)
-
-	// The installation maps to its OWN workspace (not the squatter), so when the
-	// gate refuses the registry it falls back here — a workspace with no
-	// matching issue — and the squatter genuinely gets zero links.
-	testPool.Exec(ctx, `DELETE FROM workspace WHERE slug = $1`, "foreign-acct-install-ws")
-	wsA, err := testHandler.Queries.CreateWorkspace(ctx, db.CreateWorkspaceParams{
-		Name: "foreign-acct-install-ws", Slug: "foreign-acct-install-ws", IssuePrefix: "FAW",
-	})
-	if err != nil {
-		t.Fatalf("CreateWorkspace: %v", err)
-	}
-	const installationID int64 = 778899002
-	// Installation account != repo owner — the gate must refuse the registry.
-	if _, err := testHandler.Queries.CreateGitHubInstallation(ctx, db.CreateGitHubInstallationParams{
-		WorkspaceID: wsA.ID, InstallationID: installationID,
-		AccountLogin: "some-other-account", AccountType: "User",
-	}); err != nil {
-		t.Fatalf("CreateGitHubInstallation: %v", err)
-	}
-	t.Cleanup(func() {
-		testPool.Exec(ctx, `DELETE FROM issue_pull_request WHERE issue_id = $1`, created.ID)
-		testPool.Exec(ctx, `DELETE FROM github_pull_request WHERE repo_owner = $1 AND repo_name = $2`, repoOwner, repoName)
-		testPool.Exec(ctx, `DELETE FROM github_installation WHERE installation_id = $1`, installationID)
-		testPool.Exec(ctx, `DELETE FROM issue WHERE id = $1`, created.ID)
-		testPool.Exec(ctx, `UPDATE workspace SET repos = $1 WHERE id = $2`, prevRepos, testWorkspaceID)
-		testPool.Exec(ctx, `DELETE FROM workspace WHERE id = $1`, wsA.ID)
-	})
-
-	body := map[string]any{
-		"action": "opened",
-		"pull_request": map[string]any{
-			"number": 5, "html_url": repoURL + "/pull/5", "title": "x " + created.Identifier,
-			"body": "Closes " + created.Identifier, "state": "open", "draft": false, "merged": false,
-			"created_at": "2026-04-28T00:00:00Z", "updated_at": "2026-04-28T00:00:00Z",
-			"head": map[string]any{"ref": "x"}, "user": map[string]any{"login": "octocat"},
-		},
-		"repository":   map[string]any{"name": repoName, "owner": map[string]any{"login": repoOwner}},
-		"installation": map[string]any{"id": installationID},
-	}
-	raw, _ := json.Marshal(body)
-	mac := hmac.New(sha256.New, []byte(secret))
-	mac.Write(raw)
-	rec := httptest.NewRecorder()
-	hookReq := httptest.NewRequest("POST", "/api/webhooks/github", bytes.NewReader(raw))
-	hookReq.Header.Set("X-GitHub-Event", "pull_request")
-	hookReq.Header.Set("X-Hub-Signature-256", "sha256="+hex.EncodeToString(mac.Sum(nil)))
-	testHandler.HandleGitHubWebhook(rec, hookReq)
-	if rec.Code != http.StatusAccepted {
-		t.Fatalf("webhook: expected 202, got %d (%s)", rec.Code, rec.Body.String())
-	}
-
-	// The gate refused the registry, so the squatter workspace got nothing.
-	if linked, _ := testHandler.Queries.ListPullRequestsByIssue(ctx, parseUUID(created.ID)); len(linked) != 0 {
-		t.Fatalf("foreign-account repo must not link to the squatter workspace, got %d links", len(linked))
+	if issues, _ := testHandler.Queries.ListIssueIDsForPullRequest(ctx, prA.ID); len(issues) != 0 {
+		t.Fatalf("workspace A has no matching issue, expected 0 links, got %d", len(issues))
 	}
 }
 

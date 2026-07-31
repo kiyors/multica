@@ -1,5 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import { api } from "../api";
+import type { LabelResourceType } from "../types";
 
 export const labelKeys = {
   all: (wsId: string) => ["labels", wsId] as const,
@@ -8,6 +9,8 @@ export const labelKeys = {
     [...labelKeys.all(wsId), "detail", id] as const,
   byIssue: (wsId: string, issueId: string) =>
     [...labelKeys.all(wsId), "issue", issueId] as const,
+  byResource: (wsId: string, resourceType: "agent" | "skill", resourceId: string) =>
+    [...labelKeys.all(wsId), resourceType, resourceId] as const,
 };
 
 export function labelListOptions(wsId: string, projectId?: string) {
@@ -15,6 +18,19 @@ export function labelListOptions(wsId: string, projectId?: string) {
     queryKey: labelKeys.list(wsId, projectId),
     queryFn: () => api.listLabels(projectId),
     select: (data) => data.labels,
+  });
+}
+
+export function resourceLabelsOptions(
+  wsId: string,
+  resourceType: "agent" | "skill",
+  resourceId: string,
+) {
+  return queryOptions({
+    queryKey: labelKeys.byResource(wsId, resourceType, resourceId),
+    queryFn: () => api.listLabelsForResource(resourceType, resourceId),
+    select: (data) => data.labels,
+    enabled: Boolean(resourceId),
   });
 }
 

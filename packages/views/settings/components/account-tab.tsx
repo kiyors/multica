@@ -1,18 +1,13 @@
 /* eslint-disable i18next/no-literal-string */
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Camera, Loader2, Save } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Input } from "@multica/ui/components/ui/input";
-import { Label } from "@multica/ui/components/ui/label";
-import { Button } from "@multica/ui/components/ui/button";
-import { Card, CardContent } from "@multica/ui/components/ui/card";
 import { Textarea } from "@multica/ui/components/ui/textarea";
 import { toast } from "sonner";
 import { useAuthStore } from "@multica/core/auth";
 import { api } from "@multica/core/api";
-import { resolvePublicFileUrl } from "@multica/core/workspace/avatar-url";
-import { useFileUpload } from "@multica/core/hooks/use-file-upload";
+import { AvatarUploadControl } from "../../common/avatar-upload-control";
 import { useT } from "../../i18n";
 import { Checkbox } from "@multica/ui/components/ui/checkbox";
 
@@ -21,6 +16,15 @@ import { Checkbox } from "@multica/ui/components/ui/checkbox";
 // so a profile full of supplementary-plane emoji will trip the client cap
 // before the server's — which is the safer direction of drift.
 const MAX_PROFILE_DESCRIPTION_LEN = 2000;
+
+interface ProfileDraft {
+  name: string;
+  profileDescription: string;
+}
+
+function profilesEqual(left: ProfileDraft, right: ProfileDraft) {
+  return left.name === right.name && left.profileDescription === right.profileDescription;
+}
 
 export function AccountTab() {
   const { t } = useT("settings");
@@ -83,8 +87,8 @@ export function AccountTab() {
         },
       });
       const updated = await api.updateMe({
-        name: profileName,
-        profile_description: profileDescription,
+        name: next.name,
+        profile_description: next.profileDescription,
       });
       setUser(updated);
       toast.success(t(($) => $.account.toast_profile_updated));
@@ -118,60 +122,70 @@ export function AccountTab() {
 
 
   return (
-    <div className="space-y-8">
-      <section className="space-y-4">
-        <h2 className="text-sm font-semibold">{t(($) => $.account.section_profile)}</h2>
-
-        <Card>
-          <CardContent className="space-y-4">
-            {/* Avatar upload */}
-            <div className="flex items-center gap-4">
-              <button
-                type="button"
-                className="group relative h-16 w-16 shrink-0 rounded-full bg-muted overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-              >
-                {user?.avatar_url ? (
-                  <img
-                    src={resolvePublicFileUrl(user.avatar_url) ?? undefined}
-                    alt={user.name}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <span className="flex h-full w-full items-center justify-center text-lg font-semibold text-muted-foreground">
-                    {initials}
-                  </span>
-                )}
-                <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
-                  {uploading ? (
-                    <Loader2 className="h-5 w-5 animate-spin text-white" />
-                  ) : (
-                    <Camera className="h-5 w-5 text-white" />
-                  )}
-                </div>
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleAvatarUpload}
-              />
-              <div className="text-xs text-muted-foreground">
-                {t(($) => $.account.click_avatar_hint)}
-              </div>
-            </div>
-
-            <div>
-              <Label className="text-xs text-muted-foreground">{t(($) => $.account.name_label)}</Label>
-              <Input
-                type="search"
-                value={profileName}
-                onChange={(e) => setProfileName(e.target.value)}
-                className="mt-1"
+    <SettingsTab title={t(($) => $.page.tabs.profile)}>
+      <SettingsSection
+        title={t(($) => $.account.section_profile)}
+        action={
+          <SettingsSaveState
+            status={autoSave.status}
+            savingLabel={t(($) => $.auto_save.saving)}
+            savedLabel={t(($) => $.auto_save.saved)}
+            errorLabel={t(($) => $.auto_save.failed)}
+          />
+        }
+      >
+        <SettingsCard>
+          <SettingsRow
+            label={t(($) => $.account.avatar_label)}
+            description={t(($) => $.account.click_avatar_hint)}
+            size="none"
+          >
+            <div className="flex justify-start sm:justify-end">
+              <AvatarUploadControl
+                variant="user"
+                value={user?.avatar_url ?? null}
+                name={user?.name ?? ""}
+                size={64}
+                onUploaded={async (url) => {
+                  try {
+                    const updated = await api.updateMe({ avatar_url: url });
+                    setUser(updated);
+                    toast.success(t(($) => $.account.toast_avatar_updated), {
+                      id: "settings-auto-save",
+                    });
+                  } catch (error) {
+                    toast.error(
+                      error instanceof Error
+                        ? error.message
+                        : t(($) => $.account.toast_avatar_failed),
+                    );
+                  }
+                }}
               />
             </div>
+          </SettingsRow>
+
+          <SettingsRow
+            label={t(($) => $.account.name_label)}
+            size="text"
+          >
+            <Input
+              type="text"
+              name="profile-name"
+              autoComplete="name"
+              aria-label={t(($) => $.account.name_label)}
+              value={profileName}
+              onChange={(event) => setProfileName(event.target.value)}
+              onBlur={autoSave.flush}
+            />
+          </SettingsRow>
+
+          <SettingsRow
+            label={t(($) => $.account.profile_description_label)}
+            description={t(($) => $.account.profile_description_hint)}
+            size="text"
+            align="start"
+          >
             <div>
               <Label className="text-xs text-muted-foreground">{t(($) => $.account.email_label)}</Label>
               <Input
@@ -190,15 +204,19 @@ export function AccountTab() {
                 {t(($) => $.account.profile_description_label)}
               </Label>
               <Textarea
+                name="profile-description"
+                autoComplete="off"
+                aria-label={t(($) => $.account.profile_description_label)}
                 value={profileDescription}
-                onChange={(e) => setProfileDescription(e.target.value)}
+                onChange={(event) => setProfileDescription(event.target.value)}
+                onBlur={autoSave.flush}
                 placeholder={t(($) => $.account.profile_description_placeholder)}
                 rows={5}
                 maxLength={MAX_PROFILE_DESCRIPTION_LEN}
-                className="mt-1 resize-y"
+                aria-invalid={descriptionTooLong}
+                className="resize-y"
               />
-              <div className="mt-1 flex items-start justify-between gap-3 text-xs text-muted-foreground">
-                <span>{t(($) => $.account.profile_description_hint)}</span>
+              <div className="mt-1 flex justify-end text-caption text-muted-foreground">
                 <span
                   className={descriptionTooLong ? "text-destructive shrink-0" : "shrink-0"}
                   aria-live="polite"
@@ -207,7 +225,7 @@ export function AccountTab() {
                 </span>
               </div>
               {descriptionTooLong ? (
-                <p className="mt-1 text-xs text-destructive">
+                <p className="mt-1 text-caption text-destructive">
                   {t(($) => $.account.profile_description_too_long, {
                     max: MAX_PROFILE_DESCRIPTION_LEN,
                     count: profileDescription.length,

@@ -11,13 +11,15 @@ const mockPersist = vi.hoisted(() => vi.fn());
 const mockUpdateMe = vi.hoisted(() => vi.fn());
 const mockToastWarning = vi.hoisted(() => vi.fn());
 const mockToastError = vi.hoisted(() => vi.fn());
+const mockToastSuccess = vi.hoisted(() => vi.fn());
+const mockSetTheme = vi.hoisted(() => vi.fn());
 const mockSetUser = vi.hoisted(() => vi.fn());
 const userRef = vi.hoisted(() => ({
   current: null as { id: string; timezone?: string | null } | null,
 }));
 
 vi.mock("@multica/ui/components/common/theme-provider", () => ({
-  useTheme: () => ({ theme: "light", setTheme: vi.fn() }),
+  useTheme: () => ({ theme: "light", setTheme: mockSetTheme }),
 }));
 
 vi.mock("@multica/core/i18n/react", async () => {
@@ -40,7 +42,11 @@ vi.mock("@multica/core/api", () => ({
 }));
 
 vi.mock("sonner", () => ({
-  toast: { warning: mockToastWarning, error: mockToastError },
+  toast: {
+    warning: mockToastWarning,
+    error: mockToastError,
+    success: mockToastSuccess,
+  },
 }));
 
 vi.mock("@multica/core/auth", async () => {
@@ -65,6 +71,7 @@ vi.mock("@multica/core/auth", async () => {
 });
 
 import { PreferencesTab } from "./preferences-tab";
+import { useCommentComposerStore } from "@multica/core/issues/stores";
 
 const TEST_RESOURCES = {
   en: { common: enCommon, auth: enAuth, settings: enSettings },
@@ -80,6 +87,22 @@ function I18nWrapper({ children }: { children: ReactNode }) {
 
 
 describe("PreferencesTab — Timezone section", () => {
+  // Shrink the picker to the curated COMMON_TIMEZONES fallback. With the
+  // real Intl.supportedValuesOf the popup renders ~600 options, and
+  // userEvent traversal of that list blew past the per-test timeout on
+  // slow CI runners (MUL-4427). Everything these tests pick — Asia/Tokyo
+  // and the "(browser)" sentinel — exists in the fallback list too.
+  const intlWithValues = Intl as typeof Intl & {
+    supportedValuesOf?: (key: "timeZone") => string[];
+  };
+  const realSupportedValuesOf = intlWithValues.supportedValuesOf;
+  beforeAll(() => {
+    intlWithValues.supportedValuesOf = () => [];
+  });
+  afterAll(() => {
+    intlWithValues.supportedValuesOf = realSupportedValuesOf;
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     userRef.current = null;
@@ -99,7 +122,7 @@ describe("PreferencesTab — Timezone section", () => {
     user: ReturnType<typeof userEvent.setup>,
     name: RegExp | string,
   ) {
-    await user.click(screen.getByRole("combobox"));
+    await user.click(screen.getByRole("combobox", { name: "Viewing Timezone" }));
     await user.click(await screen.findByRole("option", { name }));
   }
 
@@ -107,12 +130,13 @@ describe("PreferencesTab — Timezone section", () => {
     userRef.current = { id: "user-1", timezone: "Asia/Shanghai" };
     render(<PreferencesTab />, { wrapper: I18nWrapper });
 
-    expect(screen.getByRole("combobox").textContent).toContain("Asia/Shanghai");
+    expect(
+      screen.getByRole("combobox", { name: "Viewing Timezone" }).textContent,
+    ).toContain("Asia/Shanghai");
   });
 
   // handleChange PATCHes then updates the store asynchronously, so the
-  // post-pick assertions must waitFor it to settle. The extended timeout
-  // covers querying the Select's full ~600-option IANA list on slow CI.
+  // post-pick assertions must waitFor it to settle.
   it("saving a new timezone PATCHes /api/me and updates the auth store", async () => {
     userRef.current = { id: "user-1", timezone: "Asia/Shanghai" };
     const updatedUser = { id: "user-1", timezone: "Asia/Tokyo" };
@@ -125,8 +149,9 @@ describe("PreferencesTab — Timezone section", () => {
     await waitFor(() => {
       expect(mockUpdateMe).toHaveBeenCalledWith({ timezone: "Asia/Tokyo" });
       expect(mockSetUser).toHaveBeenCalledWith(updatedUser);
+      expect(mockToastSuccess).toHaveBeenCalledTimes(1);
     });
-  }, 20000);
+  });
 
   it("surfaces a toast when the PATCH fails", async () => {
     userRef.current = { id: "user-1", timezone: "Asia/Shanghai" };
@@ -141,7 +166,7 @@ describe("PreferencesTab — Timezone section", () => {
       expect(mockToastError).toHaveBeenCalledTimes(1);
     });
     expect(mockSetUser).not.toHaveBeenCalled();
-  }, 20000);
+  });
 
   it("clearing the preference sends an empty-string timezone", async () => {
     userRef.current = { id: "user-1", timezone: "Asia/Shanghai" };
@@ -160,5 +185,31 @@ describe("PreferencesTab — Timezone section", () => {
       // so the picker switches back to "(browser)" without a refetch.
       expect(mockSetUser).toHaveBeenCalledWith(clearedUser);
     });
-  }, 20000);
+  });
+});
+
+describe("PreferencesTab — Sticky comment bar", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    userRef.current = null;
+    useCommentComposerStore.setState({ sticky: true });
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("renders on by default and toggles the preference off with a saved toast", async () => {
+    const user = userEvent.setup();
+    render(<PreferencesTab />, { wrapper: I18nWrapper });
+
+    const toggle = screen.getByRole("switch", { name: "Sticky comment bar" });
+    expect(toggle).toHaveAttribute("aria-checked", "true");
+
+    await user.click(toggle);
+
+    expect(useCommentComposerStore.getState().sticky).toBe(false);
+    expect(toggle).toHaveAttribute("aria-checked", "false");
+    expect(mockToastSuccess).toHaveBeenCalledTimes(1);
+  });
 });

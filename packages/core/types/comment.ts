@@ -52,4 +52,7 @@ export interface CommentTriggerPreviewAgent {
 
 export interface CommentTriggerPreview {
   agents: CommentTriggerPreviewAgent[];
+  // Explicit @agent / @squad mentions that will NOT trigger if posted as-is
+  // (MUL-4525 §2). Additive: older servers omit it.
+  blocked?: CommentTriggerOutcome[];
 }

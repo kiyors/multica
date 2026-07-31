@@ -11,6 +11,34 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const attachLabelToAgent = `-- name: AttachLabelToAgent :exec
+INSERT INTO agent_to_label (agent_id, label_id)
+SELECT $1::uuid, $2::uuid
+WHERE EXISTS (
+    SELECT 1 FROM agent a
+    WHERE a.id = $1::uuid
+      AND a.workspace_id = $3::uuid
+)
+AND EXISTS (
+    SELECT 1 FROM issue_label l
+    WHERE l.id = $2::uuid
+      AND l.workspace_id = $3::uuid
+      AND l.resource_type = 'agent'
+)
+ON CONFLICT DO NOTHING
+`
+
+type AttachLabelToAgentParams struct {
+	AgentID     pgtype.UUID `json:"agent_id"`
+	LabelID     pgtype.UUID `json:"label_id"`
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+}
+
+func (q *Queries) AttachLabelToAgent(ctx context.Context, arg AttachLabelToAgentParams) error {
+	_, err := q.db.Exec(ctx, attachLabelToAgent, arg.AgentID, arg.LabelID, arg.WorkspaceID)
+	return err
+}
+
 const attachLabelToIssue = `-- name: AttachLabelToIssue :exec
 INSERT INTO issue_to_label (issue_id, label_id)
 SELECT $1::uuid, $2::uuid
@@ -23,6 +51,7 @@ AND EXISTS (
     SELECT 1 FROM issue_label l
     WHERE l.id = $2::uuid
       AND l.workspace_id = $3::uuid
+      AND l.resource_type = 'issue'
 )
 ON CONFLICT DO NOTHING
 `
@@ -38,6 +67,34 @@ type AttachLabelToIssueParams struct {
 // handler-level prechecks still cannot attach labels across workspaces.
 func (q *Queries) AttachLabelToIssue(ctx context.Context, arg AttachLabelToIssueParams) error {
 	_, err := q.db.Exec(ctx, attachLabelToIssue, arg.IssueID, arg.LabelID, arg.WorkspaceID)
+	return err
+}
+
+const attachLabelToSkill = `-- name: AttachLabelToSkill :exec
+INSERT INTO skill_to_label (skill_id, label_id)
+SELECT $1::uuid, $2::uuid
+WHERE EXISTS (
+    SELECT 1 FROM skill s
+    WHERE s.id = $1::uuid
+      AND s.workspace_id = $3::uuid
+)
+AND EXISTS (
+    SELECT 1 FROM issue_label l
+    WHERE l.id = $2::uuid
+      AND l.workspace_id = $3::uuid
+      AND l.resource_type = 'skill'
+)
+ON CONFLICT DO NOTHING
+`
+
+type AttachLabelToSkillParams struct {
+	SkillID     pgtype.UUID `json:"skill_id"`
+	LabelID     pgtype.UUID `json:"label_id"`
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+}
+
+func (q *Queries) AttachLabelToSkill(ctx context.Context, arg AttachLabelToSkillParams) error {
+	_, err := q.db.Exec(ctx, attachLabelToSkill, arg.SkillID, arg.LabelID, arg.WorkspaceID)
 	return err
 }
 
@@ -74,6 +131,56 @@ func (q *Queries) CreateLabel(ctx context.Context, arg CreateLabelParams) (Issue
 	return i, err
 }
 
+const deleteAgentLabelAssignmentsByAgent = `-- name: DeleteAgentLabelAssignmentsByAgent :exec
+DELETE FROM agent_to_label WHERE agent_id = $1
+`
+
+func (q *Queries) DeleteAgentLabelAssignmentsByAgent(ctx context.Context, agentID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteAgentLabelAssignmentsByAgent, agentID)
+	return err
+}
+
+const deleteAgentLabelAssignmentsByLabel = `-- name: DeleteAgentLabelAssignmentsByLabel :exec
+DELETE FROM agent_to_label WHERE label_id = $1
+`
+
+func (q *Queries) DeleteAgentLabelAssignmentsByLabel(ctx context.Context, labelID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteAgentLabelAssignmentsByLabel, labelID)
+	return err
+}
+
+const deleteAgentLabelAssignmentsByRuntime = `-- name: DeleteAgentLabelAssignmentsByRuntime :exec
+
+DELETE FROM agent_to_label
+WHERE agent_id IN (SELECT id FROM agent WHERE runtime_id = $1)
+`
+
+// The single-entity cleanups above cover one agent/skill at a time. The runtime
+// variant below covers runtime and runtime-profile bulk hard deletes, where the
+// owning agents disappear without passing through a per-entity delete.
+// Workspace-wide cleanup lives in DeleteWorkspace so it is atomic with that
+// workspace's existing multi-table teardown.
+// Runtime teardown hard-deletes every agent bound to the runtime (archived and
+// system; active agents are refused by a 409 guard). Clear their label links by
+// runtime so none survive the agent hard-delete.
+func (q *Queries) DeleteAgentLabelAssignmentsByRuntime(ctx context.Context, runtimeID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteAgentLabelAssignmentsByRuntime, runtimeID)
+	return err
+}
+
+const deleteIssueLabelAssignmentsByLabel = `-- name: DeleteIssueLabelAssignmentsByLabel :exec
+
+DELETE FROM issue_to_label WHERE label_id = $1
+`
+
+// The resource-label junctions deliberately have no foreign keys. Keeping
+// their cleanup in the same application transaction as the owner deletion
+// avoids database-level cascades with unreviewed locking and audit behavior.
+func (q *Queries) DeleteIssueLabelAssignmentsByLabel(ctx context.Context, labelID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteIssueLabelAssignmentsByLabel, labelID)
+	return err
+}
+
 const deleteLabel = `-- name: DeleteLabel :one
 DELETE FROM issue_label
 WHERE id = $1 AND workspace_id = $2
@@ -92,6 +199,46 @@ func (q *Queries) DeleteLabel(ctx context.Context, arg DeleteLabelParams) (pgtyp
 	var id pgtype.UUID
 	err := row.Scan(&id)
 	return id, err
+}
+
+const deleteSkillLabelAssignmentsByLabel = `-- name: DeleteSkillLabelAssignmentsByLabel :exec
+DELETE FROM skill_to_label WHERE label_id = $1
+`
+
+func (q *Queries) DeleteSkillLabelAssignmentsByLabel(ctx context.Context, labelID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteSkillLabelAssignmentsByLabel, labelID)
+	return err
+}
+
+const deleteSkillLabelAssignmentsBySkill = `-- name: DeleteSkillLabelAssignmentsBySkill :exec
+DELETE FROM skill_to_label WHERE skill_id = $1
+`
+
+func (q *Queries) DeleteSkillLabelAssignmentsBySkill(ctx context.Context, skillID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteSkillLabelAssignmentsBySkill, skillID)
+	return err
+}
+
+const detachLabelFromAgent = `-- name: DetachLabelFromAgent :exec
+DELETE FROM agent_to_label
+WHERE agent_id = $1::uuid
+  AND label_id = $2::uuid
+  AND EXISTS (
+      SELECT 1 FROM agent a
+      WHERE a.id = $1::uuid
+        AND a.workspace_id = $3::uuid
+  )
+`
+
+type DetachLabelFromAgentParams struct {
+	AgentID     pgtype.UUID `json:"agent_id"`
+	LabelID     pgtype.UUID `json:"label_id"`
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+}
+
+func (q *Queries) DetachLabelFromAgent(ctx context.Context, arg DetachLabelFromAgentParams) error {
+	_, err := q.db.Exec(ctx, detachLabelFromAgent, arg.AgentID, arg.LabelID, arg.WorkspaceID)
+	return err
 }
 
 const detachLabelFromIssue = `-- name: DetachLabelFromIssue :exec
@@ -115,6 +262,28 @@ type DetachLabelFromIssueParams struct {
 // workspace. Mirror of the attach query.
 func (q *Queries) DetachLabelFromIssue(ctx context.Context, arg DetachLabelFromIssueParams) error {
 	_, err := q.db.Exec(ctx, detachLabelFromIssue, arg.IssueID, arg.LabelID, arg.WorkspaceID)
+	return err
+}
+
+const detachLabelFromSkill = `-- name: DetachLabelFromSkill :exec
+DELETE FROM skill_to_label
+WHERE skill_id = $1::uuid
+  AND label_id = $2::uuid
+  AND EXISTS (
+      SELECT 1 FROM skill s
+      WHERE s.id = $1::uuid
+        AND s.workspace_id = $3::uuid
+  )
+`
+
+type DetachLabelFromSkillParams struct {
+	SkillID     pgtype.UUID `json:"skill_id"`
+	LabelID     pgtype.UUID `json:"label_id"`
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+}
+
+func (q *Queries) DetachLabelFromSkill(ctx context.Context, arg DetachLabelFromSkillParams) error {
+	_, err := q.db.Exec(ctx, detachLabelFromSkill, arg.SkillID, arg.LabelID, arg.WorkspaceID)
 	return err
 }
 
@@ -214,6 +383,7 @@ FROM issue_label l
 JOIN issue_to_label il ON il.label_id = l.id
 WHERE il.issue_id = $1::uuid
   AND l.workspace_id = $2::uuid
+  AND l.resource_type = 'issue'
 ORDER BY LOWER(l.name) ASC
 `
 
@@ -258,6 +428,7 @@ FROM issue_label l
 JOIN issue_to_label il ON il.label_id = l.id
 WHERE il.issue_id = ANY($1::uuid[])
   AND l.workspace_id = $2::uuid
+  AND l.resource_type = 'issue'
 ORDER BY il.issue_id, LOWER(l.name) ASC
 `
 
@@ -323,6 +494,7 @@ type UpdateLabelParams struct {
 	ID          pgtype.UUID `json:"id"`
 	WorkspaceID pgtype.UUID `json:"workspace_id"`
 	Name        pgtype.Text `json:"name"`
+	Description pgtype.Text `json:"description"`
 	Color       pgtype.Text `json:"color"`
 	ProjectID   pgtype.UUID `json:"project_id"`
 }
@@ -332,6 +504,7 @@ func (q *Queries) UpdateLabel(ctx context.Context, arg UpdateLabelParams) (Issue
 		arg.ID,
 		arg.WorkspaceID,
 		arg.Name,
+		arg.Description,
 		arg.Color,
 		arg.ProjectID,
 	)

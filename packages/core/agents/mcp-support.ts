@@ -10,12 +10,15 @@ const MCP_SUPPORTED_PROVIDERS = new Set([
   "codebuddy",
   "codex",
   "cursor",
+  "grok",
   "hermes",
   "kimi",
   "kiro",
   "opencode",
   "openclaw",
   "qoder",
+  "qoderclicn",
+  "qwen",
   "traecli",
 ]);
 
