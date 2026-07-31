@@ -44,4 +44,14 @@ const _myIssuesViewStore = createStore<MyIssuesViewState>()(
 
 export const myIssuesViewStore: StoreApi<MyIssuesViewState> = _myIssuesViewStore;
 
+export function myIssuesRelationFromScope(scope: MyIssuesScope): "all" | "assigned" | "created" | "involved" | "approvals" {
+  switch (scope) {
+    case "all": return "all";
+    case "assigned": return "assigned";
+    case "created": return "created";
+    case "agents": return "involved";
+    case "approvals": return "approvals";
+  }
+}
+
 registerForWorkspaceRehydration(() => _myIssuesViewStore.persist.rehydrate());

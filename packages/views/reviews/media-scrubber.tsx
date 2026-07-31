@@ -165,7 +165,7 @@ function CommentMarker({
         )}
         style={{ backgroundColor: color }}
       >
-        <ActorAvatar actorType="member" actorId={comment.author_id || ""} size={16} />
+        <ActorAvatar actorType="member" actorId={comment.author_id || ""} size="sm" />
       </div>
 
       {isHovered && tooltipPos && createPortal(
@@ -182,15 +182,15 @@ function CommentMarker({
         >
           <div className="bg-popover border border-border rounded-lg shadow-2xl p-3">
             <div className="flex items-center gap-2 mb-1.5">
-              <ActorAvatar actorType="member" actorId={comment.author_id || ""} size={16} />
-              <span className="text-xs font-medium text-popover-foreground truncate">{authorName}</span>
+              <ActorAvatar actorType="member" actorId={comment.author_id || ""} size="sm" />
+              <span className="text-micro font-medium text-popover-foreground truncate">{authorName}</span>
               {comment.start_time !== null && comment.start_time !== undefined && (
-                <span className="ml-auto text-[10px] font-mono text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                <span className="ml-auto text-micro font-mono text-primary bg-primary/10 px-1.5 py-0.5 rounded">
                   {formatTimecode(comment.start_time)}
                 </span>
               )}
             </div>
-            <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+            <p className="text-micro text-muted-foreground line-clamp-2 leading-relaxed">
               {comment.content}
             </p>
           </div>
@@ -378,7 +378,7 @@ export function MediaScrubber({
             </div>
           )}
           <div className="flex justify-center">
-            <span className="bg-popover text-popover-foreground text-[11px] font-mono px-2 py-0.5 rounded-md border shadow">
+            <span className="bg-popover text-popover-foreground text-micro font-mono px-2 py-0.5 rounded-md border shadow">
               {formatTimecode(hoverTime)}
             </span>
           </div>

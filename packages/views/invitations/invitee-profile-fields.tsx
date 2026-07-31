@@ -30,14 +30,6 @@ export function InviteeProfileFields({
     "designer",
     "founder",
     "marketing",
-    "creative",
-    "graphic_designer",
-    "marketing_team",
-    "social_media",
-    "video_writer",
-    "video_editor",
-    "videographer",
-    "content_writer",
     "writer",
     "research",
     "ops",
@@ -48,14 +40,14 @@ export function InviteeProfileFields({
   return (
     <div className="w-full space-y-3 rounded-md border border-border bg-muted/20 p-4 text-left">
       <div>
-        <h3 className="text-sm font-medium">{t(($) => $.profile.title)}</h3>
-        <p className="mt-1 text-xs text-muted-foreground">
+        <h3 className="text-body font-medium">{t(($) => $.profile.title)}</h3>
+        <p className="mt-1 text-micro text-muted-foreground">
           {t(($) => $.profile.description)}
         </p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
-          <Label htmlFor="invitee-name" className="text-xs text-muted-foreground">
+          <Label htmlFor="invitee-name" className="text-micro text-muted-foreground">
             {t(($) => $.profile.name_label)}
           </Label>
           <Input
@@ -67,7 +59,7 @@ export function InviteeProfileFields({
           />
         </div>
         <div>
-          <Label htmlFor="invitee-email" className="text-xs text-muted-foreground">
+          <Label htmlFor="invitee-email" className="text-micro text-muted-foreground">
             {t(($) => $.profile.email_label)}
           </Label>
           <Input
@@ -81,7 +73,7 @@ export function InviteeProfileFields({
         </div>
       </div>
       <div>
-        <Label className="text-xs text-muted-foreground">
+        <Label className="text-micro text-muted-foreground">
           {tOnboarding(($) => $.questions.role.question)}
         </Label>
         <div className="mt-2 flex flex-wrap gap-2">
@@ -92,13 +84,13 @@ export function InviteeProfileFields({
                 key={r}
                 type="button"
                 onClick={() => onRoleChange(r)}
-                className={`inline-flex items-center justify-center rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                className={`inline-flex items-center justify-center rounded-full border px-3 py-1.5 text-micro font-medium transition-colors ${
                   isSelected
                     ? "border-transparent bg-primary text-primary-foreground shadow"
                     : "border-border bg-background text-muted-foreground hover:bg-muted"
                 }`}
               >
-                {tOnboarding(($) => $.questions.role[r] as string)}
+                {tOnboarding(($) => ($.questions.role as any)[r] as string)}
               </button>
             );
           })}

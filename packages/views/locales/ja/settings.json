@@ -81,6 +81,11 @@
     "issue_link_new_tab": {
       "title": "イシューリンクを新しいタブで開く",
       "hint": "説明・コメント・チャット内のイシューリンクを、その場で移動せず新しいタブで開きます。"
+    },
+    "sidebar": {
+      "title": "Sidebar Position",
+      "left": "Left",
+      "right": "Right"
     }
   },
   "shortcuts": {
@@ -113,24 +118,78 @@
       "navigation": "ナビゲーション"
     },
     "actions": {
-      "openSearch": { "label": "検索を開く", "description": "どこからでも検索やコマンドを実行します。" },
-      "createIssue": { "label": "Issueを作成", "description": "優先するissue作成フローを開きます。" },
-      "toggleSidebar": { "label": "サイドバーを切り替え", "description": "メインサイドバーの表示を切り替えます。" },
-      "toggleChat": { "label": "チャットウィンドウを切り替え", "description": "フローティングチャットを開閉します。開いたときは入力欄にフォーカスします。" },
-      "findInIssue": { "label": "Issue内を検索", "description": "開いているissueの詳細を検索します。" },
-      "send": { "label": "送信", "description": "チャット、コメント、返信、フィードバック、プロンプトを送信し、作成ダイアログで issue を作成します。" },
-      "goInbox": { "label": "受信トレイへ移動", "description": "ワークスペースの受信トレイを開きます。" },
-      "goChat": { "label": "チャットへ移動", "description": "ワークスペースのチャットを開きます。" },
-      "goMyIssues": { "label": "自分のIssuesへ移動", "description": "自分に割り当てられたissueを開きます。" },
-      "goIssues": { "label": "Issuesへ移動", "description": "Issue一覧を開きます。" },
-      "goProjects": { "label": "プロジェクトへ移動", "description": "プロジェクト一覧を開きます。" },
-      "goAutopilots": { "label": "自動化へ移動", "description": "ワークスペースの自動化を開きます。" },
-      "goAgents": { "label": "エージェントへ移動", "description": "エージェント一覧を開きます。" },
-      "goSquads": { "label": "Squadsへ移動", "description": "Squad一覧を開きます。" },
-      "goUsage": { "label": "使用量へ移動", "description": "使用量分析を開きます。" },
-      "goRuntimes": { "label": "ランタイムへ移動", "description": "ランタイム設定を開きます。" },
-      "goSkills": { "label": "Skillsへ移動", "description": "Skillライブラリを開きます。" },
-      "goSettings": { "label": "設定へ移動", "description": "ワークスペース設定を開きます。" }
+      "openSearch": {
+        "label": "検索を開く",
+        "description": "どこからでも検索やコマンドを実行します。"
+      },
+      "createIssue": {
+        "label": "Issueを作成",
+        "description": "優先するissue作成フローを開きます。"
+      },
+      "toggleSidebar": {
+        "label": "サイドバーを切り替え",
+        "description": "メインサイドバーの表示を切り替えます。"
+      },
+      "toggleChat": {
+        "label": "チャットウィンドウを切り替え",
+        "description": "フローティングチャットを開閉します。開いたときは入力欄にフォーカスします。"
+      },
+      "findInIssue": {
+        "label": "Issue内を検索",
+        "description": "開いているissueの詳細を検索します。"
+      },
+      "send": {
+        "label": "送信",
+        "description": "チャット、コメント、返信、フィードバック、プロンプトを送信し、作成ダイアログで issue を作成します。"
+      },
+      "goInbox": {
+        "label": "受信トレイへ移動",
+        "description": "ワークスペースの受信トレイを開きます。"
+      },
+      "goChat": {
+        "label": "チャットへ移動",
+        "description": "ワークスペースのチャットを開きます。"
+      },
+      "goMyIssues": {
+        "label": "自分のIssuesへ移動",
+        "description": "自分に割り当てられたissueを開きます。"
+      },
+      "goIssues": {
+        "label": "Issuesへ移動",
+        "description": "Issue一覧を開きます。"
+      },
+      "goProjects": {
+        "label": "プロジェクトへ移動",
+        "description": "プロジェクト一覧を開きます。"
+      },
+      "goAutopilots": {
+        "label": "自動化へ移動",
+        "description": "ワークスペースの自動化を開きます。"
+      },
+      "goAgents": {
+        "label": "エージェントへ移動",
+        "description": "エージェント一覧を開きます。"
+      },
+      "goSquads": {
+        "label": "Squadsへ移動",
+        "description": "Squad一覧を開きます。"
+      },
+      "goUsage": {
+        "label": "使用量へ移動",
+        "description": "使用量分析を開きます。"
+      },
+      "goRuntimes": {
+        "label": "ランタイムへ移動",
+        "description": "ランタイム設定を開きます。"
+      },
+      "goSkills": {
+        "label": "Skillsへ移動",
+        "description": "Skillライブラリを開きます。"
+      },
+      "goSettings": {
+        "label": "設定へ移動",
+        "description": "ワークスペース設定を開きます。"
+      }
     },
     "fixed": {
       "title": "固定のシステムショートカット",
@@ -176,7 +235,6 @@
       "notifications": "通知",
       "tokens": "API トークン",
       "general": "一般",
-      "issue_types": "Issue タイプ",
       "repositories": "リポジトリ",
       "github": "GitHub",
       "integrations": "連携",
@@ -254,10 +312,9 @@
   },
   "labels": {
     "title": "ラベル",
-    "description": "このワークスペースの Issue、エージェント、Skill 用ラベルを個別に管理します。",
+    "description": "このワークスペースの Issue、Skill 用ラベルを個別に管理します。",
     "scopes": {
       "issue": "Issue",
-      "agent": "エージェント",
       "skill": "Skill"
     },
     "search_placeholder": "名前または説明で絞り込み...",
@@ -304,8 +361,6 @@
     "avatar_label": "アバター",
     "click_avatar_hint": "クリックしてアバターをアップロード",
     "name_label": "名前",
-    "email_label": "メールアドレス",
-    "email_hint": "ログイン用メールアドレスは認証プロバイダーによって管理されています。",
     "profile_description_label": "自己紹介",
     "profile_description_hint": "あなたの代わりに作業するエージェントに共有されます。役割、技術スタック、好みなど、新しいコラボレーターに初日に伝えたいことを書いてください。",
     "profile_description_placeholder": "例: Go と Postgres を使うバックエンドエンジニア。簡潔な PR と変更に合わせたテストを好みます。",
@@ -315,11 +370,7 @@
     "toast_avatar_updated": "アバターを更新しました",
     "toast_avatar_failed": "アバターをアップロードできませんでした",
     "toast_profile_updated": "プロフィールを更新しました",
-    "toast_profile_failed": "プロフィールを更新できませんでした",
-    "section_connected_accounts": "Connected Accounts",
-    "github_not_connected": "Not connected",
-    "connect": "Connect",
-    "disconnect": "Disconnect"
+    "toast_profile_failed": "プロフィールを更新できませんでした"
   },
   "notifications": {
     "title": "インボックス通知",
@@ -496,9 +547,7 @@
     "feature_co_author_description_prefix": "エージェントが作成したコミットに",
     "feature_co_author_description_suffix": "を追加します。",
     "feature_auto_link_label": "イシューと PR を自動リンク",
-    "feature_auto_link_description": "PR のタイトル、本文、ブランチ名とイシュー ID を照合し、リンクを自動で作成します。",
-    "feature_auto_transitions_label": "イシューステータスの自動遷移",
-    "feature_auto_transitions_description": "PRを開いた時にイシューを「レビュー中」に、マージした時に「完了」に移動します。",
+    "feature_auto_link_description": "PR のタイトル、本文、ブランチ名をイシュー識別子と照合し、自動でリンクを作成します。",
     "section_repositories": "リポジトリ",
     "repositories_shortcut_label": "リポジトリ URL はリポジトリタブにあります",
     "repositories_shortcut_link": "リポジトリを管理 →",
@@ -752,7 +801,8 @@
       "up_to_date": "最新バージョンを使用しています。",
       "downloading": "v{{version}} をバックグラウンドでダウンロード中です。インストールの準備が整うとお知らせします。",
       "check_now": "今すぐ確認",
-      "checking": "確認中…"
+      "checking": "確認中…",
+      "ready_to_install": "Update ready! Restart to install v{{version}}."
     }
   },
   "members": {

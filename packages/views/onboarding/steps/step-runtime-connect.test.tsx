@@ -89,7 +89,7 @@ describe("StepRuntimeConnect", () => {
     renderStep();
     act(() => vi.advanceTimersByTime(5000));
     expect(
-      screen.getByText(/no agent runtime found on this computer yet/i),
+      screen.getByText(/no agent agent environment found on this computer yet/i),
     ).toBeInTheDocument();
   });
 
@@ -110,7 +110,7 @@ describe("StepRuntimeConnect", () => {
     // cannot hang the step on the skeleton forever.
     act(() => vi.advanceTimersByTime(15000));
     expect(
-      screen.getByText(/no agent runtime found/i),
+      screen.getByText(/no agent agent environment found/i),
     ).toBeInTheDocument();
   });
 

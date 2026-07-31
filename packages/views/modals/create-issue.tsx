@@ -1,4 +1,3 @@
-/* eslint-disable i18next/no-literal-string */
 "use client";
 
 import { useState, useRef, useEffect, useLayoutEffect } from "react";
@@ -50,8 +49,11 @@ import {
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@multica/ui/components/ui/tooltip";
 import { Button } from "@multica/ui/components/ui/button";
 import { Switch } from "@multica/ui/components/ui/switch";
-import { ContentEditor, type ContentEditorRef, TitleEditor, useFileDropZone, FileDropOverlay } from "../editor";
-import { StatusIcon, StatusPicker, PriorityPicker, StagePicker, AssigneePicker, StartDatePicker, DueDatePicker, LabelPicker, IssueTypePicker, GitHubRepoPicker } from "../issues/components";
+import { ContentEditor, type ContentEditorRef, TitleEditor, type TitleEditorRef, useFileDropZone, FileDropOverlay, useUploadGate, useComposerSubmit } from "../editor";
+import { useIssueCreateUploads } from "./use-issue-create-uploads";
+import { useShortcut } from "@multica/core/shortcuts";
+import { ShortcutKeycaps } from "../common/shortcut-keycaps";
+import { StatusIcon, StatusPicker, PriorityIcon, PriorityPicker, StagePicker, AssigneePicker, StartDatePicker, DueDatePicker, LabelPicker } from "../issues/components";
 import { maxSiblingStage } from "../issues/components/pickers/stage-picker";
 import { ProjectPicker } from "../projects/components/project-picker";
 import { useIssueTriggerPreview } from "../issues/hooks/use-issue-trigger-preview";
@@ -216,6 +218,7 @@ export function ManualCreatePanel({
   const setAgent = useIssueDraftStore((s) => s.setAgent);
   const setActiveMode = useIssueDraftStore((s) => s.setActiveMode);
   const clearDraft = useIssueDraftStore((s) => s.clearDraft);
+  const setLastAssignee = useIssueDraftStore((s) => s.setLastAssignee);
   const setLastMode = useCreateModeStore((s) => s.setLastMode);
   const keepOpen = useQuickCreateStore((s) => s.keepOpen);
   const setKeepOpen = useQuickCreateStore((s) => s.setKeepOpen);
@@ -229,26 +232,25 @@ export function ManualCreatePanel({
   const { isDragOver: descDragOver, dropZoneProps: descDropZoneProps } = useFileDropZone({
     onDrop: (files) => files.forEach((f) => descEditorRef.current?.uploadFile(f)),
   });
-  const [status, setStatus] = useState<IssueStatus>((data?.status as IssueStatus) || draft.status);
-  const [priority, setPriority] = useState<IssuePriority>(draft.priority);
-  const [submitting, setSubmitting] = useState(false);
-  const [assignees, setAssignees] = useState<{ type: IssueAssigneeType; id: string }[]>(() => {
-    if (data && "assignee_type" in data && "assignee_id" in data && data.assignee_type && data.assignee_id) {
-      return [{ type: data.assignee_type as IssueAssigneeType, id: data.assignee_id as string }];
-    }
-    return draft.assignees || [];
-  });
-  
-  const assigneeType = assignees.length > 0 ? assignees[0]!.type : undefined;
-  const assigneeId = assignees.length > 0 ? assignees[0]!.id : undefined;
-  const [issueTypeId, setIssueTypeId] = useState<string | null>(
-    (data?.issue_type_id as string) || draft.issueTypeId || null
+  const [status, setStatus] = useState<IssueStatus>((data?.status as IssueStatus) || draft.manual.status);
+  const [priority, setPriority] = useState<IssuePriority>(
+    (data?.priority as IssuePriority | undefined) ?? draft.shared.priority,
   );
-  const [startDate, setStartDate] = useState<string | null>(draft.startDate);
-  const [dueDate, setDueDate] = useState<string | null>(draft.dueDate);
-  const [labelIds, setLabelIds] = useState<string[]>(draft.labelIds);
-  const [projectId, setProjectId] = useState<string | undefined>(
-    (data?.project_id as string) || undefined,
+  const [assigneeType, setAssigneeType] = useState<IssueAssigneeType | undefined>(() => {
+    if (data && "assignee_type" in data) {
+      return (data.assignee_type as IssueAssigneeType | null) ?? undefined;
+    }
+    return draft.manual.assigneeType;
+  });
+  const [assigneeId, setAssigneeId] = useState<string | undefined>(() => {
+    if (data && "assignee_id" in data) {
+      return (data.assignee_id as string | null) ?? undefined;
+    }
+    return draft.manual.assigneeId;
+  });
+  const [startDate, setStartDate] = useState<string | null>(draft.manual.startDate);
+  const [dueDate, setDueDate] = useState<string | null>(
+    (data?.due_date as string | undefined) ?? draft.shared.dueDate,
   );
   const [labelIds, setLabelIds] = useState<string[]>(draft.manual.labelIds);
   const [propertyValues, setPropertyValues] = useState(draft.manual.propertyValues ?? {});
@@ -290,9 +292,6 @@ export function ManualCreatePanel({
   // object, and we never need to hydrate from an ID the way we do for parent.
   const [childIssues, setChildIssues] = useState<Issue[]>([]);
   const [childPickerOpen, setChildPickerOpen] = useState(false);
-  
-  const [createAsGithubIssue, setCreateAsGithubIssue] = useState(false);
-  const [githubRepo, setGithubRepo] = useState<any | null>(null);
   // Fetch parent issue details for the chip (status/identifier/title).
   // List cache usually has it already, so this resolves synchronously.
   const wsId = useWorkspaceId();
@@ -349,23 +348,47 @@ export function ManualCreatePanel({
     gate,
   } = useIssueCreateUploads("manual", uploadGate, descEditorRef);
 
-  // Sync field changes to draft store
-  const updateTitle = (v: string) => { setTitle(v); setDraft({ title: v }); };
-  const updateStatus = (v: IssueStatus) => { setStatus(v); setDraft({ status: v }); };
-  const updatePriority = (v: IssuePriority) => { setPriority(v); setDraft({ priority: v }); };
-  const updateAssignee = (assignees?: { assignee_type?: IssueAssigneeType, assignee_id?: string }[]) => {
-    if (assignees && assignees.length > 0) {
-      const formattedAssignees = assignees.map(a => ({ type: a.assignee_type!, id: a.assignee_id! }));
-      setAssignees(formattedAssignees);
-      setDraft({ assignees: formattedAssignees });
-    } else {
-      setAssignees([]);
-      setDraft({ assignees: [] });
-    }
+  // Sync field changes to the draft store — manual-only fields to the manual
+  // slot, project / priority / due date to the shared slot.
+  const updateTitle = (v: string) => { setTitle(v); setManual({ title: v }); };
+  const updateStatus = (v: IssueStatus) => { setStatus(v); setManual({ status: v }); };
+  const updatePriority = (v: IssuePriority) => { setPriority(v); setShared({ priority: v }); };
+  const updateAssignee = (type?: IssueAssigneeType, id?: string) => {
+    setAssigneeType(type); setAssigneeId(id);
+    setManual({ assigneeType: type, assigneeId: id });
   };
-  const updateIssueType = (id: string | null) => {
-    setIssueTypeId(id);
-    setDraft({ issueTypeId: id });
+  const updateProject = (id?: string) => { setProjectId(id); setShared({ projectId: id }); };
+  const updateStartDate = (v: string | null) => { setStartDate(v); setManual({ startDate: v }); };
+  const updateDueDate = (v: string | null) => { setDueDate(v); setShared({ dueDate: v }); };
+  const updateLabelIds = (ids: string[]) => { setLabelIds(ids); setManual({ labelIds: ids }); };
+  const updatePropertyValue = (propertyId: string, value: IssuePropertyValue | undefined) => {
+    const next = { ...propertyValues };
+    if (value === undefined) delete next[propertyId];
+    else next[propertyId] = value;
+    setPropertyValues(next);
+    setManual({ propertyValues: next });
+  };
+
+  // Inline pill reveal per toolbar field: kept by Settings → Issue, holding a
+  // non-default value (a hidden field with a value must stay visible — the
+  // draft or a mode-switch carry may have set it), or just opened from the ⋯
+  // overflow (the picker popover needs the inline pill as its anchor).
+  const showField = {
+    status: manualFields.includes("status") || status !== "todo" || fieldPickerOpen === "status",
+    priority: manualFields.includes("priority") || priority !== "none" || fieldPickerOpen === "priority",
+    assignee: manualFields.includes("assignee") || assigneeId != null || fieldPickerOpen === "assignee",
+    labels: manualFields.includes("labels") || labelIds.length > 0 || fieldPickerOpen === "labels",
+    project: manualFields.includes("project") || projectId != null || fieldPickerOpen === "project",
+    due_date: manualFields.includes("due_date") || dueDate !== null || dueDatePickerOpen,
+    start_date: manualFields.includes("start_date") || startDate !== null || startDatePickerOpen,
+  };
+
+  // Field visibility lives in Settings → Issue; the modal closes first so the
+  // dialog doesn't linger over the settings page. The draft store already
+  // holds everything typed, so nothing is lost across the round-trip.
+  const openFieldSettings = () => {
+    onClose();
+    router.push(`${p.settings()}?tab=issue`);
   };
 
   const createIssueMutation = useCreateIssue();
@@ -391,9 +414,8 @@ export function ManualCreatePanel({
       title: "",
       description: "",
       status: "todo",
-      priority: "none",
-      assignees,
-      issueTypeId: null,
+      assigneeType,
+      assigneeId,
       startDate: null,
       labelIds: [],
       propertyValues: {},
@@ -448,10 +470,8 @@ export function ManualCreatePanel({
         description,
         status,
         priority,
-        issue_type_id: issueTypeId || undefined,
         assignee_type: assigneeType,
         assignee_id: assigneeId,
-        assignees: assignees.length > 0 ? assignees.map((a) => ({ assignee_type: a.type, assignee_id: a.id })) : undefined,
         start_date: startDate || undefined,
         due_date: dueDate || undefined,
         attachment_ids: activeAttachmentIds.length > 0 ? activeAttachmentIds : undefined,
@@ -555,22 +575,6 @@ export function ManualCreatePanel({
         }
       }
 
-      if (createAsGithubIssue && githubRepo) {
-        try {
-          await api.createGitHubIssue({
-            repo_owner: githubRepo.owner.login,
-            repo_name: githubRepo.name,
-            title: title.trim(),
-            description: description || "",
-          });
-        } catch (err) {
-          console.error("[create-issue] github issue creation failed", err);
-          toast.error("Failed to create GitHub issue, but Multica issue was created.");
-        }
-      }
-
-      setLastMode("manual");
-      clearDraft();
       // The old post-create "agent paused in Backlog" blocking panel is gone —
       // a passive inline hint now warns before submit (MUL-3375). The draft
       // reset + close/keep-open happens in onAccepted once we report success.
@@ -879,14 +883,6 @@ export function ManualCreatePanel({
             {/* Property toolbar — each field renders per the Settings → Issue
                 selection (see showField above). */}
             <div className="flex items-center gap-1.5 px-4 py-2 shrink-0 flex-wrap">
-              {/* Project */}
-              <ProjectPicker
-                projectId={projectId ?? null}
-                onUpdate={(u) => setProjectId(u.project_id ?? undefined)}
-                triggerRender={<PillButton />}
-                align="start"
-              />
-
               {/* Status */}
               {showField.status && (
                 <StatusPicker
@@ -898,15 +894,6 @@ export function ManualCreatePanel({
                   onOpenChange={(open) => setFieldPickerOpen(open ? "status" : null)}
                 />
               )}
-
-              {/* Type */}
-              <IssueTypePicker
-                issueTypeId={issueTypeId}
-                onUpdate={(u) => { if (u.issue_type_id !== undefined) updateIssueType(u.issue_type_id || null); }}
-                triggerRender={<PillButton />}
-                align="start"
-                projectId={projectId ?? undefined}
-              />
 
               {/* Priority */}
               {showField.priority && (
@@ -921,34 +908,47 @@ export function ManualCreatePanel({
               )}
 
               {/* Assignee */}
-              <AssigneePicker
-                assigneeType={assigneeType ?? null}
-                assigneeId={assigneeId ?? null}
-                assignees={assignees}
-                onUpdate={(u) => {
-                  if (u.assignees) {
-                    updateAssignee(u.assignees.map(a => ({ assignee_type: a.assignee_type!, assignee_id: a.assignee_id! })));
-                  } else {
-                    updateAssignee(u.assignee_type ? [{ assignee_type: u.assignee_type, assignee_id: u.assignee_id! }] : []);
-                  }
-                }}
-                triggerRender={<PillButton />}
-                align="start"
-              />
+              {showField.assignee && (
+                <AssigneePicker
+                  assigneeType={assigneeType ?? null}
+                  assigneeId={assigneeId ?? null}
+                  onUpdate={(u) => updateAssignee(
+                    u.assignee_type ?? undefined,
+                    u.assignee_id ?? undefined,
+                  )}
+                  triggerRender={<PillButton />}
+                  align="start"
+                  open={fieldPickerOpen === "assignee" ? true : undefined}
+                  onOpenChange={(open) => setFieldPickerOpen(open ? "assignee" : null)}
+                />
+              )}
 
               {/* Labels — occupies the slot that used to hold Due date so the
                   add-label entry is exposed directly on the dialog. Draft mode:
                   selection is local until the issue is created (handleSubmit
                   attaches the labels afterward). */}
-              <LabelPicker
-                selectedIds={labelIds}
-                onSelectedIdsChange={updateLabelIds}
-                triggerRender={<PillButton />}
-                align="start"
-                projectId={projectId ?? undefined}
-              />
+              {showField.labels && (
+                <LabelPicker
+                  selectedIds={labelIds}
+                  onSelectedIdsChange={updateLabelIds}
+                  triggerRender={<PillButton />}
+                  align="start"
+                  open={fieldPickerOpen === "labels" ? true : undefined}
+                  onOpenChange={(open) => setFieldPickerOpen(open ? "labels" : null)}
+                />
+              )}
 
-              {/* Project picker was moved to the front */}
+              {/* Project */}
+              {showField.project && (
+                <ProjectPicker
+                  projectId={projectId ?? null}
+                  onUpdate={(u) => updateProject(u.project_id ?? undefined)}
+                  triggerRender={<PillButton />}
+                  align="start"
+                  open={fieldPickerOpen === "project" ? true : undefined}
+                  onOpenChange={(open) => setFieldPickerOpen(open ? "project" : null)}
+                />
+              )}
 
               {/* Stage — only relevant when creating a sub-issue under a parent */}
               {parentIssueId && (
@@ -1257,28 +1257,7 @@ export function ManualCreatePanel({
                   />
                   {t(($) => $.create_issue.create_another)}
                 </label>
-                <div className="flex items-center gap-2">
-                  <label className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
-                    <Switch
-                      size="sm"
-                      checked={createAsGithubIssue}
-                      onCheckedChange={setCreateAsGithubIssue}
-                    />
-                    Create as GitHub Issue
-                  </label>
-                  {createAsGithubIssue && (
-                    <GitHubRepoPicker
-                      selectedRepoFullName={githubRepo?.full_name}
-                      onSelect={setGithubRepo}
-                      triggerRender={
-                        <Button variant="outline" size="sm" className="h-7 text-xs">
-                          {githubRepo ? githubRepo.full_name : "Select Repository..."}
-                        </Button>
-                      }
-                    />
-                  )}
-                </div>
-                {!title.trim() ? (
+                {submitState === "missing_title" ? (
                   <TooltipProvider delay={200}>
                     <Tooltip>
                       {/* No `<span>` wrapper needed now: aria-disabled leaves the

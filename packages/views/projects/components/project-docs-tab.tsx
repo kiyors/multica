@@ -153,7 +153,7 @@ export function ProjectDocsTab({ projectId }: { projectId: string }) {
     <div className="flex h-full min-h-[640px] w-full overflow-hidden">
       <aside className="flex w-72 shrink-0 flex-col border-r bg-muted/20">
         <div className="flex items-center justify-between border-b px-4 py-3">
-          <h3 className="text-sm font-medium">{t(($) => $.docs.title)}</h3>
+          <h3 className="text-body font-medium">{t(($) => $.docs.title)}</h3>
           <DropdownMenu>
             <DropdownMenuTrigger
               render={
@@ -175,7 +175,7 @@ export function ProjectDocsTab({ projectId }: { projectId: string }) {
 
         <div className="flex-1 overflow-y-auto p-2">
           {rootDocs.length === 0 ? (
-            <div className="p-6 text-center text-xs text-muted-foreground">
+            <div className="p-6 text-center text-micro text-muted-foreground">
               {t(($) => $.docs.empty)}
             </div>
           ) : null}
@@ -211,7 +211,7 @@ export function ProjectDocsTab({ projectId }: { projectId: string }) {
                 value={draftTitle}
                 onChange={(event) => scheduleTitleSave(selectedDoc, event.target.value)}
                 onBlur={() => flushTitle(selectedDoc)}
-                className="h-auto border-none bg-transparent px-0 text-3xl font-bold shadow-none focus-visible:ring-0"
+                className="h-auto border-none bg-transparent px-0 text-display font-bold shadow-none focus-visible:ring-0"
                 placeholder={selectedDoc.document_type === "folder" ? "Folder name" : "Document title"}
               />
             </div>
@@ -220,7 +220,7 @@ export function ProjectDocsTab({ projectId }: { projectId: string }) {
               <div className="rounded-lg border border-dashed p-8">
                 <Folder className="mb-3 h-8 w-8 text-muted-foreground" />
                 <h4 className="font-medium">{selectedDoc.title}</h4>
-                <p className="mt-1 text-sm text-muted-foreground">
+                <p className="mt-1 text-body text-muted-foreground">
                   {t(($) => $.docs.item_count, { count: childrenByParent.get(selectedDoc.id)?.length ?? 0 })}
                 </p>
                 <div className="mt-4 flex gap-2">
@@ -298,7 +298,7 @@ function DocumentTree({
         return (
           <div key={document.id}>
             <div
-              className={`group flex items-center gap-1 rounded-md pr-1 text-sm ${selectedId === document.id ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-accent/50"}`}
+              className={`group flex items-center gap-1 rounded-md pr-1 text-body ${selectedId === document.id ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-accent/50"}`}
               style={{ paddingLeft: `${depth * 14 + 4}px` }}
             >
               {isFolder ? (

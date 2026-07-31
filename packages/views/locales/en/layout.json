@@ -1,6 +1,7 @@
 {
   "nav": {
     "inbox": "Inbox",
+    "chat": "Chat",
     "my_issues": "My Tasks",
     "issues": "Tasks",
     "projects": "Projects",
@@ -13,7 +14,7 @@
     "settings": "Settings"
   },
   "tab": {
-    "issue": "Issue",
+    "issue": "Task",
     "project": "Project",
     "autopilot": "Autopilot",
     "agent": "Agent",
@@ -21,7 +22,7 @@
     "squad": "Squad",
     "skill": "Skill",
     "machine": "Machine",
-    "runtime": "Runtime",
+    "runtime": "Agent Environment",
     "attachment": "Attachment",
     "create_agent": "Create Agent",
     "unknown": "Unknown page"
@@ -55,7 +56,7 @@
     "unread_overflow": "99+",
     "discord_card": {
       "title": "Join our Discord",
-      "description": "Chat with the team and other builders."
+      "dismiss": "Dismiss"
     }
   }
 }

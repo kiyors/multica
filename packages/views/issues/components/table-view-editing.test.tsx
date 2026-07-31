@@ -340,7 +340,7 @@ describe("TableView cell editors under data refresh", () => {
 
     const row = (await screen.findByText("MUL-a")).closest("tr")!;
     await user.click(
-      within(row).getByRole("button", { name: "Create sub-issue" }),
+      within(row).getByRole("button", { name: "Create sub-task" }),
     );
 
     expect(onCreateIssue).toHaveBeenCalledWith({

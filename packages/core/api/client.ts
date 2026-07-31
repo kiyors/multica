@@ -111,6 +111,7 @@ import type {
   Label,
   IssueProperty,
   IssuePropertyValue,
+  IssuePropertyValues,
   CreatePropertyRequest,
   QuickAction,
   CreateQuickActionRequest,
@@ -123,7 +124,6 @@ import type {
   UpdateLabelRequest,
   ListLabelsResponse,
   IssueLabelsResponse,
-  LabelResourceType,
   ResourceLabelsResponse,
   PinnedItem,
   CreatePinRequest,
@@ -228,6 +228,8 @@ import {
   EMPTY_AGENT_TEMPLATE_SUMMARY_LIST,
   EMPTY_APP_CONFIG,
   EMPTY_ATTACHMENT,
+  ListLabelsResponseSchema,
+  EMPTY_LIST_LABELS_RESPONSE,
   EMPTY_CHAT_MESSAGE_LIST,
   EMPTY_CLOUD_RUNTIME_NODE,
   EMPTY_CLOUD_RUNTIME_NODE_LIST,
@@ -306,6 +308,37 @@ import {
   ProjectDocumentSchema,
   ProjectDocumentListSchema,
   EMPTY_PROJECT_DOCUMENT,
+  IssuePullRequestsResponseSchema,
+  EMPTY_ISSUE_PULL_REQUESTS_RESPONSE,
+  RuntimeModelListRequestSchema,
+  MALFORMED_RUNTIME_MODEL_LIST_REQUEST,
+  InboxItemListSchema,
+  EMPTY_INBOX_ITEMS,
+  NotificationPreferenceResponseSchema,
+  EMPTY_NOTIFICATION_PREFERENCE_RESPONSE,
+  LabelSchema,
+  EMPTY_LABEL,
+  ListPropertiesResponseSchema,
+  EMPTY_LIST_PROPERTIES_RESPONSE,
+  ListQuickActionsResponseSchema,
+  EMPTY_LIST_QUICK_ACTIONS_RESPONSE,
+  QuickActionSchema,
+  EMPTY_QUICK_ACTION,
+  CommentSchema,
+  EMPTY_COMMENT,
+  QuickActionRenderSchema,
+  IssuePropertySchema,
+  EMPTY_ISSUE_PROPERTY,
+  IssuePropertiesResponseSchema,
+  EMPTY_ISSUE_PROPERTIES_RESPONSE,
+  ResourceLabelsResponseSchema,
+  EMPTY_RESOURCE_LABELS_RESPONSE,
+  GitHubConnectResponseSchema,
+  EMPTY_GITHUB_CONNECT_RESPONSE,
+  ListGitHubInstallationsResponseSchema,
+  EMPTY_LIST_GITHUB_INSTALLATIONS_RESPONSE,
+  ListGitHubRepositoriesResponseSchema,
+  EMPTY_LIST_GITHUB_REPOSITORIES_RESPONSE,
 } from "./schemas";
 
 /** Identifies the calling client to the server.
@@ -1848,6 +1881,20 @@ export class ApiClient {
     });
   }
 
+  async unsubscribeFromIssueSubtree(issueId: string, userId?: string, userType?: string): Promise<void> {
+    const body: Record<string, string> = {};
+    if (userId) body.user_id = userId;
+    if (userType) body.user_type = userType;
+    await this.fetch(`/api/issues/${issueId}/unsubscribe-subtree`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  }
+
+  async getIssueProperties(issueId: string): Promise<IssuePropertyValues> {
+    return this.fetch(`/api/issues/${issueId}/properties`);
+  }
+
   async getIssueUsage(issueId: string): Promise<IssueUsageSummary> {
     return this.fetch(`/api/issues/${issueId}/usage`);
   }
@@ -2549,7 +2596,10 @@ export class ApiClient {
   // Labels
   async listLabels(projectId?: string): Promise<ListLabelsResponse> {
     const url = projectId ? `/api/labels?project_id=${projectId}` : `/api/labels`;
-    return this.fetch(url);
+    const raw = await this.fetch<unknown>(url);
+    return parseWithFallback(raw, ListLabelsResponseSchema, EMPTY_LIST_LABELS_RESPONSE, {
+      endpoint: `GET ${url.split("?")[0]}`,
+    });
   }
 
   async getLabel(id: string): Promise<Label> {

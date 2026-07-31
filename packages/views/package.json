@@ -52,8 +52,8 @@
     "./platform": "./platform/index.ts",
     "./i18n": "./i18n/index.ts",
     "./attachments": "./attachments/index.ts",
-    "./reviews": "./reviews/index.ts",
     "./locales": "./locales/index.ts",
+    "./reviews": "./reviews/index.ts",
     "./locales/*": "./locales/*"
   },
   "dependencies": {
@@ -63,7 +63,6 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@floating-ui/dom": "^1.7.6",
-    "@multica/canvas-drawing-editor": "workspace:*",
     "@multica/core": "workspace:*",
     "@multica/ui": "workspace:*",
     "@tanstack/react-virtual": "catalog:",
@@ -90,7 +89,6 @@
     "@tiptap/suggestion": "3.27.1",
     "cmdk": "^1.1.1",
     "hast-util-to-html": "^9.0.5",
-    "hls.js": "^1.6.16",
     "katex": "catalog:",
     "lowlight": "^3.3.0",
     "mdast-util-from-markdown": "^2.0.3",
@@ -99,7 +97,6 @@
     "pinyin-pro": "3.26.0",
     "react-easy-crop": "^6.2.0",
     "react-markdown": "^10.1.0",
-    "react-pdf": "^10.4.1",
     "react-qr-code": "catalog:",
     "react-resizable-panels": "^4.7.5",
     "react-virtuoso": "catalog:",

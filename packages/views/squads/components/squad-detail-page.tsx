@@ -346,38 +346,10 @@ function SquadHeaderAvatar({ squad, initials }: { squad: Squad; initials: string
   );
 }
 
-// Large click-to-upload avatar editor. Mirrors AvatarEditor in
-// agent-detail-inspector.tsx — square (rounded-md) treatment is reserved
-// for non-human actors (agent, squad), circles for humans.
-function SquadAvatarEditor({
-  squad,
-  initials,
-  uploading,
-  onUpload,
-}: {
-  squad: Squad;
-  initials: string;
-  uploading: boolean;
-  onUpload: (url: string) => Promise<unknown>;
-}) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const { upload, uploading: fileUploading } = useFileUpload(api);
-  const busy = uploading || fileUploading;
-
-  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    e.target.value = "";
-    try {
-      const result = await upload(file);
-      if (!result) return;
-      await onUpload(result.markdownLink || result.link);
-      toast.success("Avatar updated");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to upload avatar");
-    }
-  };
-
+// Read-only 64px avatar for viewers who can't manage the squad — same visual
+// as the editable control's resting state but without the click/upload
+// affordance.
+function SquadStaticAvatar({ squad, initials }: { squad: Squad; initials: string }) {
   return (
     <div className="h-16 w-16 shrink-0 overflow-hidden rounded-full bg-muted">
       {squad.avatar_url ? (

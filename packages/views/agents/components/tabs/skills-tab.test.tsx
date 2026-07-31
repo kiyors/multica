@@ -159,10 +159,10 @@ describe("SkillsTab", () => {
     renderSkillsTab();
 
     expect(
-      await screen.findByText(/Local agent environment skills are always available/i),
+      await screen.findByText("Assigned to agent"),
     ).toBeInTheDocument();
-    expect(screen.getByText("Inherited from runtime")).toBeInTheDocument();
-    expect(screen.getByText(/Assign a local runtime/i)).toBeInTheDocument();
+    expect(screen.getByText("Inherited from agent environment")).toBeInTheDocument();
+    expect(screen.getByText(/Assign a local agent environment/i)).toBeInTheDocument();
   });
 
   it("disables an assigned skill without removing it", async () => {
@@ -280,8 +280,6 @@ describe("SkillsTab", () => {
       onlineRuntime,
     );
 
-    // The removed section's heading and its trigger button must be gone.
-    expect(screen.queryByText("Local Agent Environment Skills")).not.toBeInTheDocument();
     expect(
       await screen.findByRole("switch", {
         name: /Toggle inherited Local review/i,
@@ -298,7 +296,7 @@ describe("SkillsTab", () => {
 
     expect(
       await screen.findByText(
-        "You don't have permission to view this runtime's skills.",
+        "You don't have permission to view this agent environment's skills.",
       ),
     ).toBeInTheDocument();
   });
@@ -311,7 +309,7 @@ describe("SkillsTab", () => {
     renderSkillsTab({}, onlineRuntime);
 
     expect(
-      await screen.findByText("Couldn't discover runtime skills. Try again."),
+      await screen.findByText("Couldn't discover agent environment skills. Try again."),
     ).toBeInTheDocument();
   });
 });

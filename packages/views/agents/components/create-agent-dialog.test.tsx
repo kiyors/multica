@@ -164,7 +164,7 @@ describe("CreateAgentDialog runtime visibility gate", () => {
     document.body.innerHTML = "";
   });
 
-  it("disables another member's Private agent environment in the picker", () => {
+  it("disables another member's private runtime in the picker", () => {
     const mine = makeRuntime({ id: "rt-mine", name: "My Runtime", owner_id: ME, visibility: "private" });
     const othersPrivate = makeRuntime({
       id: "rt-others-private",
@@ -227,7 +227,7 @@ describe("CreateAgentDialog runtime visibility gate", () => {
     renderDialog([othersPrivate, mine]);
 
     // The trigger label shows the selected runtime name. The picker must
-    // not seed with the other-owned Private agent environment even if it sorted
+    // not seed with the other-owned private runtime even if it sorted
     // first in the input list.
     expect(screen.queryByText("Others Private", { selector: "span.truncate" })).toBeNull();
     expect(screen.getByText("My Runtime", { selector: "span.truncate" })).toBeInTheDocument();
@@ -336,8 +336,8 @@ describe("CreateAgentDialog access picker (MUL-4010, feature-flag gated)", () =>
 
     // New copy replaces the old one.
     expect(screen.getByText("Only you can run this agent")).toBeInTheDocument();
-    expect(screen.getByText("Entire workspace")).toBeInTheDocument();
-    expect(screen.getByText("Specific people")).toBeInTheDocument();
+    expect(screen.getByText("Public to workspace")).toBeInTheDocument();
+    expect(screen.getByText("Public to specific people")).toBeInTheDocument();
 
     fireEvent.change(screen.getByPlaceholderText("e.g. Deep Research Agent"), {
       target: { value: "Access Agent" },
@@ -383,7 +383,7 @@ describe("CreateAgentDialog access picker (MUL-4010, feature-flag gated)", () =>
     fireEvent.change(screen.getByPlaceholderText("e.g. Deep Research Agent"), {
       target: { value: "Empty Public Agent" },
     });
-    fireEvent.click(screen.getByRole("radio", { name: /^Specific people/i }));
+    fireEvent.click(screen.getByRole("radio", { name: /^Public to specific people/i }));
     fireEvent.click(screen.getByText("Create"));
     await new Promise((r) => setTimeout(r, 0));
 
@@ -398,7 +398,7 @@ describe("CreateAgentDialog access picker (MUL-4010, feature-flag gated)", () =>
     fireEvent.change(screen.getByPlaceholderText("e.g. Deep Research Agent"), {
       target: { value: "Shared Agent" },
     });
-    fireEvent.click(screen.getByRole("radio", { name: /^Specific people/i }));
+    fireEvent.click(screen.getByRole("radio", { name: /^Public to specific people/i }));
     fireEvent.click(screen.getByRole("checkbox", { name: /^Other/ }));
     fireEvent.click(screen.getByText("Create"));
     await new Promise((r) => setTimeout(r, 0));

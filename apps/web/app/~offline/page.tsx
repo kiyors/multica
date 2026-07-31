@@ -11,8 +11,8 @@ export default function OfflinePage() {
         </div>
         
         <div className="space-y-2">
-          <h1 className="text-2xl font-semibold tracking-tight">You are offline</h1>
-          <p className="text-sm text-muted-foreground leading-relaxed">
+          <h1 className="text-display-sm font-semibold tracking-tight">You are offline</h1>
+          <p className="text-body text-muted-foreground leading-relaxed">
             It looks like you've lost your internet connection. Some features may be unavailable until you reconnect.
           </p>
         </div>

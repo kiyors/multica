@@ -102,6 +102,7 @@ function subscribeToMainRendererChannel<T>(
 }
 
 const desktopAPI = {
+  windowContext,
   /** App version + normalized OS. Read once at preload time so the renderer
    *  can use it synchronously when initializing the API client. */
   appInfo,

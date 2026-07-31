@@ -1,7 +1,7 @@
 import type { SupportedLocale } from "@multica/core/i18n";
 export { docsHrefForLocale } from "@/lib/docs-href";
 
-export type Locale = SupportedLocale;
+export type Locale = SupportedLocale | "en-marketing" | "en-creative";
 export type LandingDictionaryLocale = "en" | "zh" | "ko" | "ja";
 
 export const locales: Locale[] = ["en", "zh-Hans", "ko", "ja", "en-marketing", "en-creative"];

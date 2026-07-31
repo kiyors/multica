@@ -2289,7 +2289,7 @@ export function TableView({
           if (propertyId) {
             const property = exportPropertyById.get(propertyId);
             return property
-              ? propertyDisplayValue(property, issue.properties[propertyId])
+              ? propertyDisplayValue(property, issue.properties?.[propertyId])
               : "";
           }
           switch (column.key) {

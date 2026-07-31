@@ -73,6 +73,7 @@ describe("UpdatesSettingsTab", () => {
         getPreferences: mocks.getPreferences,
         setAutomaticUpdates: mocks.setAutomaticUpdates,
         checkForUpdates: mocks.checkForUpdates,
+        onUpdateDownloaded: vi.fn(() => vi.fn()),
       },
     });
   });

@@ -19,10 +19,12 @@ import { isImeComposing } from "@multica/core/utils";
 import { workspaceKeys } from "@multica/core/workspace/queries";
 import type { Agent, MemberWithUser } from "@multica/core/types";
 import { useT } from "../../i18n";
-import { createSuggestionPopupRender, isPickerAcceptKey } from "./suggestion-popup";
-import { motion } from "motion/react";
-import { cn } from "@multica/ui/lib/utils";
-import { FileText, Cpu } from "lucide-react";
+import {
+  createSuggestionPopupRender,
+  isPickerAcceptKey,
+  pickerNavigationDirection,
+} from "./suggestion-popup";
+import { isTriggerArmedAt } from "./suggestion-trigger-arming";
 
 const MAX_ITEMS = 20;
 
@@ -129,48 +131,34 @@ export const SlashCommandList = forwardRef<
       : item.description;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      transition={{ duration: 0.15, ease: "easeOut" }}
-      className="flex max-h-[300px] w-64 flex-col overflow-y-auto rounded-xl border bg-popover p-1.5 text-popover-foreground shadow-xl shadow-black/5"
-    >
+    // Height budget clamps to min(design max, viewport-aware
+    // `--suggestion-available-height` from suggestion-popup.tsx's size
+    // middleware), falling back to the design max when rendered standalone.
+    // Single height authority — mirrors MentionList.
+    <div className="rounded-md border bg-popover py-1 shadow-md w-72 max-h-[min(300px,var(--suggestion-available-height,300px))] overflow-y-auto">
       {items.map((item, index) => {
-        const isBuiltin = !!item.descriptionKey;
-        const Icon = isBuiltin ? FileText : Cpu;
-        const desc = describe(item);
-
+        const description = describe(item);
         return (
           <button
             key={item.id}
             ref={(el) => {
               itemRefs.current[index] = el;
             }}
-            type="button"
-            className={cn(
-              "flex items-start gap-2.5 rounded-lg px-2 py-1.5 text-left text-sm cursor-pointer transition-colors outline-none",
-              index === selectedIndex
-                ? "bg-accent text-accent-foreground"
-                : "hover:bg-accent/50",
-            )}
+            className={`flex w-full flex-col gap-0.5 px-3 py-1.5 text-left text-caption transition-colors ${
+              selectedIndex === index ? "bg-accent" : "hover:bg-accent/50"
+            }`}
             onClick={() => selectItem(index)}
           >
-            <div className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded bg-muted/60 text-muted-foreground">
-              <Icon className="size-3.5" />
-            </div>
-            <div className="flex flex-col overflow-hidden">
-              <span className="truncate font-medium">{item.label}</span>
-              {desc && (
-                <span className="truncate text-xs text-muted-foreground/80">
-                  {desc}
-                </span>
-              )}
-            </div>
+            <span className="font-medium">/{item.label}</span>
+            {description && (
+              <span className="truncate text-muted-foreground">
+                {description}
+              </span>
+            )}
           </button>
         );
       })}
-    </motion.div>
+    </div>
   );
 });
 

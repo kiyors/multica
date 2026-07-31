@@ -83,7 +83,7 @@ describe("RuntimeMachineFilterDropdown", () => {
     document.body.innerHTML = "";
   });
 
-  it("shows the All-runtimes label and total scope count when nothing is selected", () => {
+  it("shows the All-agent-environments label and total scope count when nothing is selected", () => {
     const machines = [
       makeMachine({ id: "m-local", title: "dev.local" }),
       makeMachine({
@@ -155,7 +155,7 @@ describe("RuntimeMachineFilterDropdown", () => {
     expect(screen.getByText("Multica cloud")).toBeTruthy();
   });
 
-  it("fires onChange(null) when the All-runtimes row is clicked", () => {
+  it("fires onChange(null) when the All-agent-environments row is clicked", () => {
     const machines = [makeMachine({ id: "m-local", title: "dev.local" })];
     const counts = new Map([["m-local", 1]]);
     const onChange = vi.fn();
@@ -235,8 +235,8 @@ describe("RuntimeMachineFilterDropdown", () => {
     expect(screen.getByText("No machines yet")).toBeTruthy();
   });
 
-  it("uses the explicit totalAgentCount for the All-runtimes badge even when it diverges from the per-machine sum", () => {
-    // Regression: the All-runtimes count used to be derived from
+  it("uses the explicit totalAgentCount for the All-agent-environments badge even when it diverges from the per-machine sum", () => {
+    // Regression: the All-agent-environments count used to be derived from
     // agentCountByMachine, which silently dropped agents whose runtime
     // was GC'd (not present in any current machine). The badge should
     // track the in-scope total instead so it never undercounts what
@@ -247,7 +247,7 @@ describe("RuntimeMachineFilterDropdown", () => {
     renderDropdown(machines, null, vi.fn(), counts, /* totalAgentCount */ 5);
 
     const trigger = screen.getByTestId("agents-runtime-filter");
-    // Trigger surfaces the All-runtimes total, not the per-machine sum.
+    // Trigger surfaces the All-agent-environments total, not the per-machine sum.
     expect(trigger.textContent).toContain("5");
   });
 });

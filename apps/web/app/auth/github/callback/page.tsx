@@ -49,7 +49,7 @@ function GitHubCallbackContent() {
           <CardDescription>We couldn't connect your GitHub account.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+          <div className="rounded-md bg-destructive/10 p-3 text-body text-destructive">
             {error}
           </div>
           <Button onClick={() => router.push("/")} className="w-full">

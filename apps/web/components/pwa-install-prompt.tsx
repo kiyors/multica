@@ -86,18 +86,18 @@ export function PwaInstallPrompt() {
             <Download className="w-5 h-5" />
           </div>
           <div className="flex-1 pr-4">
-            <h3 className="text-sm font-semibold text-foreground">Install Multica</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <h3 className="text-body font-semibold text-foreground">Install Multica</h3>
+            <p className="text-micro text-muted-foreground mt-0.5">
               Install our app for a better mobile experience and offline access.
             </p>
           </div>
         </div>
         
         <div className="flex justify-end gap-2 mt-1">
-          <Button variant="ghost" size="sm" onClick={handleDismiss} className="text-xs h-8">
+          <Button variant="ghost" size="sm" onClick={handleDismiss} className="text-micro h-8">
             Later
           </Button>
-          <Button size="sm" onClick={handleInstallClick} className="text-xs h-8">
+          <Button size="sm" onClick={handleInstallClick} className="text-micro h-8">
             Install App
           </Button>
         </div>

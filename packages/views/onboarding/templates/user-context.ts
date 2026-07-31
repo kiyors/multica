@@ -60,15 +60,17 @@ export function buildUserContextSection(
 ): string {
   if (!raw) return "";
 
-  // Role can be single or multi-select now.
-  const roleSlugs = asStringArray(raw.role);
+  // Role is single-select. "other" slug means the user picked Other and
+  // filled the free-text input — show the free-text instead of the
+  // generic "Other" label.
+  const role = asString(raw.role);
   const roleOther = asString(raw.role_other);
-  const roleDisplay = roleSlugs
-    .map((slug) =>
-      slug === "other" ? roleOther : labels.role[slug] ?? slug
-    )
-    .filter((s) => s.length > 0)
-    .join(labels.listSeparator);
+  const roleDisplay =
+    role === "other"
+      ? roleOther
+      : role
+        ? labels.role[role] ?? role
+        : "";
 
   // Use case is multi-select. The "other" slug stacks alongside regular
   // picks; the free-text lives in use_case_other. Map each slug to a

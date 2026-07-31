@@ -9,7 +9,7 @@
     "agents": "智能体",
     "squads": "小队",
     "usage": "用量",
-    "runtimes": "智能体环境",
+    "runtimes": "运行时",
     "skills": "Skills",
     "settings": "设置"
   },
@@ -56,7 +56,7 @@
     "unread_overflow": "99+",
     "discord_card": {
       "title": "加入我们的 Discord",
-      "description": "和团队及其他用户一起交流。"
+      "dismiss": "关闭"
     }
   }
 }

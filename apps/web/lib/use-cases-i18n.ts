@@ -1,4 +1,4 @@
-import type { SupportedLocale } from "@multica/core/i18n";
+import type { Locale } from "@/features/landing/i18n/types";
 export { docsHrefForLocale } from "@/lib/docs-href";
 import { getRequestLocale } from "@/lib/request-locale";
 
@@ -13,7 +13,7 @@ type UseCaseText = {
   tableOfContents: string;
 };
 
-export const useCaseText: Record<SupportedLocale, UseCaseText> = {
+export const useCaseText: Record<Locale, UseCaseText> = {
   en: {
     indexTitle: "Use cases",
     indexSubtitle:

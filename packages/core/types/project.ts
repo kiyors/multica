@@ -13,6 +13,8 @@ export interface Project {
   lead_type: "member" | "agent" | null;
   lead_id: string | null;
   prefix: string | null;
+  start_date?: string | null;
+  due_date?: string | null;
   created_at: string;
   updated_at: string;
   issue_count: number;
@@ -29,6 +31,8 @@ export interface CreateProjectRequest {
   lead_type?: "member" | "agent";
   lead_id?: string;
   prefix?: string | null;
+  start_date?: string;
+  due_date?: string;
   // Resources to attach in the same transaction as the project. Server returns
   // 4xx (and rolls back) if any one is invalid or duplicate.
   resources?: CreateProjectResourceRequest[];
@@ -43,6 +47,8 @@ export interface UpdateProjectRequest {
   lead_type?: "member" | "agent" | null;
   lead_id?: string | null;
   prefix?: string | null;
+  start_date?: string | null;
+  due_date?: string | null;
 }
 
 export interface ListProjectsResponse {

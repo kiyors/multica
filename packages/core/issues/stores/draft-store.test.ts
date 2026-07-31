@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { useIssueDraftStore } from "./draft-store";
+import { useIssueDraftStore, EMPTY_CREATE_DRAFT } from "./draft-store";
 import { setCurrentWorkspace } from "../../platform/workspace-storage";
 import { resetAllRegisteredDrafts } from "../../drafts/cleanup-registry";
 import { clearWorkspaceStorage } from "../../platform/storage-cleanup";
@@ -28,19 +28,7 @@ beforeAll(() => {
 });
 
 const RESET_STATE = {
-  draft: {
-    title: "",
-    description: "",
-    status: "todo" as const,
-    priority: "none" as const,
-    assigneeType: undefined,
-    assigneeId: undefined,
-    issueTypeId: null,
-    startDate: null,
-    dueDate: null,
-    labelIds: [],
-    attachments: [],
-  },
+  draft: EMPTY_CREATE_DRAFT(),
   lastAssigneeType: undefined,
   lastAssigneeId: undefined,
 };
@@ -51,15 +39,14 @@ describe("issue draft store — clearDraft", () => {
   });
 
   it("clearDraft yields an empty assignee", () => {
-    const { setDraft, clearDraft } = useIssueDraftStore.getState();
+    const { setManual, clearDraft } = useIssueDraftStore.getState();
 
     setManual({ title: "first" });
     clearDraft();
 
     const { draft } = useIssueDraftStore.getState();
-    expect(draft.assigneeType).toBeUndefined();
-    expect(draft.assigneeId).toBeUndefined();
-    expect(draft.assignees).toEqual([]);
+    expect(draft.manual.assigneeType).toBeUndefined();
+    expect(draft.manual.assigneeId).toBeUndefined();
   });
 
   it("clearDraft removes persisted shared attachments", () => {

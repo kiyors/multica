@@ -81,13 +81,15 @@ export type { Workspace, WorkspaceRepo, Member, MemberRole, User, MemberWithUser
 export type { InboxItem, InboxSeverity, InboxItemType, InboxWorkspaceUnread } from "./inbox";
 export type { NotificationGroupKey, NotificationGroupValue, NotificationPreferences, NotificationPreferenceResponse } from "./notification-preference";
 export * from "./channels";
-export type { Comment, CommentType, CommentAuthorType, CommentTriggerPreview, CommentTriggerPreviewAgent, CommentTriggerSource, Reaction } from "./comment";
-export type { Label, CreateLabelRequest, UpdateLabelRequest, ListLabelsResponse, IssueLabelsResponse } from "./label";
+export type { Comment, CommentType, CommentAuthorType, CommentTriggerPreview, CommentTriggerPreviewAgent, CommentTriggerSource, Reaction, CommentTriggerOutcome } from "./comment";
+export type { Label, CreateLabelRequest, UpdateLabelRequest, ListLabelsResponse, IssueLabelsResponse, LabelResourceType, ResourceLabelsResponse } from "./label";
+export * from "./quick-action";
 export type {
   TimelineEntry,
   AssigneeFrequencyEntry,
 } from "./activity";
 export type { IssueSubscriber } from "./subscriber";
+export * from "./property";
 export type * from "./events";
 export type * from "./api";
 export type { Attachment } from "./attachment";

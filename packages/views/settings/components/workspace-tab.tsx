@@ -243,26 +243,18 @@ export function WorkspaceTab() {
     }
   };
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const { upload, uploading } = useFileUpload(api);
-
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!workspace) return;
-    const file = e.target.files?.[0];
-    if (!file) return;
-    // Reset input so the same file can be re-selected
-    e.target.value = "";
-    try {
-      const result = await upload(file);
-      if (!result) return;
-      const updated = await api.updateWorkspace(workspace.id, { avatar_url: result.markdownLink || result.link });
-      qc.setQueryData(workspaceKeys.list(), (old: Workspace[] | undefined) =>
-        old?.map((ws) => (ws.id === updated.id ? updated : ws)),
-      );
-      toast.success(t(($) => $.workspace.toast_logo_updated));
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : t(($) => $.workspace.toast_logo_failed));
-    }
+  const handlePrefixBlur = () => {
+    if (!workspace || prefixInvalid || !prefixChanged) return;
+    const nextPrefix = normalizedPrefix;
+    setConfirmAction({
+      title: t(($) => $.workspace.prefix_confirm_title),
+      description: t(($) => $.workspace.prefix_confirm_description, {
+        oldPrefix: workspace.issue_prefix,
+        newPrefix: nextPrefix,
+      }),
+      variant: "destructive",
+      onConfirm: () => performPrefixSave(nextPrefix),
+    });
   };
 
   const handleLeaveWorkspace = () => {

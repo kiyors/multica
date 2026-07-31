@@ -136,7 +136,7 @@ describe("McpConfigTab", () => {
     expect(screen.getByText("fetch")).toBeInTheDocument();
     expect(screen.getByText("docs")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /managed by multica/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /inherited from runtime/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /inherited from agent environment/i })).toBeInTheDocument();
     expect(screen.queryByLabelText(/MCP config JSON editor/i)).not.toBeInTheDocument();
   });
 
@@ -233,7 +233,7 @@ describe("McpConfigTab", () => {
     await user.click(
       screen.getByRole("button", { name: /delete mcp server fetch/i }),
     );
-    expect(screen.getByText(/runtime servers are not affected/i)).toBeInTheDocument();
+    expect(screen.getByText(/agent environment servers are not affected/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /delete server/i }));
 
     expect(onSave).toHaveBeenCalledWith({ mcp_config: null });
@@ -279,7 +279,7 @@ describe("McpConfigTab", () => {
 
     expect(
       await screen.findByText(
-        "You don't have permission to view this runtime's MCP servers.",
+        "You don't have permission to view this agent environment's MCP servers.",
       ),
     ).toBeInTheDocument();
   });
@@ -293,7 +293,7 @@ describe("McpConfigTab", () => {
 
     expect(
       await screen.findByText(
-        "Couldn't discover runtime MCP servers. Try again.",
+        "Couldn't discover agent environment MCP servers. Try again.",
       ),
     ).toBeInTheDocument();
   });

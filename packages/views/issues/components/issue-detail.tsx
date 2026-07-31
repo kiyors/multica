@@ -37,13 +37,18 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "@multica/ui/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@multica/ui/components/ui/dropdown-menu";
 import { Popover, PopoverTrigger, PopoverContent } from "@multica/ui/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@multica/ui/components/ui/dialog";
 import { Checkbox } from "@multica/ui/components/ui/checkbox";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@multica/ui/components/ui/command";
 import { AvatarGroup, AvatarGroupCount } from "@multica/ui/components/ui/avatar";
 import { ActorAvatar } from "../../common/actor-avatar";
-import { ActorAvatarStack } from "../../common/actor-avatar-stack";
 import { PropRow } from "../../common/prop-row";
 import { PropertyIcon } from "../../common/property-icon";
 import type { Attachment, Issue, IssueProperty, IssueStatus, IssuePriority, TimelineEntry, UpdateIssueRequest } from "@multica/core/types";
@@ -52,8 +57,7 @@ import { STATUS_CONFIG, PRIORITY_CONFIG } from "@multica/core/issues/config";
 import { formatDateOnly, isPastDateOnly } from "@multica/core/issues/date";
 import { useUpdateIssue } from "@multica/core/issues/mutations";
 import { toast } from "sonner";
-import { StatusIcon, PriorityIcon, StatusPicker, PriorityPicker, StagePicker, StartDatePicker, DueDatePicker, AssigneePicker, LabelPicker, IssueTypePicker } from ".";
-import { ApprovalWidget } from "./approval-widget";
+import { StatusIcon, PriorityIcon, StatusPicker, PriorityPicker, StagePicker, StartDatePicker, DueDatePicker, AssigneePicker, LabelPicker } from ".";
 import { maxSiblingStage } from "./pickers/stage-picker";
 import { CustomPropertyValueEditor, CustomPropertyValueDisplay } from "./pickers/custom-property-picker";
 import { Switch } from "@multica/ui/components/ui/switch";
@@ -72,9 +76,6 @@ import { IssueAgentHeaderChip } from "./issue-agent-header-chip";
 import { ExecutionLogSection } from "./execution-log-section";
 import { QuickActionsSection } from "./quick-actions-section";
 import { PullRequestList } from "./pull-request-list";
-import { ReviewAssetsList } from "./review-assets-list";
-import { MediaReviewLayout } from "../../reviews/media-review-layout";
-import type { ReviewAsset } from "@multica/core/types";
 import { useGitHubSettings } from "@multica/core/github";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@multica/core/auth";
@@ -88,8 +89,16 @@ import { ProjectIcon } from "../../projects/components/project-icon";
 import { issueLabelsOptions } from "@multica/core/labels";
 import { propertyListOptions } from "@multica/core/properties";
 import { memberListOptions, agentListOptions } from "@multica/core/workspace/queries";
-import { listReviewAssetsOptions } from "@multica/core/reviews/queries";
-import { useRecentIssuesStore } from "@multica/core/issues/stores";
+import {
+  selectExpandedResolved,
+  useCommentComposerStore,
+  useRecentIssuesStore,
+  useResolvedExpandStore,
+  useSubIssueDisplayStore,
+  SUB_ISSUE_ROW_PROPERTY_KEYS,
+  type SubIssueRowProperties,
+  type SubIssueRowPropertyKey,
+} from "@multica/core/issues/stores";
 import { useIssueSelectionStore } from "@multica/core/issues/stores/selection-store";
 import { BatchActionToolbar } from "./batch-action-toolbar";
 import { useIssueTimeline } from "../hooks/use-issue-timeline";
@@ -285,22 +294,6 @@ function formatActivity(
           return t(($) => $.activity.squad_leader_evaluated);
       }
     }
-    case "pr_linked":
-      return t(($) => $.activity.pr_linked, { repo: details.repo ?? "?", pr_number: details.pr_number ?? "?" });
-    case "pr_merged":
-      return t(($) => $.activity.pr_merged, { repo: details.repo ?? "?", pr_number: details.pr_number ?? "?" });
-    case "pr_closed":
-      return t(($) => $.activity.pr_closed, { repo: details.repo ?? "?", pr_number: details.pr_number ?? "?" });
-    case "approval_requested":
-      return t(($) => $.activity.approval_requested);
-    case "approval_approved":
-      return details.comment
-        ? `${t(($) => $.activity.approval_approved)}: "${details.comment}"`
-        : t(($) => $.activity.approval_approved);
-    case "approval_rejected":
-      return details.comment
-        ? `${t(($) => $.activity.approval_rejected)}: "${details.comment}"`
-        : t(($) => $.activity.approval_rejected);
     default:
       return entry.action ?? "";
   }
@@ -701,30 +694,11 @@ function SubIssueRow({
           href={paths.issueDetail(child.id)}
           className="flex min-w-0 flex-1 items-center gap-2.5"
         >
-          {child.title}
-        </span>
-      </AppLink>
-      <AssigneePicker
-        assigneeType={child.assignee_type}
-        assigneeId={child.assignee_id}
-        assignees={child.assignees?.map((a) => ({ type: a.assignee_type, id: a.assignee_id }))}
-        onUpdate={handleUpdate}
-        align="end"
-        trigger={
-          child.assignees && child.assignees.length > 0 ? (
-            <ActorAvatarStack
-              actors={child.assignees.map((a) => ({ type: a.assignee_type, id: a.assignee_id }))}
-              size={20}
-              className="shrink-0"
-            />
-          ) : child.assignee_type && child.assignee_id ? (
-            <ActorAvatar
-              actorType={child.assignee_type}
-              actorId={child.assignee_id}
-              size={20}
-              className="shrink-0"
-            />
-          ) : (
+          <span className="text-micro text-muted-foreground tabular-nums font-medium shrink-0">
+            {child.identifier}
+          </span>
+          <IssueAgentActivityIndicator issueId={child.id} />
+          <span className="flex min-w-0 flex-1 items-center gap-1.5">
             <span
               className={cn(
                 "text-body truncate",
@@ -1028,67 +1002,9 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
   const id = issueId;
   const user = useAuthStore((s) => s.user);
   const paths = useWorkspacePaths();
-  const [reviewAsset, setReviewAsset] = useState<ReviewAsset | null>(null);
 
   // Issue navigation — read from TQ list cache
   const wsId = useWorkspaceId();
-  const reviewAssetId = router.searchParams.get("review");
-  const reviewCommentId = router.searchParams.get("reviewComment") ?? undefined;
-  const reviewPageIndex = Math.max(0, Number.parseInt(router.searchParams.get("reviewPage") ?? "0", 10) || 0);
-  const parsedReviewTime = Number.parseFloat(router.searchParams.get("reviewTime") ?? "");
-  const reviewTime = Number.isFinite(parsedReviewTime) ? parsedReviewTime : undefined;
-  const { data: reviewAssets } = useQuery({
-    ...listReviewAssetsOptions(wsId, id),
-    enabled: !!reviewAssetId, // Only fetch at top level if there's a URL param
-  });
-
-  const lastProcessedReviewRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (reviewAssetId !== lastProcessedReviewRef.current) {
-      if (reviewAssetId && reviewAssets) {
-        const asset = reviewAssets.find((a) => a.id === reviewAssetId);
-        if (asset) {
-          setReviewAsset(asset);
-        }
-      } else if (!reviewAssetId) {
-        setReviewAsset(null);
-      }
-      lastProcessedReviewRef.current = reviewAssetId || null;
-    }
-  }, [reviewAssetId, reviewAssets]);
-
-  const handleReviewAssetChange = useCallback((asset: ReviewAsset | null) => {
-    setReviewAsset(asset);
-    lastProcessedReviewRef.current = asset?.id || null;
-    const newParams = new URLSearchParams(router.searchParams);
-    if (asset) {
-      newParams.set("review", asset.id);
-    } else {
-      newParams.delete("review");
-      newParams.delete("reviewComment");
-      newParams.delete("reviewPage");
-      newParams.delete("reviewTime");
-    }
-    const searchStr = newParams.toString();
-    const newUrl = `${router.pathname}${searchStr ? `?${searchStr}` : ""}`;
-    router.replace(newUrl, { scroll: false });
-  }, [router]);
-
-  const handleOpenReviewFromTimeline = useCallback((entry: TimelineEntry) => {
-    if (!entry.review_asset_id) return;
-    const newParams = new URLSearchParams(router.searchParams);
-    newParams.set("review", entry.review_asset_id);
-    if (entry.review_comment_id) newParams.set("reviewComment", entry.review_comment_id);
-    else newParams.delete("reviewComment");
-    if (entry.review_page_index != null) newParams.set("reviewPage", String(entry.review_page_index));
-    else newParams.delete("reviewPage");
-    if (entry.review_start_time != null) newParams.set("reviewTime", String(entry.review_start_time));
-    else newParams.delete("reviewTime");
-    const searchStr = newParams.toString();
-    router.replace(`${router.pathname}${searchStr ? `?${searchStr}` : ""}`, { scroll: false });
-  }, [router]);
-
   const { data: members = [] } = useQuery(memberListOptions(wsId));
   const { data: agents = [] } = useQuery(agentListOptions(wsId));
   // Workspace owners and admins moderate any comment authored by anyone
@@ -1551,7 +1467,9 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
   } = useIssueReactions(id, user?.id);
 
   const {
-    subscribers, isSubscribed, toggleSubscribe: handleToggleSubscribe, toggleSubscriber,
+    subscribers, isSubscribed, subscriptionReason,
+    toggleSubscribe: handleToggleSubscribe, toggleSubscriber,
+    unsubscribeFromSubtree: handleUnsubscribeSubtree,
   } = useIssueSubscribers(id, user?.id);
 
   // Token usage
@@ -1900,8 +1818,6 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
 
   const sidebarContent = (
     <div className="space-y-5">
-      <ApprovalWidget issueId={id} />
-
       {/* Properties */}
       <div>
         <button
@@ -1917,17 +1833,8 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
           <PropRow label={t(($) => $.detail.prop_status)}>
             <StatusPicker status={issue.status} onUpdate={handleUpdateField} align="start" />
           </PropRow>
-          <PropRow label="Type">
-            <IssueTypePicker issueTypeId={issue.issue_type_id} onUpdate={handleUpdateField} align="start" />
-          </PropRow>
           <PropRow label={t(($) => $.detail.prop_assignee)}>
-            <AssigneePicker 
-              assigneeType={issue.assignee_type} 
-              assigneeId={issue.assignee_id} 
-              assignees={issue.assignees?.map((a) => ({ type: a.assignee_type, id: a.assignee_id }))}
-              onUpdate={handleUpdateField} 
-              align="start" 
-            />
+            <AssigneePicker assigneeType={issue.assignee_type} assigneeId={issue.assignee_id} onUpdate={handleUpdateField} align="start" />
           </PropRow>
           <PropRow label={t(($) => $.detail.prop_project)}>
             <ProjectPicker
@@ -2296,7 +2203,6 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
             expandedResolvedIds={expandedResolved}
             onResolvedExpandChange={toggleResolvedExpand}
             highlightedCommentId={highlightedId}
-            onOpenReview={handleOpenReviewFromTimeline}
           />
         </div>
       );
@@ -2719,13 +2625,47 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
                 <h2 className="text-title-sm font-semibold">{t(($) => $.detail.activity_section)}</h2>
               </div>
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleToggleSubscribe}
-                  className="text-caption text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  {isSubscribed ? t(($) => $.detail.unsubscribe) : t(($) => $.detail.subscribe)}
-                </button>
+                {/* A delegated subscription is one the user never opted into
+                    by hand — their agent created this issue for them. Saying
+                    so is what keeps it from reading as the product quietly
+                    adding them to things (MUL-5483). */}
+                {isSubscribed && (subscriptionReason as any) === "delegated" && (
+                  <Tooltip>
+                    {/* Quiet surface, not plain body text: this is metadata
+                        explaining a state, and must not read as a second
+                        action sitting next to Unsubscribe. Uses the shared
+                        caption role rather than an ad-hoc size (MUL-5451). */}
+                    <TooltipTrigger className="cursor-default rounded-full bg-muted px-2 py-0.5 text-caption text-muted-foreground">
+                      {t(($) => $.detail.delegated_subscription_badge)}
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-64">
+                      {t(($) => $.detail.delegated_subscription_hint)}
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+                {isSubscribed ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger className="text-caption text-muted-foreground hover:text-foreground transition-colors">
+                      {t(($) => $.detail.unsubscribe)}
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onSelect={handleToggleSubscribe}>
+                        {t(($) => $.detail.unsubscribe_this)}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={handleUnsubscribeSubtree}>
+                        {t(($) => $.detail.unsubscribe_subtree)}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleToggleSubscribe}
+                    className="text-caption text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {t(($) => $.detail.subscribe)}
+                  </button>
+                )}
                 <Popover>
                   <PopoverTrigger className="cursor-pointer hover:opacity-80 transition-opacity">
                     {subscribers.length > 0 ? (
@@ -2761,8 +2701,6 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
             </div>
 
             <LocalDirectoryHint projectId={issue?.project_id} />
-
-            <ReviewAssetsList workspaceId={wsId} issueId={id} onOpenAsset={handleReviewAssetChange} />
 
             {/* The "agent is working" live signal now lives in the header
                 (IssueAgentHeaderChip) so it stays in one fixed place and
@@ -2905,46 +2843,27 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
   }
 
   return (
-    <Fragment>
-      <ResizablePanelGroup orientation="horizontal" className="flex-1 min-h-0" defaultLayout={defaultLayout} onLayoutChanged={onLayoutChanged}>
-        <ResizablePanel id="content" minSize="50%">
-          {detailContent}
-        </ResizablePanel>
-        <ResizableHandle />
-        <ResizablePanel
-          id="sidebar"
-          {...rightSidebarPanelMotionProps}
-          data-right-sidebar-motion={desktopSidebarMotionEnabled ? "enabled" : undefined}
-          defaultSize={desktopSidebarOpen ? 320 : 0}
-          minSize={260}
-          maxSize={420}
-          collapsible
-          groupResizeBehavior="preserve-pixel-size"
-          panelRef={sidebarRef}
-          onResize={handleDesktopSidebarResize}
-        >
-          <AnimatedRightSidebar open={desktopSidebarVisualOpen} motionEnabled={desktopSidebarMotionEnabled}>
-            {sidebarContent}
-          </AnimatedRightSidebar>
-        </ResizablePanel>
-      </ResizablePanelGroup>
-
-      <Dialog open={!!reviewAsset} onOpenChange={(open) => !open && handleReviewAssetChange(null)}>
-        {/* sm:max-w-none is required: DialogContent defaults to sm:max-w-sm, which a plain max-w-* cannot override */}
-        <DialogContent showCloseButton={false} className="w-screen h-screen max-w-none sm:max-w-none max-h-none p-0 gap-0 rounded-none border-0 bg-background">
-          {reviewAsset && (
-            <MediaReviewLayout
-              workspaceId={wsId}
-              asset={reviewAsset}
-              onAssetChange={handleReviewAssetChange}
-              onClose={() => handleReviewAssetChange(null)}
-              initialCommentId={reviewCommentId}
-              initialPageIndex={reviewPageIndex}
-              initialTime={reviewTime}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
-    </Fragment>
+    <ResizablePanelGroup orientation="horizontal" className="flex-1 min-h-0" defaultLayout={defaultLayout} onLayoutChanged={onLayoutChanged}>
+      <ResizablePanel id="content" minSize="50%">
+        {detailContent}
+      </ResizablePanel>
+      <ResizableHandle />
+      <ResizablePanel
+        id="sidebar"
+        {...rightSidebarPanelMotionProps}
+        data-right-sidebar-motion={desktopSidebarMotionEnabled ? "enabled" : undefined}
+        defaultSize={desktopSidebarOpen ? 320 : 0}
+        minSize={260}
+        maxSize={420}
+        collapsible
+        groupResizeBehavior="preserve-pixel-size"
+        panelRef={sidebarRef}
+        onResize={handleDesktopSidebarResize}
+      >
+        <AnimatedRightSidebar open={desktopSidebarVisualOpen} motionEnabled={desktopSidebarMotionEnabled}>
+          {sidebarContent}
+        </AnimatedRightSidebar>
+      </ResizablePanel>
+    </ResizablePanelGroup>
   );
 }

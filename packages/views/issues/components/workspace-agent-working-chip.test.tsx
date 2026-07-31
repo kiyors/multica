@@ -62,7 +62,7 @@ function makeAgent(id: string, runningTaskCount = 1): WorkingAgentSummary {
 }
 
 const UNKNOWN_HOVER = "Agents working: not loaded yet";
-const EMPTY_HOVER = "No agents working right now";
+const EMPTY_HOVER = "No agents currently working";
 
 beforeEach(() => {
   cleanup();

@@ -13,8 +13,6 @@ const {
   markOnboardingComplete,
   listMyInvitations,
   listWorkspaces,
-  updateMe,
-  patchOnboarding,
 } = vi.hoisted(() => ({
   navigate: vi.fn(),
   logout: vi.fn(),
@@ -23,8 +21,6 @@ const {
   markOnboardingComplete: vi.fn(),
   listMyInvitations: vi.fn(),
   listWorkspaces: vi.fn(),
-  updateMe: vi.fn(),
-  patchOnboarding: vi.fn(),
 }));
 
 vi.mock("../navigation", () => ({
@@ -42,10 +38,7 @@ vi.mock("../platform", () => ({
 vi.mock("@multica/core/auth", () => ({
   useAuthStore: Object.assign(
     (selector?: (s: unknown) => unknown) => {
-      const state = {
-        refreshMe,
-        user: { id: "user-1", name: "Jordan Lee", email: "x@example.com" },
-      };
+      const state = { refreshMe };
       return selector ? selector(state) : state;
     },
     {
@@ -60,36 +53,15 @@ vi.mock("@multica/core/api", () => ({
     markOnboardingComplete,
     listMyInvitations,
     listWorkspaces,
-    updateMe,
-    patchOnboarding,
   },
 }));
 
 import { I18nProvider } from "@multica/core/i18n/react";
 import enCommon from "../locales/en/common.json";
 import enInvite from "../locales/en/invite.json";
-import enOnboarding from "../locales/en/onboarding.json";
 import { InvitationsPage } from "./invitations-page";
 
-vi.mock("./invitee-profile-fields", () => ({
-  InviteeProfileFields: ({ name, role, onNameChange, onRoleChange }: any) => (
-    <div>
-      <input 
-        data-testid="mock-name-input" 
-        value={name} 
-        onChange={(e) => onNameChange(e.target.value)} 
-      />
-      <input 
-        data-testid="mock-role-input" 
-        value={role} 
-        onChange={(e) => onRoleChange(e.target.value)} 
-      />
-    </div>
-  ),
-  inviteeProfileDescription: (role: string) => `Role: ${role.trim()}`
-}));
-
-const TEST_RESOURCES = { en: { common: enCommon, invite: enInvite, onboarding: enOnboarding } };
+const TEST_RESOURCES = { en: { common: enCommon, invite: enInvite } };
 
 function renderWithClient(client: QueryClient = new QueryClient()) {
   return render(
@@ -139,13 +111,9 @@ describe("InvitationsPage", () => {
     markOnboardingComplete.mockReset();
     listMyInvitations.mockReset();
     listWorkspaces.mockReset();
-    updateMe.mockReset();
-    patchOnboarding.mockReset();
     refreshMe.mockResolvedValue(undefined);
     acceptInvitation.mockResolvedValue({});
     markOnboardingComplete.mockResolvedValue({});
-    updateMe.mockResolvedValue({});
-    patchOnboarding.mockResolvedValue({});
   });
 
   it("renders pending invitations with workspace names", async () => {
@@ -182,22 +150,10 @@ describe("InvitationsPage", () => {
     await waitFor(() => screen.getByText("Acme"));
     // Select Acme via its label/checkbox row.
     fireEvent.click(screen.getByText("Acme"));
-    
-    // Type into the mocked input
-    fireEvent.change(screen.getByTestId("mock-role-input"), {
-      target: { value: "marketing" },
-    });
 
     fireEvent.click(screen.getByRole("button", { name: /join 1 workspace/i }));
 
     await waitFor(() => {
-      expect(updateMe).toHaveBeenCalledWith({
-        name: "Jordan Lee",
-        profile_description: "Role: marketing",
-      });
-      expect(patchOnboarding).toHaveBeenCalledWith({
-        questionnaire: { source: [], source_other: null, source_skipped: true },
-      });
       expect(acceptInvitation).toHaveBeenCalledWith("inv-1");
       expect(markOnboardingComplete).toHaveBeenCalledWith({
         completion_path: "invite_accept",

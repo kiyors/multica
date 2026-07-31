@@ -81,6 +81,11 @@
     "issue_link_new_tab": {
       "title": "이슈 링크를 새 탭에서 열기",
       "hint": "설명, 댓글, 채팅의 이슈 링크를 현재 페이지에서 이동하지 않고 새 탭에서 엽니다."
+    },
+    "sidebar": {
+      "title": "Sidebar Position",
+      "left": "Left",
+      "right": "Right"
     }
   },
   "shortcuts": {
@@ -113,24 +118,78 @@
       "navigation": "탐색"
     },
     "actions": {
-      "openSearch": { "label": "검색 열기", "description": "어디서나 검색하고 명령을 실행합니다." },
-      "createIssue": { "label": "Issue 만들기", "description": "선호하는 issue 만들기 흐름을 엽니다." },
-      "toggleSidebar": { "label": "사이드바 전환", "description": "기본 사이드바를 표시하거나 숨깁니다." },
-      "toggleChat": { "label": "채팅 창 전환", "description": "플로팅 채팅 창을 열거나 닫습니다. 열면 메시지 입력란에 포커스합니다." },
-      "findInIssue": { "label": "Issue에서 찾기", "description": "열린 issue 상세 내용에서 검색합니다." },
-      "send": { "label": "보내기", "description": "채팅, 댓글, 답글, 피드백 및 프롬프트를 보내고, 생성 대화상자에서 이슈를 만듭니다." },
-      "goInbox": { "label": "받은 편지함으로 이동", "description": "워크스페이스 받은 편지함을 엽니다." },
-      "goChat": { "label": "채팅으로 이동", "description": "워크스페이스 채팅을 엽니다." },
-      "goMyIssues": { "label": "내 Issues로 이동", "description": "나에게 할당된 issue를 엽니다." },
-      "goIssues": { "label": "Issues로 이동", "description": "Issue 목록을 엽니다." },
-      "goProjects": { "label": "프로젝트로 이동", "description": "프로젝트 목록을 엽니다." },
-      "goAutopilots": { "label": "자동화로 이동", "description": "워크스페이스 자동화를 엽니다." },
-      "goAgents": { "label": "에이전트로 이동", "description": "에이전트 목록을 엽니다." },
-      "goSquads": { "label": "스쿼드로 이동", "description": "스쿼드 목록을 엽니다." },
-      "goUsage": { "label": "사용량으로 이동", "description": "사용량 분석을 엽니다." },
-      "goRuntimes": { "label": "런타임으로 이동", "description": "런타임 설정을 엽니다." },
-      "goSkills": { "label": "Skills로 이동", "description": "Skill 라이브러리를 엽니다." },
-      "goSettings": { "label": "설정으로 이동", "description": "워크스페이스 설정을 엽니다." }
+      "openSearch": {
+        "label": "검색 열기",
+        "description": "어디서나 검색하고 명령을 실행합니다."
+      },
+      "createIssue": {
+        "label": "Issue 만들기",
+        "description": "선호하는 issue 만들기 흐름을 엽니다."
+      },
+      "toggleSidebar": {
+        "label": "사이드바 전환",
+        "description": "기본 사이드바를 표시하거나 숨깁니다."
+      },
+      "toggleChat": {
+        "label": "채팅 창 전환",
+        "description": "플로팅 채팅 창을 열거나 닫습니다. 열면 메시지 입력란에 포커스합니다."
+      },
+      "findInIssue": {
+        "label": "Issue에서 찾기",
+        "description": "열린 issue 상세 내용에서 검색합니다."
+      },
+      "send": {
+        "label": "보내기",
+        "description": "채팅, 댓글, 답글, 피드백 및 프롬프트를 보내고, 생성 대화상자에서 이슈를 만듭니다."
+      },
+      "goInbox": {
+        "label": "받은 편지함으로 이동",
+        "description": "워크스페이스 받은 편지함을 엽니다."
+      },
+      "goChat": {
+        "label": "채팅으로 이동",
+        "description": "워크스페이스 채팅을 엽니다."
+      },
+      "goMyIssues": {
+        "label": "내 Issues로 이동",
+        "description": "나에게 할당된 issue를 엽니다."
+      },
+      "goIssues": {
+        "label": "Issues로 이동",
+        "description": "Issue 목록을 엽니다."
+      },
+      "goProjects": {
+        "label": "프로젝트로 이동",
+        "description": "프로젝트 목록을 엽니다."
+      },
+      "goAutopilots": {
+        "label": "자동화로 이동",
+        "description": "워크스페이스 자동화를 엽니다."
+      },
+      "goAgents": {
+        "label": "에이전트로 이동",
+        "description": "에이전트 목록을 엽니다."
+      },
+      "goSquads": {
+        "label": "스쿼드로 이동",
+        "description": "스쿼드 목록을 엽니다."
+      },
+      "goUsage": {
+        "label": "사용량으로 이동",
+        "description": "사용량 분석을 엽니다."
+      },
+      "goRuntimes": {
+        "label": "런타임으로 이동",
+        "description": "런타임 설정을 엽니다."
+      },
+      "goSkills": {
+        "label": "Skills로 이동",
+        "description": "Skill 라이브러리를 엽니다."
+      },
+      "goSettings": {
+        "label": "설정으로 이동",
+        "description": "워크스페이스 설정을 엽니다."
+      }
     },
     "fixed": {
       "title": "고정 시스템 단축키",
@@ -176,7 +235,6 @@
       "notifications": "알림",
       "tokens": "API 토큰",
       "general": "일반",
-      "issue_types": "Issue 유형",
       "repositories": "저장소",
       "github": "GitHub",
       "integrations": "연동",
@@ -254,10 +312,9 @@
   },
   "labels": {
     "title": "레이블",
-    "description": "이 워크스페이스의 이슈, 에이전트, 스킬 레이블을 각각 관리합니다.",
+    "description": "이 워크스페이스의 이슈, 스킬 레이블을 각각 관리합니다.",
     "scopes": {
       "issue": "이슈",
-      "agent": "에이전트",
       "skill": "스킬"
     },
     "search_placeholder": "이름 또는 설명으로 필터링...",
@@ -304,8 +361,6 @@
     "avatar_label": "아바타",
     "click_avatar_hint": "클릭해서 아바타 업로드",
     "name_label": "이름",
-    "email_label": "이메일",
-    "email_hint": "로그인 이메일은 인증 제공업체에서 관리합니다.",
     "profile_description_label": "내 소개",
     "profile_description_hint": "나를 대신해 작업하는 에이전트에게 공유됩니다. 역할, 기술 스택, 선호 방식, 새 협업자에게 첫날 알려줄 만한 내용을 적어 주세요.",
     "profile_description_placeholder": "예: Go와 Postgres를 쓰는 백엔드 엔지니어. 간결한 PR과 변경사항에 맞춘 테스트를 선호합니다.",
@@ -315,11 +370,7 @@
     "toast_avatar_updated": "아바타를 업데이트했습니다",
     "toast_avatar_failed": "아바타를 업로드하지 못했습니다",
     "toast_profile_updated": "프로필을 업데이트했습니다",
-    "toast_profile_failed": "프로필을 업데이트하지 못했습니다",
-    "section_connected_accounts": "Connected Accounts",
-    "github_not_connected": "Not connected",
-    "connect": "Connect",
-    "disconnect": "Disconnect"
+    "toast_profile_failed": "프로필을 업데이트하지 못했습니다"
   },
   "notifications": {
     "title": "인박스 알림",
@@ -496,9 +547,7 @@
     "feature_co_author_description_prefix": "에이전트가 작성한 커밋에",
     "feature_co_author_description_suffix": "을(를) 추가합니다.",
     "feature_auto_link_label": "이슈와 PR 자동 연결",
-    "feature_auto_link_description": "PR 제목, 본문, 브랜치 이름을 이슈 ID와 일치시켜 자동으로 연결합니다.",
-    "feature_auto_transitions_label": "이슈 상태 자동 전환",
-    "feature_auto_transitions_description": "PR을 열면 이슈를 '리뷰 중'으로, 병합하면 '완료'로 이동합니다.",
+    "feature_auto_link_description": "PR 제목, 본문, 브랜치 이름을 이슈 식별자와 대조해 자동으로 연결합니다.",
     "section_repositories": "저장소",
     "repositories_shortcut_label": "저장소 URL은 저장소 탭에 있습니다",
     "repositories_shortcut_link": "저장소 관리 →",
@@ -604,7 +653,8 @@
       "up_to_date": "최신 버전입니다.",
       "downloading": "v{{version}}을(를) 백그라운드에서 다운로드 중입니다. 설치 준비가 끝나면 알림을 드립니다.",
       "check_now": "지금 확인",
-      "checking": "확인 중..."
+      "checking": "확인 중...",
+      "ready_to_install": "Update ready! Restart to install v{{version}}."
     }
   },
   "members": {

@@ -2,7 +2,7 @@
 import React, { useRef, useEffect, useState, useCallback, useImperativeHandle, forwardRef } from "react";
 import { Play, Pause, Maximize2, SkipBack, SkipForward, Clock, Repeat } from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@multica/ui/components/ui/tooltip";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@multica/ui/components/ui/select";
+import { Select } from "@multica/ui/components/ui/select";
 import Hls from "hls.js";
 import type { ReviewAsset, ReviewComment } from "@multica/core/types";
 import { MediaScrubber, formatTimecode, formatTime, formatFrames } from "./media-scrubber";
@@ -406,7 +406,7 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-md bg-background/80 border border-border/50 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-30">
           
           <div className="flex items-center gap-1.5 mr-2">
-            <span className="text-xs font-mono w-16 text-center select-none text-foreground">
+            <span className="text-micro font-mono w-16 text-center select-none text-foreground">
               {timeFormat === "standard" && formatTime(currentTime)}
               {timeFormat === "frames" && formatFrames(currentTime)}
               {timeFormat === "timecode" && formatTimecode(currentTime)}
@@ -424,27 +424,20 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
 
           <div className="w-px h-4 bg-border mx-1" />
 
-          <Select 
-            value={playbackRate.toString()} 
-            onValueChange={(val) => {
-              if (!val) return;
-              const speed = parseFloat(val);
+          <button
+            type="button"
+            className="text-micro font-mono hover:bg-muted px-2 py-1 rounded text-foreground transition-colors"
+            onClick={() => {
+              const speeds = [0.5, 1, 1.25, 1.5, 2];
+              const idx = speeds.indexOf(playbackRate);
+              const nextSpeed = speeds[(idx + 1) % speeds.length];
               const video = mediaRef.current as HTMLVideoElement;
-              if (video) video.playbackRate = speed;
-              setPlaybackRate(speed);
+              if (video) video.playbackRate = nextSpeed;
+              setPlaybackRate(nextSpeed);
             }}
           >
-            <SelectTrigger className="h-7 w-[60px] text-[11px] font-mono font-medium px-2 py-1 bg-transparent border-0 hover:bg-muted focus:ring-0 shadow-none">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent side="top">
-              {[0.5, 1, 1.25, 1.5, 2].map(speed => (
-                <SelectItem key={speed} value={speed.toString()} className="text-[11px] font-mono">
-                  {speed}x
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            {playbackRate}x
+          </button>
 
           <Tooltip>
             <TooltipTrigger 

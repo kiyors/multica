@@ -507,7 +507,8 @@ const issueDefaults = {
   project_id: null,
   position: 0,
   stage: null,
-  metadata: {}, issue_type_id: null, milestone_id: null,
+  metadata: {},
+  properties: {},
 };
 
 const mockIssues: Issue[] = [
@@ -765,19 +766,19 @@ describe("IssuesPage (shared)", () => {
 
     renderWithQuery(<IssuesPage />);
 
-    await screen.findByText("Issues");
+    await screen.findByText("Tasks");
     // The list header is now `icon + title`, matching the other list pages.
     // The workspace/org name is no longer rendered as a breadcrumb prefix.
     expect(screen.queryByText("Test WS")).not.toBeInTheDocument();
   });
 
-  it("shows empty state when there are no issues", async () => {
+  it("shows empty state when there are no tasks", async () => {
     mockListIssues.mockResolvedValue({ issues: [], total: 0 });
 
     renderWithQuery(<IssuesPage />);
 
-    await screen.findByText("No issues yet");
-    expect(screen.getByText("Create an issue to get started.")).toBeInTheDocument();
+    await screen.findByText("No tasks yet");
+    expect(screen.getByText("Create a task to get started.")).toBeInTheDocument();
   });
 
   it("shows scope tab buttons", async () => {

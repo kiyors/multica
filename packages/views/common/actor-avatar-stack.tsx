@@ -4,10 +4,11 @@ import { ActorAvatar as ActorAvatarBase } from "@multica/ui/components/common/ac
 import { useActorName } from "@multica/core/workspace/hooks";
 import { cn } from "@multica/ui/lib/utils";
 import type { IssueActorRef } from "@multica/core/types";
+import { type AvatarSize, AVATAR_SIZE_PX } from "@multica/ui/lib/avatar-size";
 
 interface ActorAvatarStackProps {
   actors: readonly IssueActorRef[];
-  size?: number;
+  size?: AvatarSize;
   max?: number;
   opacity?: "full" | "half";
   className?: string;
@@ -15,7 +16,7 @@ interface ActorAvatarStackProps {
 
 export function ActorAvatarStack({
   actors,
-  size = 18,
+  size = "sm",
   max = 3,
   opacity = "full",
   className,
@@ -25,7 +26,8 @@ export function ActorAvatarStack({
 
   const visible = actors.slice(0, max);
   const overflow = actors.length - visible.length;
-  const overlap = Math.round(size * 0.3);
+  const sizePx = AVATAR_SIZE_PX[size];
+  const overlap = Math.round(sizePx * 0.3);
 
   return (
     <span
@@ -56,9 +58,9 @@ export function ActorAvatarStack({
         <span
           style={{
             marginLeft: -overlap,
-            width: size,
-            height: size,
-            fontSize: Math.max(9, Math.round(size * 0.45)),
+            width: sizePx,
+            height: sizePx,
+            fontSize: Math.max(9, Math.round(sizePx * 0.45)),
           }}
           className="ring-2 ring-background rounded-full bg-muted text-muted-foreground inline-flex items-center justify-center font-medium tabular-nums z-10"
           aria-label={`${overflow} more`}

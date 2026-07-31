@@ -75,7 +75,7 @@
     "toast_triggered": "Autopilot triggered",
     "toast_trigger_failed": "Failed to trigger autopilot",
     "run_blocked_invocation_not_allowed": "Not triggered — you don't have permission to use this autopilot's agent",
-    "run_blocked_runtime_offline": "Not triggered — the agent's runtime is offline",
+    "run_blocked_runtime_offline": "Not triggered — the agent's agent environment is offline",
     "run_blocked_target_unavailable": "Not triggered — the agent is unavailable",
     "run_blocked_attribution": "Not triggered — the run couldn't be attributed to a responsible member",
     "run_blocked_already_active": "Not triggered — a recent run already covers this",
@@ -445,6 +445,51 @@
       "cancel": "Cancel",
       "confirm": "Delete permanently",
       "deleting": "Deleting…"
+    }
+  },
+  "trigger_config": {
+    "frequencies": {
+      "hourly": "Hourly",
+      "daily": "Daily",
+      "weekdays": "Weekdays",
+      "weekly": "Days",
+      "custom": "Custom"
+    },
+    "days_short": {
+      "sun": "Sun",
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat"
+    },
+    "cron_label": "Cron Expression",
+    "cron_hint": "Standard 5-field cron (min hour dom month dow)",
+    "minute_label": "Minute",
+    "time_label": "Time",
+    "timezone_label": "Timezone",
+    "days_label": "Days",
+    "summary": {
+      "hourly": "Hourly · :{{min}}",
+      "daily": "Daily {{time}}",
+      "weekdays": "Weekdays {{time}}",
+      "weekly": "{{days}} {{time}}",
+      "custom": "Custom cron",
+      "no_days": "—"
+    },
+    "describe": {
+      "hourly": "Runs every hour at :{{min}}",
+      "daily": "Runs daily at {{time}} {{offset}}",
+      "weekdays": "Runs weekdays at {{time}} {{offset}}",
+      "weekly": "Runs every {{days}} at {{time}} {{offset}}",
+      "custom": "Custom schedule: {{cron}}"
+    },
+    "countdown": {
+      "days_hours": "{{days}}d {{hours}}h",
+      "hours_minutes": "{{hours}}h {{minutes}}m",
+      "minutes": "{{minutes}}m",
+      "less_than_minute": "<1m"
     }
   }
 }

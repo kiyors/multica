@@ -20,7 +20,6 @@
  */
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { AnimatePresence, motion } from "motion/react";
 import {
   computePosition,
   offset,
@@ -597,29 +596,20 @@ function EditorBubbleMenu({
         position: "fixed",
         zIndex: 50,
         width: "max-content",
-        // Do not use visibility hidden if we are using AnimatePresence because it hides immediately before exit animation
-        pointerEvents: visible ? "auto" : "none",
+        visibility: visible ? "visible" : "hidden",
       }}
       onMouseDown={(e) => e.preventDefault()}
     >
-      <AnimatePresence>
-        {visible && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 8 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 8 }}
-            transition={{ duration: 0.15, ease: "easeOut" }}
-          >
-            {mode === "link-edit" ? (
-              <LinkEditBar editor={editor} onClose={() => { setMode("toolbar"); editor.commands.focus(); }} />
-            ) : (
-              <TooltipProvider delay={300}>
-                <div className="bubble-menu shadow-xl shadow-black/5">
-            <MarkButton editor={editor} mark="bold" icon={Bold} label={t(($) => $.bubble_menu.bold)} shortcut={`${modKey}+B`} isActive={fmt.bold} />
-            <MarkButton editor={editor} mark="italic" icon={Italic} label={t(($) => $.bubble_menu.italic)} shortcut={`${modKey}+I`} isActive={fmt.italic} />
-            <MarkButton editor={editor} mark="strike" icon={Strikethrough} label={t(($) => $.bubble_menu.strikethrough)} shortcut={`${modKey}+Shift+S`} isActive={fmt.strike} />
-            <MarkButton editor={editor} mark="code" icon={Code} label={t(($) => $.bubble_menu.code)} shortcut={`${modKey}+E`} isActive={fmt.code} />
-            <MarkButton editor={editor} mark="highlight" icon={Highlighter} label={t(($) => $.bubble_menu.highlight)} shortcut={`${modKey}+Shift+H`} isActive={fmt.highlight} />
+      {mode === "link-edit" ? (
+        <LinkEditBar editor={editor} onClose={() => { setMode("toolbar"); editor.commands.focus(); }} />
+      ) : (
+        <TooltipProvider delay={300}>
+          <div className="bubble-menu">
+            <MarkButton editor={editor} mark="bold" icon={Bold} label={t(($) => $.bubble_menu.bold)} shortcut={createShortcutChord("B", { primary: true })} isActive={fmt.bold} />
+            <MarkButton editor={editor} mark="italic" icon={Italic} label={t(($) => $.bubble_menu.italic)} shortcut={createShortcutChord("I", { primary: true })} isActive={fmt.italic} />
+            <MarkButton editor={editor} mark="strike" icon={Strikethrough} label={t(($) => $.bubble_menu.strikethrough)} shortcut={createShortcutChord("S", { primary: true, shift: true })} isActive={fmt.strike} />
+            <MarkButton editor={editor} mark="code" icon={Code} label={t(($) => $.bubble_menu.code)} shortcut={createShortcutChord("E", { primary: true })} isActive={fmt.code} />
+            <MarkButton editor={editor} mark="highlight" icon={Highlighter} label={t(($) => $.bubble_menu.highlight)} shortcut={createShortcutChord("H", { primary: true, shift: true })} isActive={fmt.highlight} />
             <Separator orientation="vertical" className="mx-0.5 h-5" />
             <Tooltip>
               <TooltipTrigger render={
@@ -661,10 +651,7 @@ function EditorBubbleMenu({
             )}
           </div>
         </TooltipProvider>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      )}
     </div>
   );
 }

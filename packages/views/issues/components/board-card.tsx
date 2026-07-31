@@ -1,4 +1,3 @@
-/* eslint-disable i18next/no-literal-string */
 "use client";
 
 import { useCallback, memo, useState } from "react";
@@ -12,16 +11,14 @@ import { useWorkspaceId } from "@multica/core/hooks";
 import { propertyListOptions } from "@multica/core/properties";
 import { CustomPropertyValueDisplay } from "./pickers/custom-property-picker";
 import { formatDateOnly, isPastDateOnly } from "@multica/core/issues/date";
-import { CalendarClock, CalendarDays } from "lucide-react";
+import { CalendarClock, CalendarDays, CornerDownRight, ChevronDown } from "lucide-react";
 import { ActorAvatar } from "../../common/actor-avatar";
-import { ActorAvatarStack } from "../../common/actor-avatar-stack";
+import { PropertyIcon } from "../../common/property-icon";
 import { useWorkspacePaths } from "@multica/core/paths";
 import { useActorName } from "@multica/core/workspace/hooks";
 import { useTimeAgo } from "../../i18n";
 import { ProjectIcon } from "../../projects/components/project-icon";
 import { PriorityIcon } from "./priority-icon";
-import { IssueTypeBadge } from "./issue-type-badge";
-import { StatusIcon } from "./status-icon";
 import { PriorityPicker, AssigneePicker, StartDatePicker, DueDatePicker } from "./pickers";
 import { useViewStore } from "@multica/core/issues/stores/view-store-context";
 import { ProgressRing } from "./progress-ring";
@@ -31,9 +28,7 @@ import { LabelChip } from "../../labels/label-chip";
 import { IssueAgentActivityIndicator } from "./issue-agent-activity-indicator";
 import { useIssueSurfaceActionsOptional } from "../surface/actions-context";
 import { useT } from "../../i18n";
-import { useQuery } from "@tanstack/react-query";
-import { listPendingReviewIssueIDsOptions } from "@multica/core/reviews/queries";
-import { Eye, CornerDownRight, ChevronDown } from "lucide-react";
+import { StatusIcon } from "./status-icon";
 
 function formatDate(date: string): string {
   return formatDateOnly(date, { month: "short", day: "numeric" }, "en-US");
@@ -107,7 +102,7 @@ export const BoardCardContent = memo(function BoardCardContent({
   const showPriority = storeProperties.priority;
   const showDescription = storeProperties.description && issue.description;
   const showAssigneeSection = storeProperties.assignee;
-  const hasAssignee = issue.assignees ? issue.assignees.length > 0 : !!issue.assignee_type && !!issue.assignee_id;
+  const hasAssignee = !!issue.assignee_type && !!issue.assignee_id;
   const showStartDate = storeProperties.startDate && issue.start_date;
   const showDueDate = storeProperties.dueDate && issue.due_date;
   const showProject = storeProperties.project && project;
@@ -118,12 +113,8 @@ export const BoardCardContent = memo(function BoardCardContent({
   const showUpdatedHint = showAssigneeName && !showChildProgress;
   const { getActorName } = useActorName();
   const assigneeName =
-    showAssigneeName
-      ? issue.assignees && issue.assignees.length > 0
-        ? issue.assignees.length === 1 ? getActorName(issue.assignees[0]!.assignee_type, issue.assignees[0]!.assignee_id) : `${issue.assignees.length} assignees`
-        : issue.assignee_type && issue.assignee_id
-          ? getActorName(issue.assignee_type, issue.assignee_id)
-          : null
+    showAssigneeName && issue.assignee_type && issue.assignee_id
+      ? getActorName(issue.assignee_type, issue.assignee_id)
       : null;
 
   const priorityLabel = t(($) => $.priority[issue.priority]);
@@ -159,21 +150,13 @@ export const BoardCardContent = memo(function BoardCardContent({
 
   const assigneeInner = hasAssignee ? (
     <span className="flex min-w-0 max-w-full items-center gap-1.5">
-      {issue.assignees && issue.assignees.length > 0 ? (
-        <ActorAvatarStack
-          actors={issue.assignees.map(a => ({ type: a.assignee_type, id: a.assignee_id }))}
-          size={20}
-          className="shrink-0"
-        />
-      ) : (
-        <ActorAvatar
-          actorType={issue.assignee_type!}
-          actorId={issue.assignee_id!}
-          size={20}
-          enableHoverCard
-          className="shrink-0"
-        />
-      )}
+      <ActorAvatar
+        actorType={issue.assignee_type!}
+        actorId={issue.assignee_id!}
+        size="sm"
+        enableHoverCard
+        className="shrink-0"
+      />
       {assigneeName && (
         <span className="min-w-0 truncate text-caption text-foreground">{assigneeName}</span>
       )}
@@ -188,7 +171,6 @@ export const BoardCardContent = memo(function BoardCardContent({
         <AssigneePicker
           assigneeType={issue.assignee_type}
           assigneeId={issue.assignee_id}
-          assignees={issue.assignees?.map(a => ({ type: a.assignee_type, id: a.assignee_id }))}
           onUpdate={handleUpdate}
           trigger={assigneeInner}
         />
@@ -201,26 +183,17 @@ export const BoardCardContent = memo(function BoardCardContent({
   const showMetaRow = showAssigneeSection || showStartDate || showDueDate || showChildProgress;
   const showRightMeta = !!showStartDate || !!showDueDate || !!showChildProgress || showUpdatedHint;
 
-  const { data: pendingReviewIssueIds } = useQuery(listPendingReviewIssueIDsOptions(issue.workspace_id));
-  const hasPendingReview = pendingReviewIssueIds?.includes(issue.id);
-
   return (
     <div className="rounded-lg border-[0.5px] border-surface-border bg-surface py-3 px-2.5 shadow-[var(--surface-shadow)] transition-colors group-hover/card:border-foreground/15 group-hover/card:bg-surface-hover group-data-[popup-open]/card:border-foreground/15 group-data-[popup-open]/card:bg-surface-hover">
       {/* Row 1: priority + identifier (left), agent activity + assignee (right) */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 min-w-0">
           {priorityIconNode}
-          <IssueTypeBadge issueTypeId={issue.issue_type_id} />
-          <p className="text-xs text-muted-foreground truncate">{issue.identifier}</p>
+          <p className="text-caption text-muted-foreground truncate">{issue.identifier}</p>
           {issue.parent_issue_id && (
-            <span className="flex items-center gap-1 bg-muted/50 text-muted-foreground px-1.5 py-0.5 rounded text-[10px] font-medium ml-1 max-w-[120px]">
+            <span className="flex items-center gap-1 bg-muted/50 text-muted-foreground px-1.5 py-0.5 rounded text-micro font-medium ml-1 max-w-[120px]">
               <CornerDownRight className="size-3 shrink-0" />
               <span className="truncate">{parentIssue ? parentIssue.identifier : "Subtask"}</span>
-            </span>
-          )}
-          {hasPendingReview && (
-            <span className="flex items-center gap-1 bg-blue-500/10 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded text-[10px] font-medium ml-1">
-              <Eye className="size-3" /> Review
             </span>
           )}
         </div>
@@ -359,9 +332,9 @@ export const BoardCardContent = memo(function BoardCardContent({
           )}
         </div>
       )}
-      
+
       {isExpanded && subtasks && subtasks.length > 0 && (
-        <div className="mt-3 flex flex-col gap-1.5 border-t border-border pt-2.5">
+        <div className="mt-3 flex flex-col gap-1.5 border-t border-surface-border pt-2.5">
           <div className="flex items-center gap-2 mb-0.5 px-0.5">
             <div className="h-1.5 flex-1 bg-muted/60 overflow-hidden rounded-full relative">
               <div 
@@ -369,7 +342,7 @@ export const BoardCardContent = memo(function BoardCardContent({
                 style={{ width: `${childProgress!.total > 0 ? Math.round((childProgress!.done / childProgress!.total) * 100) : 0}%` }}
               />
             </div>
-            <span className="text-[10px] text-muted-foreground font-medium tabular-nums w-8 text-right">
+            <span className="text-micro text-muted-foreground font-medium tabular-nums w-8 text-right">
               {childProgress!.total > 0 ? Math.round((childProgress!.done / childProgress!.total) * 100) : 0}%
             </span>
           </div>
@@ -377,7 +350,7 @@ export const BoardCardContent = memo(function BoardCardContent({
             <AppLink
               key={subtask.id}
               href={p.issueDetail(subtask.id)}
-              className="flex items-center gap-2 rounded px-1.5 py-1 text-xs hover:bg-muted/50 transition-colors"
+              className="flex items-center gap-2 rounded px-1.5 py-1 text-micro hover:bg-muted/50 transition-colors"
               onClick={(e) => e.stopPropagation()}
             >
               <StatusIcon status={subtask.status} className="size-3.5 shrink-0" />

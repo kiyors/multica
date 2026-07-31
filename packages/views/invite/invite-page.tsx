@@ -21,11 +21,6 @@ import { Button } from "@multica/ui/components/ui/button";
 import { Card, CardContent } from "@multica/ui/components/ui/card";
 import { Skeleton } from "@multica/ui/components/ui/skeleton";
 import { ArrowLeft, LogOut, Users, Check, X } from "lucide-react";
-import {
-  InviteeProfileFields,
-  inviteeProfileDescription,
-} from "../invitations/invitee-profile-fields";
-import { seedRoleBasedWelcomeIssue } from "../onboarding/templates";
 
 export interface InvitePageProps {
   invitationId: string;
@@ -53,9 +48,6 @@ export function InvitePage({ invitationId, onBack }: InvitePageProps) {
   const [declining, setDeclining] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<"accepted" | "declined" | null>(null);
-  const currentUser = useAuthStore((state) => state.user);
-  const [profileName, setProfileName] = useState(currentUser?.name ?? "");
-  const [role, setRole] = useState("");
 
   const { data: invitation, isLoading, error: fetchError } = useQuery({
     queryKey: ["invitation", invitationId],
@@ -69,22 +61,9 @@ export function InvitePage({ invitationId, onBack }: InvitePageProps) {
   const fallbackDest = resolvePostAuthDestination(wsList, hasOnboarded);
 
   const handleAccept = async () => {
-    if (!hasOnboarded && (!profileName.trim() || !role.trim())) {
-      setError(t(($) => $.profile.required));
-      return;
-    }
     setAccepting(true);
     setError(null);
     try {
-      if (!hasOnboarded) {
-        await api.updateMe({
-          name: profileName.trim(),
-          profile_description: inviteeProfileDescription(role),
-        });
-        await api.patchOnboarding({
-          questionnaire: { source: [], source_other: null, source_skipped: true },
-        });
-      }
       await api.acceptInvitation(invitationId);
       // Belt to the backend's braces: AcceptInvitation already sets
       // onboarded_at inside the same transaction, but explicitly calling
@@ -96,17 +75,6 @@ export function InvitePage({ invitationId, onBack }: InvitePageProps) {
       });
       await useAuthStore.getState().refreshMe();
       setDone("accepted");
-      
-      const refreshedUser = useAuthStore.getState().user;
-      if (invitation?.workspace_id && refreshedUser) {
-        await seedRoleBasedWelcomeIssue(
-          invitation.workspace_id,
-          role,
-          refreshedUser.id,
-          document.documentElement.lang || "en",
-        );
-      }
-
       // Fetch the refreshed workspace list so we know the joined workspace's slug.
       const nextList = await qc.fetchQuery({
         ...workspaceListOptions(),
@@ -237,16 +205,6 @@ export function InvitePage({ invitationId, onBack }: InvitePageProps) {
                 : t(($) => $.main.invited_role_member)}
             </p>
           </div>
-
-          {!hasOnboarded ? (
-            <InviteeProfileFields
-              name={profileName}
-              email={currentUser?.email ?? invitation.invitee_email}
-              role={role}
-              onNameChange={setProfileName}
-              onRoleChange={setRole}
-            />
-          ) : null}
 
           {isAlreadyHandled ? (
             <div className="text-body text-muted-foreground">

@@ -117,7 +117,7 @@ export function ReviewCommentSidebar({
       <div className="p-4 border-b border-border shrink-0 font-semibold flex justify-between items-center">
         <span>Review Comments</span>
         <select 
-          className="text-xs border border-border bg-background rounded p-1"
+          className="text-micro border border-border bg-background rounded p-1"
           value={filter}
           onChange={(e) => setFilter(e.target.value as any)}
         >
@@ -129,7 +129,7 @@ export function ReviewCommentSidebar({
       
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {isLoading ? (
-          <div className="text-muted-foreground text-sm">Loading comments...</div>
+          <div className="text-muted-foreground text-body">Loading comments...</div>
         ) : (() => {
           const parents = comments?.filter(c => !c.parent_id && (c.page_index ?? 0) === pageIndex) || [];
           
@@ -142,7 +142,7 @@ export function ReviewCommentSidebar({
 
           if (filteredParents.length === 0) {
             return (
-              <div className="text-muted-foreground text-sm text-center py-8">
+              <div className="text-muted-foreground text-body text-center py-8">
                 No comments match your filter.
               </div>
             );
@@ -180,15 +180,15 @@ export function ReviewCommentSidebar({
                   <div>
                     <div className="flex flex-col gap-1 mb-2">
                       <div className="flex justify-between items-center">
-                        <span className="font-semibold text-[13px] text-foreground leading-none">
+                        <span className="font-semibold text-label text-foreground leading-none">
                           {comment.guest_name ?? (comment.author_id ? getActorName("member", comment.author_id) : "Guest")}
                         </span>
-                        {comment.resolved && <span className="text-[11px] text-green-500 font-medium leading-none">Resolved</span>}
+                        {comment.resolved && <span className="text-micro text-green-500 font-medium leading-none">Resolved</span>}
                       </div>
                       <div className="flex items-center gap-1.5 flex-wrap">
                         {comment.start_time !== undefined && comment.start_time !== null && (
                           <button
-                            className="inline-flex items-center gap-1 rounded-md bg-primary/15 px-1.5 py-0.5 text-[11px] font-mono text-primary hover:bg-primary/25 transition-colors"
+                            className="inline-flex items-center gap-1 rounded-md bg-primary/15 px-1.5 py-0.5 text-micro font-mono text-primary hover:bg-primary/25 transition-colors"
                             onClick={(e) => {
                               e.stopPropagation();
                               onSelectComment?.(comment.id);
@@ -225,29 +225,29 @@ export function ReviewCommentSidebar({
                         <textarea 
                           value={editContent}
                           onChange={e => setEditContent(e.target.value)}
-                          className="w-full bg-background border border-border rounded text-sm text-foreground p-2 min-h-[60px]"
+                          className="w-full bg-background border border-border rounded text-body text-foreground p-2 min-h-[60px]"
                         />
                         <div className="flex gap-2 justify-end">
-                          <button onClick={(e) => { e.stopPropagation(); setEditingCommentId(null); }} className="text-xs text-muted-foreground hover:text-foreground">Cancel</button>
+                          <button onClick={(e) => { e.stopPropagation(); setEditingCommentId(null); }} className="text-micro text-muted-foreground hover:text-foreground">Cancel</button>
                           <button 
                             onClick={(e) => {
                               e.stopPropagation();
                               updateComment({ workspaceId, issueId: asset.issue_id, commentId: comment.id, assetId: asset.id, content: editContent, pageIndex });
                               setEditingCommentId(null);
                             }} 
-                            className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded"
+                            className="text-micro bg-primary text-primary-foreground px-2 py-1 rounded"
                           >
                             Save
                           </button>
                         </div>
                       </div>
                     ) : (
-                      <p className="text-sm text-muted-foreground">{comment.content}</p>
+                      <p className="text-body text-muted-foreground">{comment.content}</p>
                     )}
                   </div>
                   
                   {/* Actions */}
-                  <div className="mt-2 flex gap-3 text-xs text-muted-foreground">
+                  <div className="mt-2 flex gap-3 text-micro text-muted-foreground">
                     <button 
                       onClick={(e) => { 
                         e.stopPropagation(); 
@@ -319,8 +319,8 @@ export function ReviewCommentSidebar({
                 {replies.length > 0 && (
                   <div className="pl-4 space-y-2 border-l-2 border-border ml-2">
                     {replies.map(reply => (
-                      <div key={reply.id} className="bg-muted p-2 rounded border border-border text-sm">
-                         <div className="font-medium text-xs text-foreground mb-1">
+                      <div key={reply.id} className="bg-muted p-2 rounded border border-border text-body">
+                         <div className="font-medium text-micro text-foreground mb-1">
                            {reply.guest_name ?? (reply.author_id ? getActorName("member", reply.author_id) : "Guest")}
                          </div>
                          {editingCommentId === reply.id ? (
@@ -328,27 +328,27 @@ export function ReviewCommentSidebar({
                               <textarea 
                                 value={editContent}
                                 onChange={e => setEditContent(e.target.value)}
-                                className="w-full bg-background border border-border rounded text-xs text-foreground p-1.5 min-h-[40px]"
+                                className="w-full bg-background border border-border rounded text-micro text-foreground p-1.5 min-h-[40px]"
                               />
                               <div className="flex gap-2 justify-end">
-                                <button onClick={(e) => { e.stopPropagation(); setEditingCommentId(null); }} className="text-[10px] text-muted-foreground hover:text-foreground">Cancel</button>
+                                <button onClick={(e) => { e.stopPropagation(); setEditingCommentId(null); }} className="text-micro text-muted-foreground hover:text-foreground">Cancel</button>
                                 <button 
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     updateComment({ workspaceId, issueId: asset.issue_id, commentId: reply.id, assetId: asset.id, content: editContent });
                                     setEditingCommentId(null);
                                   }} 
-                                  className="text-[10px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded"
+                                  className="text-micro bg-primary text-primary-foreground px-1.5 py-0.5 rounded"
                                 >
                                   Save
                                 </button>
                               </div>
                             </div>
                          ) : (
-                           <p className="text-muted-foreground text-sm">{reply.content}</p>
+                           <p className="text-muted-foreground text-body">{reply.content}</p>
                          )}
                          {currentMember?.id === reply.author_id && editingCommentId !== reply.id && (
-                           <div className="mt-1 flex gap-2 text-[10px] text-muted-foreground">
+                           <div className="mt-1 flex gap-2 text-micro text-muted-foreground">
                              <button onClick={(e) => { e.stopPropagation(); setEditContent(reply.content); setEditingCommentId(reply.id); }} className="hover:text-primary">Edit</button>
                              <button onClick={(e) => { e.stopPropagation(); if (confirm("Delete this reply?")) deleteComment({ workspaceId, issueId: asset.issue_id, commentId: reply.id, assetId: asset.id }); }} className="hover:text-destructive">Delete</button>
                            </div>
@@ -365,7 +365,7 @@ export function ReviewCommentSidebar({
 
       <div className="p-4 border-t border-border bg-background shrink-0">
         {replyingTo && (
-          <div className="flex justify-between items-center mb-2 bg-accent/5 p-2 rounded border border-accent/10 text-xs text-accent">
+          <div className="flex justify-between items-center mb-2 bg-accent/5 p-2 rounded border border-accent/10 text-micro text-accent">
             <span>Replying to thread</span>
             <button onClick={() => setReplyingTo(null)} className="text-muted-foreground hover:text-foreground transition-colors">
               <X className="w-3.5 h-3.5" />
@@ -387,13 +387,13 @@ export function ReviewCommentSidebar({
             >
               {asset.asset_type === "video" && (
                 <div className="shrink-0 ml-3 mt-[10px] mr-2 flex items-center gap-1">
-                  <span className="rounded bg-amber-500/10 px-1.5 py-0.5 font-mono text-[11px] font-medium text-amber-500 leading-none select-none border border-amber-500/20">
+                  <span className="rounded bg-amber-500/10 px-1.5 py-0.5 font-mono text-micro font-medium text-amber-500 leading-none select-none border border-amber-500/20">
                     {new Date((endTime !== null ? Math.min(currentTime, endTime) : currentTime) * 1000).toISOString().substring(11, 19).replace(/^00:/, '')}
                   </span>
                   {endTime !== null && (
                     <>
-                      <span className="text-muted-foreground text-[10px]">-</span>
-                      <span className="rounded bg-amber-500/10 px-1.5 py-0.5 font-mono text-[11px] font-medium text-amber-500 leading-none select-none border border-amber-500/20">
+                      <span className="text-muted-foreground text-micro">-</span>
+                      <span className="rounded bg-amber-500/10 px-1.5 py-0.5 font-mono text-micro font-medium text-amber-500 leading-none select-none border border-amber-500/20">
                         {new Date(Math.max(currentTime, endTime) * 1000).toISOString().substring(11, 19).replace(/^00:/, '')}
                       </span>
                     </>
@@ -408,7 +408,6 @@ export function ReviewCommentSidebar({
                   onUpdate={(md) => setDraftContent(md)}
                   enableSlashCommands
                   mentionMode="context"
-                  submitOnEnter
                   onSubmit={() => {
                     const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
                     handleSubmit(fakeEvent);
@@ -450,7 +449,7 @@ export function ReviewCommentSidebar({
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  className="flex items-center gap-1.5 px-2 py-1 text-[11px] font-medium text-muted-foreground rounded-md hover:bg-muted transition-colors"
+                  className="flex items-center gap-1.5 px-2 py-1 text-micro font-medium text-muted-foreground rounded-md hover:bg-muted transition-colors"
                 >
                   <Globe className="w-3.5 h-3.5" />
                   Public

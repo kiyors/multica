@@ -197,7 +197,7 @@ describe("AgentBatchToolbar — bulk Set access scope", () => {
     fireEvent.click(screen.getByRole("button", { name: "Set access scope" }));
     await screen.findByText(/Applies to 1 agents/);
 
-    fireEvent.click(screen.getByRole("radio", { name: /Entire workspace/ }));
+    fireEvent.click(screen.getByRole("radio", { name: /Public to workspace/ }));
 
     const apply = screen.getByRole("button", { name: "Apply" });
     await waitFor(() => expect(apply).toBeEnabled());
@@ -208,12 +208,12 @@ describe("AgentBatchToolbar — bulk Set access scope", () => {
       await act(async () => {});
       expect(apply).toBeEnabled();
       expect(
-        screen.getByRole("radio", { name: /Entire workspace/ }),
+        screen.getByRole("radio", { name: /Public to workspace/ }),
       ).toBeChecked();
     }
   });
 
-  it("applies Entire workspace to each owned agent exactly once", async () => {
+  it("applies Public to workspace to each owned agent exactly once", async () => {
     renderToolbar([
       makeRow("a", "user-1"),
       makeRow("b", "user-1"),
@@ -223,7 +223,7 @@ describe("AgentBatchToolbar — bulk Set access scope", () => {
     fireEvent.click(screen.getByRole("button", { name: "Set access scope" }));
     await screen.findByText(/Applies to 2 agents/);
 
-    fireEvent.click(screen.getByRole("radio", { name: /Entire workspace/ }));
+    fireEvent.click(screen.getByRole("radio", { name: /Public to workspace/ }));
 
     const apply = screen.getByRole("button", { name: "Apply" });
     await waitFor(() => expect(apply).toBeEnabled());
@@ -253,7 +253,7 @@ describe("AgentBatchToolbar — bulk Set access scope", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Set access scope" }));
     await screen.findByText(/Applies to 1 agents/);
-    fireEvent.click(screen.getByRole("radio", { name: /Entire workspace/ }));
+    fireEvent.click(screen.getByRole("radio", { name: /Public to workspace/ }));
     await waitFor(() =>
       expect(screen.getByRole("button", { name: "Apply" })).toBeEnabled(),
     );
@@ -270,7 +270,7 @@ describe("AgentBatchToolbar — bulk Set access scope", () => {
 
     expect(screen.getByRole("button", { name: "Apply" })).toBeDisabled();
     expect(
-      screen.getByRole("radio", { name: /Entire workspace/ }),
+      screen.getByRole("radio", { name: /Public to workspace/ }),
     ).not.toBeChecked();
     expect(updateAgentSpy).not.toHaveBeenCalled();
   });

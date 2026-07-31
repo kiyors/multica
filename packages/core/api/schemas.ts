@@ -707,6 +707,7 @@ export const IssueSchema = z.object({
   milestone_id: z.string().nullable().optional(),
   reactions: z.array(z.unknown()).optional(),
   labels: z.array(z.unknown()).optional(),
+  properties: IssuePropertyValuesSchema,
   created_at: z.string(),
   updated_at: z.string(),
 }).loose();

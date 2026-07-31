@@ -100,65 +100,37 @@ import jaUi from "./ja/ui.json";
 import jaSquads from "./ja/squads.json";
 import jaBilling from "./ja/billing.json";
 
-const enResources: LocaleResources = {
-  common: enCommon,
-  auth: enAuth,
-  settings: enSettings,
-  issues: enIssues,
-  agents: enAgents,
-  editor: enEditor,
-  onboarding: enOnboarding,
-  invite: enInvite,
-  labels: enLabels,
-  members: enMembers,
-  "my-issues": enMyIssues,
-  search: enSearch,
-  inbox: enInbox,
-  workspace: enWorkspace,
-  projects: enProjects,
-  autopilots: enAutopilots,
-  skills: enSkills,
-  chat: enChat,
-  modals: enModals,
-  runtimes: enRuntimes,
-  layout: enLayout,
-  usage: enUsage,
-  ui: enUi,
-  squads: enSquads,
-  billing: enBilling,
-};
-
-function replaceInString(str: string) {
-  let res = str;
-  res = res.replace(/\bIssues\b/g, "Tasks");
-  res = res.replace(/\bIssue\b/g, "Task");
-  res = res.replace(/\bissues\b/g, "tasks");
-  res = res.replace(/\bissue\b/g, "task");
-  return res;
-}
-
-function traverse(obj: any): any {
-  if (typeof obj === "string") {
-    return replaceInString(obj);
-  } else if (Array.isArray(obj)) {
-    return obj.map(traverse);
-  } else if (typeof obj === "object" && obj !== null) {
-    const newObj: any = {};
-    for (const key of Object.keys(obj)) {
-      newObj[key] = traverse(obj[key]);
-    }
-    return newObj;
-  }
-  return obj;
-}
-
-const tasksResources: LocaleResources = traverse(enResources);
-
 // Single source of truth for the resource bundle. Both apps (web layout +
 // desktop App.tsx) import from here so adding a locale or namespace happens
 // in exactly one place.
 export const RESOURCES: Record<SupportedLocale, LocaleResources> = {
-  en: enResources,
+  en: {
+    common: enCommon,
+    auth: enAuth,
+    settings: enSettings,
+    issues: enIssues,
+    agents: enAgents,
+    editor: enEditor,
+    onboarding: enOnboarding,
+    invite: enInvite,
+    labels: enLabels,
+    members: enMembers,
+    "my-issues": enMyIssues,
+    search: enSearch,
+    inbox: enInbox,
+    workspace: enWorkspace,
+    projects: enProjects,
+    autopilots: enAutopilots,
+    skills: enSkills,
+    chat: enChat,
+    modals: enModals,
+    runtimes: enRuntimes,
+    layout: enLayout,
+    usage: enUsage,
+    ui: enUi,
+    squads: enSquads,
+    billing: enBilling,
+  },
   "zh-Hans": {
     common: zhHansCommon,
     auth: zhHansAuth,
@@ -240,7 +212,4 @@ export const RESOURCES: Record<SupportedLocale, LocaleResources> = {
     squads: jaSquads,
     billing: jaBilling,
   },
-  "en-marketing": tasksResources,
-  "en-creative": tasksResources,
 };
-

@@ -49,7 +49,7 @@ function StepIcon({ status }: { status: StepStatus }) {
     case "in-progress":
       return <Loader2 className="w-4 h-4 flex-shrink-0 text-primary animate-spin motion-reduce:animate-none" />;
     default:
-      return <Circle className="w-4 h-4 flex-shrink-0 text-muted-foreground/30" />;
+      return <Circle className="w-4 h-4 flex-shrink-0 text-faint-foreground" />;
   }
 }
 
@@ -78,7 +78,7 @@ export function ProgressTracker({ id, steps, elapsedTime, choice }: ProgressTrac
           {isActive && (
             <Loader2 className="w-3.5 h-3.5 flex-shrink-0 text-muted-foreground animate-spin motion-reduce:animate-none" />
           )}
-          <span className="text-sm font-medium truncate">
+          <span className="text-body font-medium truncate">
             {choice ? "Upload complete" : "Uploading…"}
           </span>
         </div>
@@ -87,13 +87,13 @@ export function ProgressTracker({ id, steps, elapsedTime, choice }: ProgressTrac
           {elapsedTime !== undefined && elapsedTime > 0 && (
             <time
               dateTime={`PT${(elapsedTime / 1000).toFixed(1)}S`}
-              className="text-xs text-muted-foreground tabular-nums bg-muted px-1.5 py-0.5 rounded-sm"
+              className="text-micro text-muted-foreground tabular-nums bg-muted px-1.5 py-0.5 rounded-sm"
             >
               {formatElapsed(elapsedTime)}
             </time>
           )}
           {outcomeData && (
-            <span className={cn("text-xs font-medium px-2 py-0.5 rounded border", outcomeData.cls)}>
+            <span className={cn("text-micro font-medium px-2 py-0.5 rounded border", outcomeData.cls)}>
               {outcomeData.label}
             </span>
           )}
@@ -119,7 +119,7 @@ export function ProgressTracker({ id, steps, elapsedTime, choice }: ProgressTrac
               <div className="flex-1 min-w-0">
                 <p
                   className={cn(
-                    "text-sm leading-snug",
+                    "text-body leading-snug",
                     step.status === "completed" && !choice && "text-muted-foreground",
                     step.status === "pending" && "text-muted-foreground",
                     step.status === "failed" && "text-destructive font-medium"
@@ -129,7 +129,7 @@ export function ProgressTracker({ id, steps, elapsedTime, choice }: ProgressTrac
                 </p>
                 {/* Description: always in receipt, only for active/failed in live mode */}
                 {step.description && (isCurrent || !!choice || step.status === "failed") && (
-                  <p className="text-xs text-muted-foreground mt-0.5">{step.description}</p>
+                  <p className="text-micro text-muted-foreground mt-0.5">{step.description}</p>
                 )}
               </div>
             </li>

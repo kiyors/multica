@@ -60,6 +60,7 @@ import {
   insertIdByPosition,
   issueMatchesGroup,
   getMoveUpdates,
+  propertyGroupId,
   getIssueGroupId,
 } from "../utils/drag-utils";
 
@@ -262,36 +263,19 @@ function BoardViewImpl({
   const myIssuesOpts = myIssuesScope
     ? { scope: myIssuesScope, filter: myIssuesFilter ?? {} }
     : undefined;
-  const groupedIssues = useMemo(() => {
-    const baseIssues = grouping === "assignee" && assigneeGroups
-      ? assigneeGroups.flatMap((group) => group.issues)
-      : issues;
-
-    const issueMap = new Map<string, Issue>();
-    for (const issue of baseIssues) {
-      issueMap.set(issue.id, issue);
-    }
-
-    return baseIssues.filter((issue) => {
-      if (!issue.parent_issue_id) return true;
-      const parent = issueMap.get(issue.parent_issue_id);
-      if (!parent) return true;
-
-      const issueGroup = getIssueGroupId(issue, grouping);
-      const parentGroup = getIssueGroupId(parent, grouping);
-
-      // Hide subtask if it's in the same column as its parent
-      return issueGroup !== parentGroup;
-    });
-  }, [assigneeGroups, grouping, issues]);
+  const baseGroupedIssues = useMemo(
+    () =>
+      groupBranches?.enabled
+        ? groupBranches.issues
+        : grouping === "assignee" && assigneeGroups
+        ? assigneeGroups.flatMap((group) => group.issues)
+        : issues,
+    [assigneeGroups, groupBranches, grouping, issues],
+  );
 
   const subtasksMap = useMemo(() => {
-    const baseIssues = grouping === "assignee" && assigneeGroups
-      ? assigneeGroups.flatMap((group) => group.issues)
-      : issues;
-      
     const map = new Map<string, Issue[]>();
-    for (const issue of baseIssues) {
+    for (const issue of baseGroupedIssues) {
       if (issue.parent_issue_id) {
         let list = map.get(issue.parent_issue_id);
         if (!list) {
@@ -302,9 +286,57 @@ function BoardViewImpl({
       }
     }
     return map;
-  }, [assigneeGroups, grouping, issues]);
+  }, [baseGroupedIssues]);
 
-  const hydratedAssigneeGroups = useMemo(() => {
+  const groupedIssues = useMemo(() => {
+    const issueMap = new Map<string, Issue>();
+    for (const issue of baseGroupedIssues) {
+      issueMap.set(issue.id, issue);
+    }
+
+    const groupingOptionIds = groupingProperty
+      ? new Set((groupingProperty.config.options ?? []).map((o) => o.id))
+      : undefined;
+
+    return baseGroupedIssues.filter((issue) => {
+      if (!issue.parent_issue_id) return true;
+      const parent = issueMap.get(issue.parent_issue_id);
+      if (!parent) return true;
+
+      const issueGroup = getIssueGroupId(issue, grouping, groupingOptionIds);
+      const parentGroup = getIssueGroupId(parent, grouping, groupingOptionIds);
+
+      // Hide subtask if it's in the same column as its parent
+      return issueGroup !== parentGroup;
+    });
+  }, [baseGroupedIssues, grouping, groupingProperty]);
+  const hydratedAssigneeGroups = useMemo<BoardColumnGroup[] | undefined>(() => {
+    if (grouping === "assignee" && groupBranches?.enabled) {
+      return groupBranches.descriptors.flatMap((descriptor): BoardColumnGroup[] => {
+        if (descriptor.value.kind !== "assignee") return [];
+        const actorRef = descriptor.value.actor;
+        const actor: { type: IssueAssigneeType; id: string } | null =
+          actorRef &&
+          (actorRef.type === "member" ||
+            actorRef.type === "agent" ||
+            actorRef.type === "squad")
+            ? { type: actorRef.type, id: actorRef.id }
+            : null;
+        return [{
+          id: descriptor.key,
+          title: actor
+            ? getActorName(actor.type, actor.id)
+            : t(($) => $.filters.no_assignee),
+          assigneeType: actor?.type ?? null,
+          assigneeId: actor?.id ?? null,
+          totalCount: descriptor.count,
+          createData: {
+            assignee_type: actor?.type ?? null,
+            assignee_id: actor?.id ?? null,
+          },
+        }];
+      });
+    }
     if (grouping !== "assignee" || !assigneeGroups) return undefined;
     const order: Record<string, number> = {
       member: 0,
@@ -634,20 +666,34 @@ function BoardViewImpl({
         ) : (
           groups.map((group) =>
             isStatusGroup(group) ? (
-              <PaginatedBoardColumn
-                key={group.id}
-                group={group}
-                issueIds={columns[group.id] ?? EMPTY_IDS}
-                issueMap={issueMapRef.current}
-                childProgressMap={childProgressMap}
-                projectMap={projectMap}
-                subtasksMap={subtasksMap}
-                myIssuesOpts={myIssuesOpts}
-                sort={sort}
-                projectId={projectId}
-                onCreateIssue={onCreateIssue}
-                sortLabel={sortLabel}
-              />
+              statusPagination ? (
+                <ServerPaginatedBoardColumn
+                  key={group.id}
+                  group={group}
+                  issueIds={columns[group.id] ?? EMPTY_IDS}
+                  issueMap={issueMapRef.current}
+                  childProgressMap={childProgressMap}
+                  projectMap={projectMap}
+                  page={statusPagination[group.status]}
+                  projectId={projectId}
+                  onCreateIssue={onCreateIssue}
+                  sortLabel={sortLabel}
+                />
+              ) : (
+                <PaginatedBoardColumn
+                  key={group.id}
+                  group={group}
+                  issueIds={columns[group.id] ?? EMPTY_IDS}
+                  issueMap={issueMapRef.current}
+                  childProgressMap={childProgressMap}
+                  projectMap={projectMap}
+                  myIssuesOpts={myIssuesOpts}
+                  sort={sort}
+                  projectId={projectId}
+                  onCreateIssue={onCreateIssue}
+                  sortLabel={sortLabel}
+                />
+              )
             ) : (
               groupPagination?.[group.id] ? (
                 <ServerPaginatedBoardColumn
@@ -657,6 +703,7 @@ function BoardViewImpl({
                   issueMap={issueMapRef.current}
                   childProgressMap={childProgressMap}
                   projectMap={projectMap}
+                  subtasksMap={subtasksMap}
                   page={groupPagination[group.id]!}
                   projectId={projectId}
                   onCreateIssue={onCreateIssue}
@@ -809,6 +856,7 @@ const ServerPaginatedBoardColumn = memo(function ServerPaginatedBoardColumn({
   issueMap,
   childProgressMap,
   projectMap,
+  subtasksMap,
   page,
   projectId,
   onCreateIssue,
@@ -819,6 +867,7 @@ const ServerPaginatedBoardColumn = memo(function ServerPaginatedBoardColumn({
   issueMap: Map<string, Issue>;
   childProgressMap?: Map<string, ChildProgress>;
   projectMap?: Map<string, Project>;
+  subtasksMap?: Map<string, Issue[]>;
   page: IssueStatusPageState | IssueGroupPageState;
   projectId?: string;
   onCreateIssue?: (defaults: IssueCreateDefaults) => void;
@@ -841,6 +890,7 @@ const ServerPaginatedBoardColumn = memo(function ServerPaginatedBoardColumn({
       issueMap={issueMap}
       childProgressMap={childProgressMap}
       projectMap={projectMap}
+      subtasksMap={subtasksMap}
       totalCount={page.total}
       projectId={projectId}
       onCreateIssue={onCreateIssue}

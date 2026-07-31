@@ -264,7 +264,7 @@ describe("RuntimeDetail visibility section", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("routes custom runtime deletion through the profile delete dialog for admins", async () => {
+  it("routes custom agent environment deletion through the profile delete dialog for admins", async () => {
     const profile = makeProfile();
     mockQueryData.members = [
       { user_id: "user-me", role: "owner", name: "Me" },
@@ -279,10 +279,17 @@ describe("RuntimeDetail visibility section", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: /Delete agent environment/i }));
-    expect(screen.getByText("Delete custom agent environment?")).toBeInTheDocument();
+    expect(
+      screen.getByText("Delete custom agent environment?"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("alertdialog", {
+        name: "Delete custom agent environment?",
+      }),
+    ).toBeInTheDocument();
 
     fireEvent.click(
-      screen.getByRole("button", { name: "Delete from workspace" }),
+      screen.getByRole("button", { name: "Delete" }),
     );
     await waitFor(() =>
       expect(mockDeleteRuntimeProfile).toHaveBeenCalledWith(profile.id),

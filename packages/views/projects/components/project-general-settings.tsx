@@ -15,21 +15,21 @@ export function ProjectGeneralSettings({ projectId }: { projectId: string }) {
     <div className="p-6 max-w-2xl">
       <div className="space-y-6">
         <div>
-          <h3 className="text-lg font-medium">General Settings</h3>
-          <p className="text-sm text-muted-foreground mt-1">Manage project details and identifiers.</p>
+          <h3 className="text-title font-medium">General Settings</h3>
+          <p className="text-body text-muted-foreground mt-1">Manage project details and identifiers.</p>
         </div>
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium">Project Prefix</label>
+            <label className="text-body font-medium">Project Prefix</label>
             <input 
               type="text" 
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-body shadow-sm transition-colors file:border-0 file:bg-transparent file:text-body file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
               placeholder="e.g. PRJ"
               value={project.prefix || ""}
               onChange={(e) => updateProject.mutate({ id: project.id, prefix: e.target.value.toUpperCase() })}
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-micro text-muted-foreground">
               Prefixes are used to generate short IDs for issues in this project (e.g. PRJ-123).
             </p>
           </div>

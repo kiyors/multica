@@ -506,13 +506,20 @@ export function AgentCreatePanel({
   // and the assignee from the picked actor. The parent-issue context is not
   // persisted (a per-invocation intent) so it rides the carry channel.
   const switchToManual = () => {
-    const md = editorRef.current?.getMarkdown() ?? "";
-    useIssueDraftStore.getState().setDraft({
-      description: md,
-      ...(actor
-        ? { assignees: [{ type: actor.type as "agent" | "squad", id: actor.id }] }
-        : {}),
-    });
+    // The prompt is copied into the manual description on assist-init; mid-upload
+    // that body has already lost the pending image (see switchToAgent).
+    if (gate.isBlocked()) return;
+    // Commit the shared fields to the draft so the manual panel reads them from
+    // there — local state can hold a value seeded from `data` that was never
+    // written through a picker.
+    setShared({ projectId: projectId ?? undefined, priority, dueDate });
+    if (!draft.manual.description.trim()) {
+      const md = editorRef.current?.getMarkdown() ?? "";
+      if (md) setManual({ description: md });
+    }
+    if (!draft.manual.assigneeId && actor) {
+      setManual({ assigneeType: actor.type, assigneeId: actor.id });
+    }
     setLastMode("manual");
     setActiveMode("manual");
     const carry: Record<string, unknown> = {};

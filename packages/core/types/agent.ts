@@ -218,6 +218,7 @@ export type WorkspaceWorkingAgentMineRelation =
   | "assigned"
   | "created"
   | "involved"
+  | "approvals"
   | "any";
 
 /**

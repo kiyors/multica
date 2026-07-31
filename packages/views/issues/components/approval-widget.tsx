@@ -63,7 +63,7 @@ export function ApprovalWidget({ issueId }: { issueId: string }) {
         const approverName = getActorName(approval.approver_type || "member", approval.approver_id);
         return (
           <div key={approval.id} className="flex flex-col gap-3 p-4 border border-amber-200/60 rounded-xl bg-gradient-to-br from-amber-50/50 to-orange-50/50 shadow-sm backdrop-blur-sm transition-all hover:shadow-md">
-            <div className="flex items-center gap-2 text-sm font-semibold text-amber-900">
+            <div className="flex items-center gap-2 text-body font-semibold text-amber-900">
               <ShieldAlert className="h-4 w-4 text-amber-600" />
               <span>Pending Approval</span>
             </div>
@@ -73,7 +73,7 @@ export function ApprovalWidget({ issueId }: { issueId: string }) {
                   placeholder="Add a comment (optional)..."
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
-                  className="min-h-[72px] text-sm resize-none bg-white/70 border-amber-200 focus-visible:ring-amber-500 shadow-inner"
+                  className="min-h-[72px] text-body resize-none bg-white/70 border-amber-200 focus-visible:ring-amber-500 shadow-inner"
                 />
                 <div className="flex gap-2">
                   <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white flex-1 shadow-sm transition-all active:scale-95" onClick={() => approveApproval.mutateAsync({ workspaceId: wsId, approvalId: approval.id, comment })}>
@@ -85,10 +85,10 @@ export function ApprovalWidget({ issueId }: { issueId: string }) {
                 </div>
               </div>
             ) : (
-              <p className="text-xs text-amber-800/80 flex items-center gap-2 bg-amber-100/40 p-2 rounded-lg border border-amber-200/30">
+              <p className="text-micro text-amber-800/80 flex items-center gap-2 bg-amber-100/40 p-2 rounded-lg border border-amber-200/30">
                 <span className="flex-1">Waiting for review from</span>
                 <span className="flex items-center gap-1.5 font-medium text-amber-950">
-                  <ActorAvatar actorType={approval.approver_type || "member"} actorId={approval.approver_id} size={20} /> {approverName}
+                  <ActorAvatar actorType={approval.approver_type || "member"} actorId={approval.approver_id} size="sm" /> {approverName}
                 </span>
               </p>
             )}
@@ -99,31 +99,35 @@ export function ApprovalWidget({ issueId }: { issueId: string }) {
       {decidedApprovals.map((approval: Approval) => {
         const approverName = getActorName(approval.approver_type || "member", approval.approver_id);
         return (
-          <div key={approval.id} className={`flex items-center gap-2 p-2 border rounded-md text-sm ${approval.status === 'approved' ? 'bg-green-50/50 text-green-800 border-green-200' : 'bg-red-50/50 text-red-800 border-red-200'}`}>
+          <div key={approval.id} className={`flex items-center gap-2 p-2 border rounded-md text-body ${approval.status === 'approved' ? 'bg-green-50/50 text-green-800 border-green-200' : 'bg-red-50/50 text-red-800 border-red-200'}`}>
             {approval.status === 'approved' ? <ShieldCheck className="h-4 w-4" /> : <ShieldX className="h-4 w-4" />}
             <span className="font-medium capitalize">{approval.status}</span>
             <span className="text-muted-foreground ml-auto flex items-center gap-1.5">
-              by <ActorAvatar actorType={approval.approver_type || "member"} actorId={approval.approver_id} size={16} /> {approverName}
+              by <ActorAvatar actorType={approval.approver_type || "member"} actorId={approval.approver_id} size="xs" /> {approverName}
             </span>
           </div>
         );
       })}
 
       {!requesting && (
-        <Button variant="outline" size="sm" className="w-full text-xs" onClick={() => setRequesting(true)}>
+        <Button variant="outline" size="sm" className="w-full text-micro" onClick={() => setRequesting(true)}>
           Request Approval
         </Button>
       )}
 
       {requesting && (
         <div className="p-3 border rounded-md space-y-2">
-          <p className="text-xs font-medium">Select Reviewers</p>
-          <AssigneePicker assignees={selectedReviewers} onUpdate={handleUpdateReviewers} />
+          <p className="text-micro font-medium">Select Reviewer</p>
+          <AssigneePicker 
+            assigneeType={selectedReviewers[0]?.type || null} 
+            assigneeId={selectedReviewers[0]?.id || null} 
+            onUpdate={handleUpdateReviewers} 
+          />
           <div className="flex gap-2">
-            <Button size="sm" className="flex-1 text-xs" onClick={submitRequests} disabled={selectedReviewers.length === 0}>
+            <Button size="sm" className="flex-1 text-micro" onClick={submitRequests} disabled={selectedReviewers.length === 0}>
               Send Requests
             </Button>
-            <Button variant="ghost" size="sm" className="flex-1 text-xs" onClick={() => { setRequesting(false); setSelectedReviewers([]); }}>
+            <Button variant="ghost" size="sm" className="flex-1 text-micro" onClick={() => { setRequesting(false); setSelectedReviewers([]); }}>
               Cancel
             </Button>
           </div>

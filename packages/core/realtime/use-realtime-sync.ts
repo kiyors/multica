@@ -23,6 +23,8 @@ import {
   agentRunCountsKeys,
   agentTasksKeys,
 } from "../agents/queries";
+import { invalidateUpdatedAtSortedIssueLists } from "../issues/cache-coordinator";
+import { QUICK_ACTIONS_PENDING_TIMEOUT_MS, sortChatSessions } from "../chat/queries";
 import { githubKeys } from "../github/queries";
 import { larkKeys } from "../lark/queries";
 import { slackKeys } from "../slack/queries";
@@ -449,22 +451,16 @@ export function applyWorkspaceUpdatedToCache(
       return old.map((w) => (w.id === next.id ? next : w));
     });
 
-    // We also invalidate to ensure server state is definitively resynchronized
-    qc.invalidateQueries({ queryKey: workspaceKeys.list() });
+    if (!cached) {
+      // If we didn't have it, we must invalidate to fetch the new list (with correct order/perms)
+      qc.invalidateQueries({ queryKey: workspaceKeys.list() });
+    }
 
     if (!cached || cached.issue_prefix !== next.issue_prefix) {
       qc.invalidateQueries({ queryKey: issueKeys.all(next.id) });
     }
-    if (cached && list) {
-      qc.setQueryData<Workspace[]>(
-        workspaceKeys.list(),
-        list.map((workspace) => (workspace.id === next.id ? next : workspace)),
-      );
-      return;
-    }
     // Do not seed an absent list with one workspace: staleTime is Infinity,
     // so doing so would hide every other membership until a hard refresh.
-    qc.invalidateQueries({ queryKey: issueKeys.all(next.id) });
   }
 }
 

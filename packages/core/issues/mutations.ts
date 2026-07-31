@@ -245,11 +245,13 @@ export function useUpdateIssue() {
       const patch = {
         ...rawPatch,
         ...(rawPatch.assignees ? {
-          assignees: rawPatch.assignees.map(a => ({
+          assignees: rawPatch.assignees!.map(a => ({
             ...a,
             role: a.role ?? "primary",
             assigned_at: new Date().toISOString()
-          }))
+          })),
+          assignee_id: rawPatch.assignees!.length > 0 ? rawPatch.assignees![0]!.assignee_id : null,
+          assignee_type: rawPatch.assignees!.length > 0 ? rawPatch.assignees![0]!.assignee_type : null,
         } : {})
       } as Partial<Issue>;
       // Fire-and-forget cancelQueries — keeps onMutate synchronous so the
@@ -1144,6 +1146,24 @@ export function useToggleIssueSubscriber(issueId: string) {
         qc.setQueryData(issueKeys.subscribers(issueId), ctx.prev);
     },
     onSettled: () => {
+      qc.invalidateQueries({ queryKey: issueKeys.subscribers(issueId) });
+    },
+  });
+}
+
+export function useUnsubscribeFromIssueSubtree(issueId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      userId,
+      userType,
+    }: {
+      userId: string;
+      userType: "member" | "agent";
+    }) => {
+      await api.unsubscribeFromIssueSubtree(issueId, userId, userType);
+    },
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: issueKeys.subscribers(issueId) });
     },
   });

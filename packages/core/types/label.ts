@@ -10,6 +10,7 @@ export type LabelResourceType = "issue" | "agent" | "skill";
 export interface Label {
   id: string;
   workspace_id: string;
+  resource_type?: LabelResourceType;
   project_id?: string;
   name: string;
   description?: string;

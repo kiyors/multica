@@ -293,7 +293,8 @@ const mockIssues: Issue[] = [
     stage: null,
     start_date: null,
     due_date: null,
-    metadata: {}, issue_type_id: null, milestone_id: null,
+    metadata: {},
+    properties: {},
     created_at: "2026-01-01T00:00:00Z",
     updated_at: "2026-01-01T00:00:00Z",
   },
@@ -302,7 +303,7 @@ const mockIssues: Issue[] = [
     workspace_id: "ws-1",
     number: 2,
     identifier: "PROJ-2",
-    title: "Child Issue 1",
+    title: "Child Task 1",
     description: "Child description",
     status: "in_progress",
     priority: "medium",
@@ -316,7 +317,8 @@ const mockIssues: Issue[] = [
     stage: null,
     start_date: null,
     due_date: null,
-    metadata: {}, issue_type_id: null, milestone_id: null,
+    metadata: {},
+    properties: {},
     created_at: "2026-01-01T00:00:00Z",
     updated_at: "2026-01-01T00:00:00Z",
   },
@@ -325,7 +327,7 @@ const mockIssues: Issue[] = [
     workspace_id: "ws-1",
     number: 3,
     identifier: "PROJ-3",
-    title: "Orphan Issue 1",
+    title: "Orphan Task 1",
     description: "No parent",
     status: "backlog",
     priority: "low",
@@ -339,7 +341,8 @@ const mockIssues: Issue[] = [
     stage: null,
     start_date: null,
     due_date: null,
-    metadata: {}, issue_type_id: null, milestone_id: null,
+    metadata: {},
+    properties: {},
     created_at: "2026-01-01T00:00:00Z",
     updated_at: "2026-01-01T00:00:00Z",
   },
@@ -522,14 +525,14 @@ describe("SwimLaneView", () => {
       />,
     );
 
-    expect(screen.getByText("Orphan Issue 1")).toBeInTheDocument();
+    expect(screen.getByText("Orphan Task 1")).toBeInTheDocument();
 
     // parent-1 is promoted to a lane header — must not also appear as a card.
     const parentTitleMatches = screen.getAllByText("Parent Issue 1");
     expect(parentTitleMatches).toHaveLength(1);
     expect(parentTitleMatches[0]!.closest("div")?.textContent).toContain("PROJ-1");
 
-    expect(screen.getByText("Child Issue 1")).toBeInTheDocument();
+    expect(screen.getByText("Child Task 1")).toBeInTheDocument();
   });
 
   it("calls the create callback when add button is clicked", () => {
@@ -542,7 +545,7 @@ describe("SwimLaneView", () => {
       />,
     );
 
-    const addButtons = screen.getAllByRole("button", { name: /add issue/i });
+    const addButtons = screen.getAllByRole("button", { name: /add task/i });
     expect(addButtons.length).toBeGreaterThan(0);
 
     fireEvent.click(addButtons[0]!);
@@ -561,7 +564,7 @@ describe("SwimLaneView", () => {
       />,
     );
 
-    const addButtons = screen.getAllByRole("button", { name: /add issue/i });
+    const addButtons = screen.getAllByRole("button", { name: /add task/i });
     fireEvent.click(addButtons[0]!);
 
     expect(onCreateIssue).toHaveBeenCalledWith(
@@ -581,7 +584,7 @@ describe("SwimLaneView", () => {
       />,
     );
 
-    const addButtons = screen.getAllByRole("button", { name: /add issue/i });
+    const addButtons = screen.getAllByRole("button", { name: /add task/i });
     fireEvent.click(addButtons[0]!);
 
     expect(onCreateIssue).toHaveBeenCalledWith(
@@ -610,7 +613,8 @@ describe("SwimLaneView", () => {
     stage: null,
     start_date: null,
     due_date: null,
-    metadata: {}, issue_type_id: null, milestone_id: null,
+    metadata: {},
+    properties: {},
     created_at: "2026-01-01T00:00:00Z",
     updated_at: "2026-01-01T00:00:00Z",
   };
@@ -638,7 +642,7 @@ describe("SwimLaneView", () => {
     const realLaneCount = 2;
     const visibleStatusCount = 7; // ALL_STATUSES default (cancelled included)
     expect(
-      screen.getAllByRole("button", { name: /add issue/i }).length,
+      screen.getAllByRole("button", { name: /add task/i }).length,
     ).toBe(realLaneCount * visibleStatusCount);
   });
 
@@ -682,7 +686,7 @@ describe("SwimLaneView", () => {
       />,
     );
 
-    expect(screen.queryByText("Child Issue 1")).not.toBeInTheDocument();
+    expect(screen.queryByText("Child Task 1")).not.toBeInTheDocument();
     expect(screen.getAllByText("Parent Issue 1")).toHaveLength(1);
   });
 
@@ -739,7 +743,7 @@ describe("SwimLaneView", () => {
 
     expect(screen.getAllByText("Parent Issue 1")).toHaveLength(1);
     expect(
-      screen.queryByRole("link", { name: "Open parent issue" }),
+      screen.queryByRole("link", { name: "Open parent task" }),
     ).not.toBeInTheDocument();
   });
 
@@ -796,9 +800,9 @@ describe("SwimLaneView", () => {
 
     expect(screen.getAllByText("Parent Issue 1")).toHaveLength(1);
     expect(
-      screen.getByRole("link", { name: "Open parent issue" }),
+      screen.getByRole("link", { name: "Open parent task" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Child Issue 1")).toBeInTheDocument();
+    expect(screen.getByText("Child Task 1")).toBeInTheDocument();
   });
 
   it("does not call onMoveIssue when a card is dragged out of 'Other parents'", () => {
@@ -828,7 +832,7 @@ describe("SwimLaneView", () => {
       />,
     );
 
-    const links = screen.getAllByRole("link", { name: "Open parent issue" });
+    const links = screen.getAllByRole("link", { name: "Open parent task" });
     expect(links).toHaveLength(1);
     expect(links[0]).toHaveAttribute("href", expect.stringContaining("parent-1"));
   });
@@ -986,7 +990,7 @@ describe("SwimLaneView", () => {
         ...mockIssues[2]!,
         id: "blocked-1",
         identifier: "PROJ-99",
-        title: "Blocked Issue",
+        title: "Blocked Task",
         status: "blocked",
         position: 500,
       },
@@ -1029,7 +1033,8 @@ describe("SwimLaneView", () => {
       stage: null,
       start_date: null,
       due_date: null,
-      metadata: {}, issue_type_id: null, milestone_id: null,
+      metadata: {},
+      properties: {},
       created_at: "2026-01-01T00:00:00Z",
       updated_at: "2026-01-01T00:00:00Z",
     },
@@ -1052,7 +1057,8 @@ describe("SwimLaneView", () => {
       stage: null,
       start_date: null,
       due_date: null,
-      metadata: {}, issue_type_id: null, milestone_id: null,
+      metadata: {},
+      properties: {},
       created_at: "2026-01-01T00:00:00Z",
       updated_at: "2026-01-01T00:00:00Z",
     },
@@ -1075,7 +1081,8 @@ describe("SwimLaneView", () => {
       stage: null,
       start_date: null,
       due_date: null,
-      metadata: {}, issue_type_id: null, milestone_id: null,
+      metadata: {},
+      properties: {},
       created_at: "2026-01-01T00:00:00Z",
       updated_at: "2026-01-01T00:00:00Z",
     },
@@ -1098,7 +1105,8 @@ describe("SwimLaneView", () => {
       stage: null,
       start_date: null,
       due_date: null,
-      metadata: {}, issue_type_id: null, milestone_id: null,
+      metadata: {},
+      properties: {},
       created_at: "2026-01-01T00:00:00Z",
       updated_at: "2026-01-01T00:00:00Z",
     },
@@ -1260,7 +1268,7 @@ describe("SwimLaneView", () => {
     );
 
     expect(screen.getByText("No parent")).toBeInTheDocument();
-    expect(screen.queryByText("Orphan Issue 1")).not.toBeInTheDocument();
+    expect(screen.queryByText("Orphan Task 1")).not.toBeInTheDocument();
   });
 
   it("calls toggleSwimlaneCollapsed with the raw parent id when a lane header is clicked", () => {
@@ -1299,7 +1307,7 @@ describe("SwimLaneView", () => {
       ...mockIssues[0]!,
       id: "issue-a",
       identifier: "PROJ-100",
-      title: "Issue A",
+      title: "Task A",
       project_id: "proj-1",
       parent_issue_id: null,
       status: "todo",
@@ -1308,7 +1316,7 @@ describe("SwimLaneView", () => {
       ...mockIssues[0]!,
       id: "issue-b",
       identifier: "PROJ-101",
-      title: "Issue B",
+      title: "Task B",
       project_id: "proj-2",
       parent_issue_id: null,
       status: "in_progress",
@@ -1317,7 +1325,7 @@ describe("SwimLaneView", () => {
       ...mockIssues[0]!,
       id: "issue-c",
       identifier: "PROJ-102",
-      title: "Issue C",
+      title: "Task C",
       project_id: null,
       parent_issue_id: null,
       status: "todo",
@@ -1336,9 +1344,9 @@ describe("SwimLaneView", () => {
     // Both issue cards from real projects render. The component receives
     // project metadata from its parent, so this standalone test asserts on
     // card visibility rather than lane title text.
-    expect(screen.getByText("Issue A")).toBeInTheDocument();
-    expect(screen.getByText("Issue B")).toBeInTheDocument();
-    expect(screen.getByText("Issue C")).toBeInTheDocument();
+    expect(screen.getByText("Task A")).toBeInTheDocument();
+    expect(screen.getByText("Task B")).toBeInTheDocument();
+    expect(screen.getByText("Task C")).toBeInTheDocument();
   });
 
   it("emits project_id when a card is dropped into a project lane", () => {
@@ -1397,7 +1405,7 @@ describe("SwimLaneView", () => {
       ...mockIssues[0]!,
       id: "issue-x",
       identifier: "PROJ-200",
-      title: "Issue X",
+      title: "Task X",
       assignee_type: "member",
       assignee_id: "user-1",
       parent_issue_id: null,
@@ -1408,7 +1416,7 @@ describe("SwimLaneView", () => {
       ...mockIssues[0]!,
       id: "issue-y",
       identifier: "PROJ-201",
-      title: "Issue Y",
+      title: "Task Y",
       assignee_type: "agent",
       assignee_id: "agent-1",
       parent_issue_id: null,
@@ -1419,7 +1427,7 @@ describe("SwimLaneView", () => {
       ...mockIssues[0]!,
       id: "issue-z",
       identifier: "PROJ-202",
-      title: "Issue Z",
+      title: "Task Z",
       assignee_type: null,
       assignee_id: null,
       parent_issue_id: null,
@@ -1439,9 +1447,9 @@ describe("SwimLaneView", () => {
     expect(screen.getAllByText("Unassigned").length).toBeGreaterThanOrEqual(1);
     // Mock actor name fallback for both member and agent.
     expect(screen.getAllByText("Mock Actor").length).toBeGreaterThanOrEqual(2);
-    expect(screen.getByText("Issue X")).toBeInTheDocument();
-    expect(screen.getByText("Issue Y")).toBeInTheDocument();
-    expect(screen.getByText("Issue Z")).toBeInTheDocument();
+    expect(screen.getByText("Task X")).toBeInTheDocument();
+    expect(screen.getByText("Task Y")).toBeInTheDocument();
+    expect(screen.getByText("Task Z")).toBeInTheDocument();
   });
 
   it("emits assignee_type + assignee_id when a card is dropped into an actor lane", () => {
@@ -1554,7 +1562,8 @@ describe("SwimLaneView", () => {
       stage: null,
       start_date: null,
       due_date: null,
-      metadata: {}, issue_type_id: null, milestone_id: null,
+      metadata: {},
+      properties: {},
       created_at: "2026-01-01T00:00:00Z",
       updated_at: "2026-01-01T00:00:00Z",
     };
@@ -1628,7 +1637,8 @@ describe("SwimLaneView", () => {
       stage: null,
       start_date: null,
       due_date: null,
-      metadata: {}, issue_type_id: null, milestone_id: null,
+      metadata: {},
+      properties: {},
       created_at: "2026-01-01T00:00:00Z",
       updated_at: "2026-01-01T00:00:00Z",
     };
@@ -1709,7 +1719,8 @@ describe("SwimLaneView", () => {
       stage: null,
       start_date: null,
       due_date: null,
-      metadata: {}, issue_type_id: null, milestone_id: null,
+      metadata: {},
+      properties: {},
       created_at: "2026-01-01T00:00:00Z",
       updated_at: "2026-01-01T00:00:00Z",
     };
@@ -1802,7 +1813,8 @@ describe("SwimLaneView", () => {
       stage: null,
       start_date: null,
       due_date: null,
-      metadata: {}, issue_type_id: null, milestone_id: null,
+      metadata: {},
+      properties: {},
       created_at: "2026-01-01T00:00:00Z",
       updated_at: "2026-01-01T00:00:00Z",
     };
@@ -1941,7 +1953,8 @@ describe("SwimLaneView", () => {
       stage: null,
       start_date: null,
       due_date: null,
-      metadata: {}, issue_type_id: null, milestone_id: null,
+      metadata: {},
+      properties: {},
       created_at: "2026-01-01T00:00:00Z",
       updated_at: "2026-01-01T00:00:00Z",
     };

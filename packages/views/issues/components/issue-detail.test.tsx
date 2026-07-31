@@ -117,7 +117,6 @@ vi.mock("../../navigation", () => ({
   useNavigation: () => ({
     push: vi.fn(),
     pathname: "/issues/issue-1",
-    searchParams: new URLSearchParams(),
     getShareableUrl: (p: string) => `https://app.multica.com${p}`,
   }),
   useBackOrReplace: () => vi.fn(),
@@ -516,7 +515,8 @@ const mockIssue: Issue = {
   stage: null,
   start_date: null,
   due_date: "2026-06-01T00:00:00Z",
-  metadata: {}, issue_type_id: null, milestone_id: null,
+  metadata: {},
+  properties: {},
   created_at: "2026-01-15T00:00:00Z",
   updated_at: "2026-01-20T00:00:00Z",
 };
@@ -851,7 +851,6 @@ describe("IssueDetail (shared)", () => {
     // the raw JSON on demand. Keys are NOT rendered inline anywhere.
     mockApiObj.getIssue.mockResolvedValue({
       ...mockIssue,
-      issue_type_id: null, milestone_id: null,
       metadata: {
         pr_url: "https://example.com/pr/1",
         pipeline_status: "running",
@@ -874,7 +873,6 @@ describe("IssueDetail (shared)", () => {
   it("opens a dialog with formatted JSON when the Metadata button is clicked", async () => {
     mockApiObj.getIssue.mockResolvedValue({
       ...mockIssue,
-      issue_type_id: null, milestone_id: null,
       metadata: {
         pr_url: "https://example.com/pr/1",
         pipeline_status: "running",
@@ -901,7 +899,7 @@ describe("IssueDetail (shared)", () => {
   });
 
   it("hides the Metadata button entirely when the bag is empty", async () => {
-    // Default fixture already has metadata: {}, issue_type_id: null, milestone_id: null, asserted explicitly here.
+    // Default fixture already has metadata: {}, asserted explicitly here.
     renderIssueDetail();
 
     await waitFor(() => {
@@ -930,7 +928,7 @@ describe("IssueDetail (shared)", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("This issue does not exist or has been deleted in this workspace."),
+        screen.getByText("This task does not exist or has been deleted in this workspace."),
       ).toBeInTheDocument();
     });
   });

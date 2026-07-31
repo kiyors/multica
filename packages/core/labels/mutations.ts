@@ -58,7 +58,7 @@ export function useUpdateLabel(projectId?: string) {
             }
           : old,
       );
-      return { prevList, listKey };
+      return { prevList };
     },
     onError: (_err, _vars, ctx) => {
       if (ctx?.prevList) qc.setQueryData(labelKeys.list(wsId, projectId), ctx.prevList);
@@ -88,7 +88,7 @@ export function useDeleteLabel(projectId?: string) {
           ? { ...old, labels: old.labels.filter((l) => l.id !== id), total: old.total - 1 }
           : old,
       );
-      return { prev, listKey };
+      return { prev };
     },
     onError: (_err, _id, ctx) => {
       if (ctx?.prev) qc.setQueryData(labelKeys.list(wsId, projectId), ctx.prev);

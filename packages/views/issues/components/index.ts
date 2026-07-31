@@ -1,14 +1,12 @@
 export { StatusIcon } from "./status-icon";
 export { StatusHeading } from "./status-heading";
 export { PriorityIcon } from "./priority-icon";
-export { IssueTypeIcon } from "./issue-type-icon";
-export { IssueTypeBadge } from "./issue-type-badge";
-export { StatusPicker, PriorityPicker, StagePicker, AssigneePicker, canAssignAgent, StartDatePicker, DueDatePicker, LabelPicker, IssueTypePicker } from "./pickers";
-export { IssueDetail } from "./issue-detail";
+export { StatusPicker, PriorityPicker, StagePicker, AssigneePicker, canAssignAgent, StartDatePicker, DueDatePicker, LabelPicker } from "./pickers";
+export { IssueDetail, IssueDetailSkeleton } from "./issue-detail";
+export { IssueDetailRoute } from "./issue-detail-route";
 export { IssuesPage } from "./issues-page";
 export { CommentCard } from "./comment-card";
 export { CommentInput } from "./comment-input";
 export { ReplyInput } from "./reply-input";
 export { IssueMentionCard } from "./issue-mention-card";
 export { IssueChip } from "./issue-chip";
-export * from "./pickers/github-repo-picker";

@@ -52,8 +52,7 @@ import {
 } from "../../runtimes/components/charts";
 import { ProjectIcon } from "../../projects/components/project-icon";
 import { ActorAvatar } from "../../common/actor-avatar";
-import { WorkspaceAvatar } from "../../workspace/workspace-avatar";
-import { useCurrentWorkspace } from "@multica/core/paths";
+import { AppLink } from "../../navigation";
 import {
   addDaysIso,
   aggregateByWeek,
@@ -244,7 +243,6 @@ export function DashboardPage() {
   const [dim, setDim] = useState<Dim>("daily");
   const [days, setDays] = useState<TimeRange>(30);
   const [projectValue, setProjectValue] = useState<string>(ALL_PROJECTS);
-  const workspace = useCurrentWorkspace();
 
   const allowedRanges = rangesForDim(dim);
   const handleDimChange = (next: Dim) => {
@@ -514,13 +512,6 @@ export function DashboardPage() {
           single row. */}
       <PageHeader className="h-auto min-h-12 flex-wrap justify-between gap-y-1.5 px-5 py-1.5 sm:py-0">
         <div className="flex min-w-0 items-center gap-2">
-          {workspace && (
-            <WorkspaceAvatar
-              name={workspace.name}
-              avatarUrl={workspace.avatar_url}
-              size="sm"
-            />
-          )}
           <BarChart3 className="h-4 w-4 shrink-0 text-muted-foreground" />
           <h1 className="truncate text-body font-medium">{t(($) => $.title)}</h1>
         </div>

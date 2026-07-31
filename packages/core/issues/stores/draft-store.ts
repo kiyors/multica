@@ -48,7 +48,6 @@ export interface IssueCreateManual {
   title: string;
   description: string;
   status: IssueStatus;
-  startDate: string | null;
   assigneeType?: IssueAssigneeType;
   assigneeId?: string;
   assignees?: { type: IssueAssigneeType; id: string }[];
@@ -86,7 +85,6 @@ const emptyManual = (): IssueCreateManual => ({
   title: "",
   description: "",
   status: "todo",
-  startDate: null,
   assigneeType: undefined,
   assigneeId: undefined,
   assignees: [],
@@ -103,9 +101,23 @@ const emptyAgent = (): IssueCreateAgent => ({
   actorId: undefined,
 });
 
+export const EMPTY_CREATE_DRAFT = (): IssueCreateDraft => ({
+  shared: emptyShared(),
+  manual: emptyManual(),
+  agent: emptyAgent(),
+  activeMode: "manual",
+});
+
 interface IssueDraftStore {
-  draft: IssueDraft;
-  setDraft: (patch: Partial<IssueDraft>) => void;
+  draft: IssueCreateDraft;
+  lastAssigneeType?: IssueAssigneeType;
+  lastAssigneeId?: string;
+  setDraft: (patch: Partial<IssueCreateDraft>) => void;
+  setShared: (patch: Partial<IssueCreateShared>) => void;
+  setManual: (patch: Partial<IssueCreateManual>) => void;
+  setAgent: (patch: Partial<IssueCreateAgent>) => void;
+  setActiveMode: (mode: "manual" | "agent") => void;
+  setLastAssignee: (type?: IssueAssigneeType, id?: string) => void;
   clearDraft: () => void;
   hasDraft: () => boolean;
 }
@@ -174,14 +186,24 @@ function migrateDraft(raw: unknown): IssueCreateDraft {
 export const useIssueDraftStore = create<IssueDraftStore>()(
   persist(
     (set, get) => ({
-      draft: { ...EMPTY_DRAFT },
+      draft: EMPTY_CREATE_DRAFT(),
+      lastAssigneeType: undefined,
+      lastAssigneeId: undefined,
       setDraft: (patch) =>
         set((s) => ({ draft: { ...s.draft, ...patch } })),
+      setShared: (patch) =>
+        set((s) => ({ draft: { ...s.draft, shared: { ...s.draft.shared, ...patch } } })),
+      setManual: (patch) =>
+        set((s) => ({ draft: { ...s.draft, manual: { ...s.draft.manual, ...patch } } })),
+      setAgent: (patch) =>
+        set((s) => ({ draft: { ...s.draft, agent: { ...s.draft.agent, ...patch } } })),
+      setActiveMode: (mode) =>
+        set((s) => ({ draft: { ...s.draft, activeMode: mode } })),
+      setLastAssignee: (type, id) =>
+        set({ lastAssigneeType: type, lastAssigneeId: id }),
       clearDraft: () =>
         set(() => ({
-          draft: {
-            ...EMPTY_DRAFT,
-          },
+          draft: EMPTY_CREATE_DRAFT(),
         })),
       hasDraft: () => {
         const { manual, agent, shared } = get().draft;

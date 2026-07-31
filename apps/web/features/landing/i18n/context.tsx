@@ -61,7 +61,7 @@ export function LocaleProvider({
     (l: Locale) => {
       if (l === locale) return;
       setLocaleState(l);
-      localeAdapter.persist(l);
+      localeAdapter.persist(l === "en-marketing" || l === "en-creative" ? "en" : l);
       startTransition(() => {
         router.refresh();
       });

@@ -11,14 +11,14 @@ export default function DocsPage() {
     <div className="mx-auto max-w-4xl p-8 py-12">
       <div className="mb-8 border-b pb-4">
         <h1 className="text-4xl font-bold tracking-tight">Multica Documentation</h1>
-        <p className="mt-4 text-lg text-muted-foreground">
+        <p className="mt-4 text-title text-muted-foreground">
           Welcome to Multica! Here is a quick guide to help you get started with workspaces, projects, tasks, and agents.
         </p>
       </div>
 
       <div className="space-y-12">
         <section>
-          <h2 className="mb-4 text-2xl font-semibold">1. Workspaces</h2>
+          <h2 className="mb-4 text-display-sm font-semibold">1. Workspaces</h2>
           <p className="text-muted-foreground mb-4">
             A workspace is your organization's home in Multica. All projects, tasks, and team members belong to a workspace.
           </p>
@@ -29,7 +29,7 @@ export default function DocsPage() {
         </section>
 
         <section>
-          <h2 className="mb-4 text-2xl font-semibold">2. Projects</h2>
+          <h2 className="mb-4 text-display-sm font-semibold">2. Projects</h2>
           <p className="text-muted-foreground mb-4">
             Projects help you organize related tasks. Each project can have its own specific configurations.
           </p>
@@ -41,7 +41,7 @@ export default function DocsPage() {
         </section>
 
         <section>
-          <h2 className="mb-4 text-2xl font-semibold">3. Tasks (Issues)</h2>
+          <h2 className="mb-4 text-display-sm font-semibold">3. Tasks (Issues)</h2>
           <p className="text-muted-foreground mb-4">
             Tasks are the core unit of work in Multica.
           </p>
@@ -53,7 +53,7 @@ export default function DocsPage() {
         </section>
 
         <section>
-          <h2 className="mb-4 text-2xl font-semibold">4. AI Agents</h2>
+          <h2 className="mb-4 text-display-sm font-semibold">4. AI Agents</h2>
           <p className="text-muted-foreground mb-4">
             Multica features autonomous AI agents that can assist you with your tasks.
           </p>

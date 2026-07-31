@@ -35,6 +35,7 @@ export interface Comment {
   review_page_index?: number | null;
   review_start_time?: number | null;
   review_end_time?: number | null;
+  trigger_outcomes?: CommentTriggerOutcome[];
 }
 
 export type CommentTriggerSource =
@@ -48,6 +49,13 @@ export interface CommentTriggerPreviewAgent {
   avatar_url?: string;
   source: CommentTriggerSource | string;
   reason: string;
+}
+
+export interface CommentTriggerOutcome {
+  target_type: string;
+  target_id: string;
+  status: string;
+  reason_code: string;
 }
 
 export interface CommentTriggerPreview {

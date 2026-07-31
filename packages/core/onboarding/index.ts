@@ -22,3 +22,4 @@ export {
   useWelcomeStore,
   type WelcomeSignal,
 } from "./welcome-store";
+export * from "./recommend-template";

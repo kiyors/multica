@@ -29,6 +29,8 @@ const issue: Issue = {
   creator_id: "member-1",
   parent_issue_id: null,
   project_id: null,
+  issue_type_id: null,
+  milestone_id: null,
   position: 1,
   stage: null,
   start_date: null,
@@ -160,7 +162,7 @@ describe("useSetIssueProperty", () => {
     await waitFor(() =>
       expect(
         qc.getQueryData<{ pages: { issues: Issue[] }[] }>(flatKey)?.pages[0]
-          ?.issues[0]?.properties.estimate,
+          ?.issues[0]?.properties?.estimate,
       ).toBe(2),
     );
     expect(qc.getQueryState(flatKey)?.isInvalidated).toBe(false);

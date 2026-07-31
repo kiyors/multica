@@ -123,7 +123,8 @@ function makeIssue(id: string, title: string, projectId: string): Issue {
     start_date: null,
     due_date: null,
     labels: [],
-    metadata: {}, issue_type_id: null, milestone_id: null,
+    metadata: {},
+    properties: {},
     created_at: "2026-01-01T00:00:00Z",
     updated_at: "2026-01-01T00:00:00Z",
   };

@@ -20,11 +20,6 @@ import { Card, CardContent } from "@multica/ui/components/ui/card";
 import { Checkbox } from "@multica/ui/components/ui/checkbox";
 import { Skeleton } from "@multica/ui/components/ui/skeleton";
 import { LogOut, Mail, Users } from "lucide-react";
-import {
-  InviteeProfileFields,
-  inviteeProfileDescription,
-} from "./invitee-profile-fields";
-import { seedRoleBasedWelcomeIssue } from "../onboarding/templates";
 
 /**
  * Batch invitation handling page for first-contact users who land here
@@ -51,9 +46,6 @@ export function InvitationsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const currentUser = useAuthStore((state) => state.user);
-  const [profileName, setProfileName] = useState(currentUser?.name ?? "");
-  const [role, setRole] = useState("");
 
   const {
     data: invitations,
@@ -81,21 +73,9 @@ export function InvitationsPage() {
       return;
     }
 
-    if (!profileName.trim() || !role.trim()) {
-      setError(t(($) => $.profile.required));
-      return;
-    }
-
     setSubmitting(true);
     const acceptedIds: string[] = [];
     try {
-      await api.updateMe({
-        name: profileName.trim(),
-        profile_description: inviteeProfileDescription(role),
-      });
-      await api.patchOnboarding({
-        questionnaire: { source: [], source_other: null, source_skipped: true },
-      });
       for (const id of selected) {
         await api.acceptInvitation(id);
         acceptedIds.push(id);
@@ -115,17 +95,6 @@ export function InvitationsPage() {
         workspace_id: firstAcceptedInvite?.workspace_id,
       });
       await useAuthStore.getState().refreshMe();
-      
-      const refreshedUser = useAuthStore.getState().user;
-      if (firstAcceptedInvite && refreshedUser) {
-        await seedRoleBasedWelcomeIssue(
-          firstAcceptedInvite.workspace_id,
-          role,
-          refreshedUser.id,
-          // Use the frontend's current language if available
-          document.documentElement.lang || "en",
-        );
-      }
 
       qc.invalidateQueries({ queryKey: workspaceKeys.myInvitations() });
       const wsList = await qc.fetchQuery({
@@ -240,16 +209,6 @@ export function InvitationsPage() {
               />
             ))}
           </ul>
-
-          {selected.size > 0 ? (
-            <InviteeProfileFields
-              name={profileName}
-              email={currentUser?.email ?? ""}
-              role={role}
-              onNameChange={setProfileName}
-              onRoleChange={setRole}
-            />
-          ) : null}
 
           <Button
             className="w-full"

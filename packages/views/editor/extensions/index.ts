@@ -54,7 +54,6 @@ import { createMarkdownCopyExtension } from "./markdown-copy";
 import { createBlurShortcutExtension } from "./blur-shortcut";
 import { createSubmitShortcutExtension } from "./submit-shortcut";
 import { createFileUploadExtension } from "./file-upload";
-import { FormattingSlashCommandExtension, createFormattingSlashCommandSuggestion } from "./formatting-slash-command";
 import { FileCardExtension } from "./file-card";
 import { ImageView } from "./image-view";
 import { BlockMathExtension, InlineMathExtension } from "./math";
@@ -281,9 +280,6 @@ export function createEditorExtensions(
           : options.queryClient
             ? createSlashCommandSuggestion(options.queryClient)
             : { char: "/", allow: () => false },
-    }),
-    FormattingSlashCommandExtension.configure({
-      suggestion: createFormattingSlashCommandSuggestion(),
     }),
     Typography,
     Placeholder.configure({ placeholder: placeholderText }),

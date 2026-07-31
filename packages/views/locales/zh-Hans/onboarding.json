@@ -8,7 +8,7 @@
     "headline_line2": "在",
     "headline_emphasis": "同一个工作区。",
     "lede": "像分配给同事一样把 task 交给它们——它们会接手、推进状态、完成后留下评论。",
-    "lede_web": "桌面端自带智能体环境，无需安装。在 web 端继续可以连接你自己的 CLI。",
+    "lede_web": "桌面端自带运行时，无需安装。在 web 端继续可以连接你自己的 CLI。",
     "lede_desktop": "完成本流程后，真实的智能体会回复你创建的第一个 issue。",
     "download_desktop": "下载桌面端",
     "continue_on_web": "在 web 端继续",
@@ -79,19 +79,19 @@
       "designer": "设计师",
       "founder": "创始人 / 高管",
       "marketing": "市场 / 增长",
-      "creative": "创意 / 设计",
-      "graphic_designer": "平面设计师",
-      "marketing_team": "营销团队",
-      "video_writer": "视频文案 / 编剧",
-      "videographer": "摄像师 / 录像师",
-      "social_media": "社交媒体 / 公关",
       "writer": "写作 / 内容",
       "research": "研究员 / 分析师",
       "ops": "运营 / 项目管理",
       "student": "学生 / 个人使用",
       "other": "其他",
       "other_placeholder": "例如：教师、支持负责人",
+      "creative": "Creative / Design",
+      "graphic_designer": "Graphic Designer",
+      "marketing_team": "Marketing Team",
+      "video_writer": "Video Writer / Scriptwriter",
       "video_editor": "Video Editor",
+      "videographer": "Videographer / Cameraman",
+      "social_media": "Social Media / PR",
       "content_writer": "Content Writer"
     },
     "use_case": {
@@ -116,26 +116,26 @@
     "hint_continue": "可以了。准备好就点继续。"
   },
   "runtime_aside": {
-    "what_eyebrow": "什么是 agent 智能体环境？",
+    "what_eyebrow": "什么是 agent 运行时？",
     "what_prefix": "你连接的「电脑」就是我们内部所说的 ",
-    "what_term": "agent 智能体环境",
-    "what_suffix": "：电脑上的一个小型后台进程，配上一款 AI 编程工具（Claude Code、Codex 等）。一款工具对应一个 agent 智能体环境。它代替你的智能体执行接到的 task。",
+    "what_term": "agent 运行时",
+    "what_suffix": "：电脑上的一个小型后台进程，配上一款 AI 编程工具（Claude Code、Codex 等）。一款工具对应一个 agent 运行时。它代替你的智能体执行接到的 task。",
     "good_eyebrow": "需要知道",
     "swap_title": "随时切换",
-    "swap_body": "每个智能体的智能体环境只是一个设置。想换就换。",
+    "swap_body": "每个智能体的运行时只是一个设置。想换就换。",
     "add_more_title": "之后再加",
     "add_more_body": "可以为团队再连接一台电脑，或给每个智能体一台专属电脑。",
-    "learn_more": "了解 agent 智能体环境 →"
+    "learn_more": "了解 agent 运行时 →"
   },
   "cli_install": {
     "copy_aria": "复制",
-    "intro": "这台电脑上需要装一个 agent 智能体环境（Claude Code、Codex、Cursor 等）才能运行你的智能体。也支持服务器和远程开发机。",
+    "intro": "这台电脑上需要装一个 agent 运行时（Claude Code、Codex、Cursor 等）才能运行你的智能体。也支持服务器和远程开发机。",
     "step1_label": "安装 Multica CLI",
     "step2_label": "启动守护进程"
   },
   "cloud_waitlist": {
-    "intro_main": "云智能体环境尚未上线。留下邮箱，上线时通过邮件通知你。",
-    "intro_warning": "提示：没有智能体环境，智能体无法执行 task —— 如果现在跳过，工作区会是只读状态，直到你回来安装一个。",
+    "intro_main": "云运行时尚未上线。留下邮箱，上线时通过邮件通知你。",
+    "intro_warning": "提示：没有运行时，智能体无法执行 task —— 如果现在跳过，工作区会是只读状态，直到你回来安装一个。",
     "email_label": "邮箱",
     "email_placeholder": "you@work.com",
     "reason_label": "为什么选择云？",
@@ -143,61 +143,8 @@
     "reason_placeholder": "例如：希望智能体 24/7 运行，或团队在不同设备协作。",
     "join": "加入候补",
     "on_list": "已在候补名单",
-    "success_toast": "已加入候补名单。云智能体环境上线时会通过邮件通知你。",
+    "success_toast": "已加入候补名单。云运行时上线时会通过邮件通知你。",
     "failed_toast": "加入候补名单失败"
-  },
-  "first_issue": {
-    "error_title": "出错了",
-    "retry": "重试",
-    "retry_failed": "重试失败",
-    "finishing": "即将完成",
-    "opening": "马上就好 —— 正在打开你的工作区。"
-  },
-  "step_agent": {
-    "eyebrow": "你的第一个智能体",
-    "headline": "和你的第一位队友打个招呼。",
-    "lede_prefix": "根据你的回答，推荐的是 ",
-    "lede_suffix": "。从这四个模板里挑一个最贴你的——每个模板都开箱即用，可以立刻接 issue。之后可以在智能体设置页里再调整指令。",
-    "footer_hint": "一个智能体足够上手了。之后可以从侧边栏添加更多。",
-    "create_action": "创建 {{name}}",
-    "create_failed": "创建智能体失败",
-    "recommended_badge": "推荐",
-    "templates": {
-      "coding": {
-        "label": "编码智能体",
-        "blurb": "写代码、重构、发版。会读你的仓库。",
-        "instructions": "你是产品团队里的编码智能体。负责接编码相关的 issue —— 实现功能、修 bug、写测试、提 PR。开工前先读一下仓库，遵循已有的代码规范，保持 diff 聚焦。验收标准模糊时主动问清楚。"
-      },
-      "planning": {
-        "label": "规划智能体",
-        "blurb": "拆解工作、写规格、维护看板。",
-        "instructions": "你是规划智能体。把零散的想法和 open issue 转化成范围清晰、可立即执行的工作：拆成子任务、写验收标准、提出负责人和先后顺序。清晰优先于速度。缺少上下文时提一个具体问题，不要猜。"
-      },
-      "writing": {
-        "label": "写作智能体",
-        "blurb": "起草、摘要、调研。擅长长文。",
-        "instructions": "你是写作智能体。负责起草文档、总结长文，必要时上网调研主题。输出要做成读者可以直接用的成文 —— 不是大纲。引用资料时注明来源。语气和 issue 中用户的语气保持一致。"
-      },
-      "assistant": {
-        "label": "通用助手",
-        "blurb": "通用型。任务不明确时的默认选择。",
-        "instructions": "你是一名通用型队友。处理各种任务 —— 轻度编码、写作、调研、规划 —— 对范围保持务实。任务模糊时先问一个澄清性问题再开工。默认输出简短有用，而不是详尽冗长。"
-      }
-    },
-    "about_eyebrow": "什么是智能体",
-    "about_headline": "住在你工作区里的 AI 队友。",
-    "about_body": "智能体会出现在每个负责人选择器里，就像任何同事一样 —— 区别是它们可以 24/7 在你指定的智能体环境上工作。",
-    "ways_eyebrow": "和智能体协作的方式",
-    "way_assign_title": "分配 issue",
-    "way_assign_body": "它会接下任务，并在评论里反馈进展。",
-    "way_mention_title": "在评论中 @提及",
-    "way_mention_body": "把它拉进对话，给个快速反馈。",
-    "way_chat_title": "一对一聊天",
-    "way_chat_body": "无需创建 issue，直接问快速问题。",
-    "way_autopilot_title": "交给自动化",
-    "way_autopilot_body": "按周期跑：每日整理、每周摘要、每月审计。",
-    "add_more_hint": "随时添加更多智能体。一支专长各异的小团队胜过一个万能选手。",
-    "docs_link": "创建第一个智能体 →"
   },
   "welcome_after_onboarding": {
     "loading_helper": "正在为你准备 Helper……",
@@ -245,12 +192,12 @@
       "status_todo": "待办",
       "cards": {
         "install_runtime": {
-          "title": "连接一个智能体环境",
+          "title": "连接一个运行时",
           "subtitle": "安装 Codex 或 Kimi 让 agent 上线。"
         },
         "create_agent": {
           "title": "创建你的第一个 agent",
-          "subtitle": "智能体环境上线后，把第一个 agent 建出来。"
+          "subtitle": "运行时上线后，把第一个 agent 建出来。"
         }
       }
     }
@@ -297,7 +244,7 @@
     "perk_invite": "邀请同事 —— 他们只会看到这个工作区",
     "perk_switch": "随时从左上角切换到其他工作区",
     "next_runtime": "连接一台电脑，给智能体一个跑的地方",
-    "next_agent": "用你连接的智能体环境创建 Multica Helper",
+    "next_agent": "用你连接的运行时创建 Multica Helper",
     "next_starter": "打开一个上手引导 issue，继续下一步",
     "preview": {
       "inbox_label": "收件箱",
@@ -310,7 +257,7 @@
       "projects_meta": "把相关 issue 分组",
       "autopilot_label": "自动化",
       "autopilot_meta": "定时自动化",
-      "runtimes_label": "智能体环境",
+      "runtimes_label": "运行时",
       "runtimes_meta": "智能体跑的地方",
       "skills_label": "Skills",
       "skills_meta": "可复用的剧本",
@@ -329,19 +276,19 @@
     "scanning_headline": "正在连接这台电脑…",
     "scanning_lede_prefix": "你的智能体借助本机已安装的 AI 编程工具运行，例如 ",
     "scanning_lede_suffix": " 等。我们正在检测这台电脑上装了哪些。",
-    "found_headline": "这台电脑已连接。选一个 agent 智能体环境。",
-    "found_lede": "以下是在这台电脑上找到的 agent 智能体环境。挑一个支撑你的第一个智能体 —— 之后可以随时切换或再加。",
-    "runtime_count_other": "{{count}} 个 agent 智能体环境",
+    "found_headline": "这台电脑已连接。选一个 agent 运行时。",
+    "found_lede": "以下是在这台电脑上找到的 agent 运行时。挑一个支撑你的第一个智能体 —— 之后可以随时切换或再加。",
+    "runtime_count_other": "{{count}} 个 agent 运行时",
     "status_all_online": "全部在线",
     "status_none_online": "全部离线",
     "status_n_online": "{{count}} 个在线",
     "online_label": "在线",
     "offline_label": "离线",
-    "empty_headline": "这台电脑上还没有可用的 agent 智能体环境。",
-    "empty_lede_prefix": "agent 智能体环境是我们接管的 AI 编程工具，比如 ",
+    "empty_headline": "这台电脑上还没有可用的 agent 运行时。",
+    "empty_lede_prefix": "agent 运行时是我们接管的 AI 编程工具，比如 ",
     "empty_lede_suffix": "。装好其中之一后点刷新，或在下面挑一条路。",
     "empty_skip_title": "暂时跳过",
-    "empty_skip_subtitle": "进入工作区（只读模式）。在这台电脑上连接 agent 智能体环境之前，智能体无法执行 task —— 但你仍可以浏览、规划、邀请同事。",
+    "empty_skip_subtitle": "进入工作区（只读模式）。在这台电脑上连接 agent 运行时之前，智能体无法执行 task —— 但你仍可以浏览、规划、邀请同事。",
     "empty_skip_action": "跳过",
     "empty_waitlist_title": "改用云电脑",
     "empty_waitlist_subtitle": "我们会在云上为你运行一台电脑。尚未上线。",
@@ -350,7 +297,7 @@
     "refresh": "刷新",
     "refreshing": "正在刷新…",
     "hint_selected": "已选择：{{name}}",
-    "hint_pick": "在上方选一个 agent 智能体环境继续。",
+    "hint_pick": "在上方选一个 agent 运行时继续。",
     "hint_waiting": "等待第一个结果...",
     "hint_skip_or_refresh": "装好后点刷新，或跳过进入工作区。",
     "start_exploring": "开始探索"
@@ -390,5 +337,58 @@
   },
   "errors": {
     "skip_failed": "完成上手引导失败"
+  },
+  "first_issue": {
+    "error_title": "Something went wrong",
+    "retry": "Retry",
+    "retry_failed": "Retry failed",
+    "finishing": "Finishing up",
+    "opening": "Almost there — opening your workspace."
+  },
+  "step_agent": {
+    "eyebrow": "Your first agent",
+    "headline": "Meet your first teammate.",
+    "lede_prefix": "Your answers point to a ",
+    "lede_suffix": ". Pick whichever of the four fits you — each template ships ready to take its first task. You can retune its instructions from the agent settings page later.",
+    "footer_hint": "One agent is enough to start. Add more from the sidebar later.",
+    "create_action": "Create {{name}}",
+    "create_failed": "Failed to create agent",
+    "recommended_badge": "Recommended",
+    "templates": {
+      "coding": {
+        "label": "Coding Agent",
+        "blurb": "Writes, refactors, and ships code. Reads your repo.",
+        "instructions": "You are a Coding Agent on a product team. Pick up coding tasks — implement features, fix bugs, write tests, and open pull requests. Read the repository before you start, follow existing code conventions, and keep diffs focused. Ask for clarification when the acceptance criteria are ambiguous."
+      },
+      "planning": {
+        "label": "Planning Agent",
+        "blurb": "Breaks down work, drafts specs, keeps the board tidy.",
+        "instructions": "You are a Planning Agent. Turn loose ideas and open tasks into scoped, ready-to-execute work: break them down into subtasks, write acceptance criteria, and propose owners and sequencing. Prefer clarity over speed. When blocked by missing context, ask one specific question rather than guessing."
+      },
+      "writing": {
+        "label": "Writing Agent",
+        "blurb": "Drafts, summarizes, researches. Long-form friendly.",
+        "instructions": "You are a Writing Agent. Draft documents, summarize long content, and research topics on the web when needed. Structure your output as finished prose a reader can use directly — not an outline. Cite sources when you draw from them. Match the tone the user establishes in the task."
+      },
+      "assistant": {
+        "label": "Assistant",
+        "blurb": "General-purpose. Good default when the task is unclear.",
+        "instructions": "You are a general-purpose teammate. Handle varied tasks — light coding, writing, research, planning — and stay pragmatic about scope. When the task is ambiguous, ask one clarifying question before diving in. Default to short, useful outputs over exhaustive ones."
+      }
+    },
+    "about_eyebrow": "What's an agent",
+    "about_headline": "An AI teammate that lives in your workspace.",
+    "about_body": "Agents show up in every assignee picker, just like any other colleague — except they can work 24/7 on whatever agent environment you give them.",
+    "ways_eyebrow": "Ways to work with an agent",
+    "way_assign_title": "Assign it an task",
+    "way_assign_body": "It picks up the task and reports back in the thread.",
+    "way_mention_title": "@mention in a comment",
+    "way_mention_body": "Pull it into a conversation for a quick take.",
+    "way_chat_title": "Chat one-on-one",
+    "way_chat_body": "Ask quick questions without creating an task.",
+    "way_autopilot_title": "Put it on Autopilot",
+    "way_autopilot_body": "Daily triage, weekly digest, monthly audit — on a schedule.",
+    "add_more_hint": "Add more agents anytime. A small team of specialized agents beats one jack-of-all-trades.",
+    "docs_link": "Creating your first agent →"
   }
 }

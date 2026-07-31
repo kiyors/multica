@@ -49,7 +49,7 @@ function keySet(bundle: Record<string, unknown>): Set<string> {
 
 const en = RESOURCES.en;
 const translatedLocales = Object.keys(RESOURCES).filter(
-  (locale) => locale !== "en" && locale !== "en-marketing" && locale !== "en-creative"
+  (locale) => locale !== "en",
 );
 
 describe("locale bundle parity", () => {
@@ -94,9 +94,7 @@ describe("locale bundle parity", () => {
 // gate on the same source of truth.
 describe("dead plural-key guard", () => {
   for (const locale of translatedLocales) {
-    let baseLocale = locale.split('-')[0];
-    if (baseLocale === "en") baseLocale = "en";
-    const categories = new Intl.PluralRules(baseLocale).resolvedOptions()
+    const categories = new Intl.PluralRules(locale).resolvedOptions()
       .pluralCategories;
     if (categories.includes("one")) continue;
 

@@ -93,7 +93,7 @@ function columnValue(
   columnKey: TableColumnKey,
 ): IssuePropertyValue | string | number | null | undefined {
   const propertyId = propertyIdFromViewKey(columnKey);
-  if (propertyId) return issue.properties[propertyId];
+  if (propertyId) return issue.properties?.[propertyId];
   switch (columnKey) {
     case "identifier":
       return issue.identifier;

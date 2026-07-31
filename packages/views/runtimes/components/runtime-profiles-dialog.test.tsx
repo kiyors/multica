@@ -137,7 +137,7 @@ describe("RuntimeProfilesDialog", () => {
     expect(screen.queryByText("claude")).not.toBeInTheDocument();
     expect(
       screen.getAllByRole("button", { name: "New custom agent environment" }),
-    ).toHaveLength(2);
+    ).toHaveLength(1);
   });
 
   it("renders custom profiles before the collapsed built-in reference section", () => {
@@ -232,7 +232,7 @@ describe("RuntimeProfilesDialog", () => {
     });
 
     expect(
-      screen.getByRole("heading", { name: "New custom runtime" }),
+      screen.getByRole("heading", { name: "New custom agent environment" }),
     ).toBeInTheDocument();
     expect(screen.getByText(/from Studio Mac/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "View setup guide" })).toHaveAttribute(
@@ -241,7 +241,7 @@ describe("RuntimeProfilesDialog", () => {
     );
     expect(screen.getByText("Step 1 of 2")).toBeInTheDocument();
     expect(
-      screen.queryByText("Create your first custom runtime"),
+      screen.queryByText("Create your first custom agent environment"),
     ).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Back" })).not.toBeInTheDocument();
 
@@ -253,7 +253,7 @@ describe("RuntimeProfilesDialog", () => {
     fireEvent.change(screen.getByLabelText("Command"), {
       target: { value: "agent --model composer-2.5" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Create runtime" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create agent environment" }));
 
     await waitFor(() => {
       expect(onProfileCreated).toHaveBeenCalledWith(
@@ -263,19 +263,19 @@ describe("RuntimeProfilesDialog", () => {
     });
   });
 
-  it("opens a custom runtime directly in edit mode", () => {
+  it("opens a custom agent environment directly in edit mode", () => {
     renderDialog({
       intent: "edit",
       initialProfile: profile(),
     });
 
     expect(
-      screen.getByRole("heading", { name: "Edit custom runtime" }),
+      screen.getByRole("heading", { name: "Edit custom agent environment" }),
     ).toBeInTheDocument();
     expect(screen.getByLabelText("Display name")).toHaveValue("Team Codex");
     expect(screen.getByLabelText("Command")).toHaveValue("codex");
     expect(
-      screen.queryByText("Create your first custom runtime"),
+      screen.queryByText("Create your first custom agent environment"),
     ).not.toBeInTheDocument();
   });
 });

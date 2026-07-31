@@ -25,10 +25,6 @@ import { Input } from "@multica/ui/components/ui/input";
 import { Label } from "@multica/ui/components/ui/label";
 import {
   Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
 } from "@multica/ui/components/ui/select";
 import { Textarea } from "@multica/ui/components/ui/textarea";
 import { CalendarRange, Pencil, Plus, Trash2, Users } from "lucide-react";
@@ -121,7 +117,7 @@ export function ProjectMilestonesTab({ projectId }: { projectId: string }) {
       <div className="flex items-center justify-between gap-4">
         <div className="flex flex-col gap-1">
           <h3 className="font-medium">{t(($) => $.milestones.title)}</h3>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-body text-muted-foreground">
             {t(($) => $.milestones.description)}
           </p>
         </div>
@@ -144,14 +140,14 @@ export function ProjectMilestonesTab({ projectId }: { projectId: string }) {
                 <div className="min-w-0 space-y-2">
                   <div className="flex flex-wrap items-center gap-2">
                     <h4 className="font-medium">{milestone.title}</h4>
-                    <span className="rounded-full border bg-muted px-2 py-0.5 text-xs capitalize text-muted-foreground">
+                    <span className="rounded-full border bg-muted px-2 py-0.5 text-micro capitalize text-muted-foreground">
                       {t(($) => $.milestones.status[milestone.status])}
                     </span>
                   </div>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-body text-muted-foreground">
                     {milestone.description || t(($) => $.milestones.no_description)}
                   </p>
-                  <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted-foreground">
+                  <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-micro text-muted-foreground">
                     <span className="inline-flex items-center gap-1.5">
                       <CalendarRange className="h-3.5 w-3.5" />
                       {displayDate(milestone.start_date, t(($) => $.milestones.no_date))} – {displayDate(milestone.due_date, t(($) => $.milestones.no_date))}
@@ -186,7 +182,7 @@ export function ProjectMilestonesTab({ projectId }: { projectId: string }) {
         {milestones.length === 0 ? (
           <div className="rounded-lg border border-dashed p-12 text-center">
             <CalendarRange className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
-            <p className="mb-4 text-sm text-muted-foreground">{t(($) => $.milestones.empty)}</p>
+            <p className="mb-4 text-body text-muted-foreground">{t(($) => $.milestones.empty)}</p>
             <Button variant="outline" onClick={openCreate}>{t(($) => $.milestones.create_first)}</Button>
           </div>
         ) : null}
@@ -245,17 +241,15 @@ export function ProjectMilestonesTab({ projectId }: { projectId: string }) {
               <Select
                 value={draft.status}
                 onValueChange={(value) => value && setDraft((current) => ({ ...current, status: value as MilestoneStatus }))}
-              >
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">{t(($) => $.milestones.status.active)}</SelectItem>
-                  <SelectItem value="completed">{t(($) => $.milestones.status.completed)}</SelectItem>
-                  <SelectItem value="cancelled">{t(($) => $.milestones.status.cancelled)}</SelectItem>
-                </SelectContent>
-              </Select>
+                items={[
+                  { label: t(($) => $.milestones.status.active), value: "active" },
+                  { label: t(($) => $.milestones.status.completed), value: "completed" },
+                  { label: t(($) => $.milestones.status.cancelled), value: "cancelled" }
+                ]}
+              />
             </div>
             <fieldset className="space-y-2">
-              <legend className="text-sm font-medium">{t(($) => $.milestones.assigned_members)}</legend>
+              <legend className="text-body font-medium">{t(($) => $.milestones.assigned_members)}</legend>
               <div className="max-h-44 space-y-1 overflow-y-auto rounded-md border p-2">
                 {workspaceMembers.map((member) => {
                   const checked = draft.memberIds.includes(member.id);
@@ -272,8 +266,8 @@ export function ProjectMilestonesTab({ projectId }: { projectId: string }) {
                           }))
                         }
                       />
-                      <span className="text-sm">{member.name}</span>
-                      <span className="ml-auto truncate text-xs text-muted-foreground">{member.email}</span>
+                      <span className="text-body">{member.name}</span>
+                      <span className="ml-auto truncate text-micro text-muted-foreground">{member.email}</span>
                     </label>
                   );
                 })}
@@ -307,7 +301,7 @@ function MilestoneTimeline({ milestones, noDate }: { milestones: Milestone[]; no
 
   return (
     <section className="rounded-lg border bg-muted/20 p-4" aria-label="Milestone timeline">
-      <div className="mb-3 flex items-center justify-between text-xs text-muted-foreground">
+      <div className="mb-3 flex items-center justify-between text-micro text-muted-foreground">
         <span>{displayDate(new Date(min).toISOString().slice(0, 10), noDate)}</span>
         <span>{displayDate(new Date(max).toISOString().slice(0, 10), noDate)}</span>
       </div>
@@ -319,7 +313,7 @@ function MilestoneTimeline({ milestones, noDate }: { milestones: Milestone[]; no
           const width = Math.max(((end - start) / span) * 100, 1.5);
           return (
             <div key={milestone.id} className="grid grid-cols-[minmax(120px,180px)_1fr] items-center gap-3">
-              <span className="truncate text-xs font-medium">{milestone.title}</span>
+              <span className="truncate text-micro font-medium">{milestone.title}</span>
               <div className="relative h-5 rounded bg-muted">
                 <div
                   className={`absolute top-1 h-3 rounded ${milestone.status === "completed" ? "bg-green-500" : milestone.status === "cancelled" ? "bg-muted-foreground/40" : "bg-primary"}`}

@@ -97,7 +97,7 @@ export function StepAboutYou({
   // Role stays single-select — downstream personalization (the Helper
   // "About me" block, the tailored intro slides) wants one primary
   // identity, not a blend.
-  const roleSelected: readonly string[] = answers.role ? [answers.role] : [];
+  const roleSelected: readonly string[] = answers.role ? (Array.isArray(answers.role) ? answers.role : [answers.role as string]) : [];
   const roleOtherFilled = (answers.role_other ?? "").trim().length > 0;
   const roleAnswered =
     answers.role !== null && (answers.role !== "other" || roleOtherFilled);

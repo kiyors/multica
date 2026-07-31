@@ -22,7 +22,7 @@ import {
 } from "@multica/ui/components/ui/alert-dialog";
 import { useUpdateReviewAssetStatus, useReviewAssetUpload, useDeleteReviewAsset, useDeleteReviewAssetGroup, useCreateGuestReviewLink } from "@multica/core/reviews/mutations";
 import { listReviewAssetsOptions, listReviewCommentsOptions } from "@multica/core/reviews/queries";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@multica/ui/components/ui/select";
+import { Select } from "@multica/ui/components/ui/select";
 import { MediaReviewPlayer, type MediaReviewPlayerRef } from "./media-review-player";
 import { ReviewCommentSidebar } from "./review-comment-sidebar";
 import { UploadShowcase } from "./upload-showcase";
@@ -195,33 +195,26 @@ export function MediaReviewLayout({ workspaceId, asset, onAssetChange, onClose, 
       {/* Review Asset Header */}
       <div className="h-14 border-b border-border bg-muted/20 flex items-center justify-between px-4 text-foreground shrink-0">
         <div className="flex items-center gap-4">
-          <div className="font-medium text-sm">{asset.name}</div>
+          <div className="font-medium text-body">{asset.name}</div>
           {asset.asset_type === "pdf" && (
             <div className="flex items-center gap-1">
               <button className="rounded p-1 hover:bg-muted" aria-label="Previous page" disabled={pageIndex === 0} onClick={() => setPageIndex((value) => Math.max(0, value - 1))}><ChevronLeft className="h-4 w-4" /></button>
-              <span className="min-w-16 text-center text-xs">Page {pageIndex + 1} {pdfNumPages ? `/ ${pdfNumPages}` : ''}</span>
+              <span className="min-w-16 text-center text-micro">Page {pageIndex + 1} {pdfNumPages ? `/ ${pdfNumPages}` : ''}</span>
               <button className="rounded p-1 hover:bg-muted" aria-label="Next page" disabled={pdfNumPages !== null && pageIndex >= pdfNumPages - 1} onClick={() => setPageIndex((value) => pdfNumPages ? Math.min(pdfNumPages - 1, value + 1) : value + 1)}><ChevronRight className="h-4 w-4" /></button>
             </div>
           )}
           
           <div className="flex items-center gap-2">
-            <Select value={asset.id} onValueChange={handleVersionChange}>
-              <SelectTrigger className="h-7 border-border bg-muted text-xs w-28">
-                <span>{asset.version ? `Version ${asset.version}` : "Version"}</span>
-              </SelectTrigger>
-              <SelectContent>
-                {assetVersions.map((v) => (
-                  <SelectItem key={v.id} value={v.id}>
-                    Version {v.version}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Select 
+              value={asset.id} 
+              onValueChange={handleVersionChange}
+              items={assetVersions.map((v) => ({ label: `Version ${v.version}`, value: v.id }))}
+            />
 
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={uploadAsset.isPending}
-              className="text-xs px-2 py-1 bg-muted hover:bg-muted/80 rounded border border-border text-foreground"
+              className="text-micro px-2 py-1 bg-muted hover:bg-muted/80 rounded border border-border text-foreground"
             >
               {uploadAsset.isPending ? "Uploading…" : "Upload New Version"}
             </button>
@@ -242,7 +235,7 @@ export function MediaReviewLayout({ workspaceId, asset, onAssetChange, onClose, 
               }}
               disabled={createGuestLink.isPending}
               title="Share with guests"
-              className="text-xs px-2 py-1 bg-muted hover:bg-muted/80 rounded border border-border text-foreground flex items-center gap-1"
+              className="text-micro px-2 py-1 bg-muted hover:bg-muted/80 rounded border border-border text-foreground flex items-center gap-1"
             >
               <Share2 className="w-3 h-3" />
               {createGuestLink.isPending ? "Creating…" : "Share"}
@@ -253,7 +246,7 @@ export function MediaReviewLayout({ workspaceId, asset, onAssetChange, onClose, 
               onClick={handleDeleteVersion}
               disabled={deleteAsset.isPending}
               title="Delete this version"
-              className="text-xs px-2 py-1 bg-muted hover:bg-destructive/10 hover:text-destructive rounded border border-border text-muted-foreground flex items-center gap-1"
+              className="text-micro px-2 py-1 bg-muted hover:bg-destructive/10 hover:text-destructive rounded border border-border text-muted-foreground flex items-center gap-1"
             >
               <Trash2 className="w-3 h-3" />
               Version
@@ -279,20 +272,15 @@ export function MediaReviewLayout({ workspaceId, asset, onAssetChange, onClose, 
             <Trash2 className="w-4 h-4" />
           </button>
 
-          <Select value={asset.status} onValueChange={handleStatusChange}>
-            <SelectTrigger className={`h-8 text-xs font-medium border-0 focus:ring-0 ${
-              asset.status === 'approved' ? 'bg-green-500/20 text-green-400' :
-              asset.status === 'changes_requested' ? 'bg-red-500/20 text-red-400' :
-              'bg-yellow-500/20 text-yellow-400'
-            }`}>
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="changes_requested">Changes Requested</SelectItem>
-              <SelectItem value="approved">Approved</SelectItem>
-            </SelectContent>
-          </Select>
+          <Select 
+            value={asset.status} 
+            onValueChange={handleStatusChange}
+            items={[
+              { label: "Pending", value: "pending" },
+              { label: "Changes Requested", value: "changes_requested" },
+              { label: "Approved", value: "approved" }
+            ]}
+          />
 
           <div className="w-px h-6 bg-border mx-1" />
 
@@ -319,7 +307,7 @@ export function MediaReviewLayout({ workspaceId, asset, onAssetChange, onClose, 
                      {a.thumbnail_url ? (
                        <img src={a.thumbnail_url} className="w-full h-full object-cover" />
                      ) : (
-                       <div className="w-full h-full bg-muted flex items-center justify-center text-[10px] text-muted-foreground uppercase">{a.asset_type}</div>
+                       <div className="w-full h-full bg-muted flex items-center justify-center text-micro text-muted-foreground uppercase">{a.asset_type}</div>
                      )}
                    </div>
                  </CarouselItem>

@@ -47,8 +47,6 @@ interface LabelPickerProps {
    *  × affordance — a remove <button> can't nest inside a trigger <button>,
    *  so removal happens by toggling the label off in the open picker. */
   triggerRender?: React.ReactElement;
-  /** Filter labels to this project */
-  projectId?: string;
 }
 
 /**
@@ -98,7 +96,6 @@ export function LabelPicker({
   align = "start",
   defaultOpen = false,
   triggerRender,
-  projectId,
 }: LabelPickerProps) {
   const { t } = useT("issues");
   const [internalOpen, setInternalOpen] = useState(defaultOpen);
@@ -120,7 +117,7 @@ export function LabelPicker({
   const isDraft = issueId === undefined;
 
   const wsId = useWorkspaceId();
-  const { data: allLabels = [] } = useQuery(labelListOptions(wsId, projectId));
+  const { data: allLabels = [] } = useQuery(labelListOptions(wsId));
   // `issueLabelsOptions` disables itself for an empty id, so the draft path
   // never fires the by-issue read.
   const { data: attachedLabels = [] } = useQuery(issueLabelsOptions(wsId, issueId ?? ""));
@@ -129,7 +126,7 @@ export function LabelPicker({
   // because toggle/create route through onSelectedIdsChange instead.
   const attach = useAttachLabel(issueId ?? "");
   const detach = useDetachLabel(issueId ?? "");
-  const create = useCreateLabel(projectId);
+  const create = useCreateLabel();
 
   // The selected set drives both the trigger chips and the list checkmarks.
   // Draft mode resolves ids against the workspace list (dropping any id whose
@@ -179,7 +176,7 @@ export function LabelPicker({
     creatingRef.current = true;
     const name = query;
     create.mutate(
-      { name, color: pickInlineColor(name), project_id: projectId },
+      { name, color: pickInlineColor(name) },
       {
         onSuccess: (label) => {
           if (isDraft) {
@@ -292,13 +289,6 @@ export function LabelPicker({
           </PickerItem>
         )}
       </PropertyPicker>
-
-      <Dialog open={manageOpen} onOpenChange={setManageOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogTitle className="text-lg font-semibold">{t(($) => $.pickers.label.manage_dialog_title)}</DialogTitle>
-          <LabelsPanel projectId={projectId} />
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

@@ -718,7 +718,7 @@ describe("AgentCreatePanel", () => {
     await user.clear(editor);
     fireEvent.change(editor, {
       target: {
-        value: "Create issue with ![image](/api/attachments/019ec09d-6222-722b-bdfa-427b105d80be/download)",
+        value: "Create task with ![image](/api/attachments/019ec09d-6222-722b-bdfa-427b105d80be/download)",
       },
     });
 
@@ -727,7 +727,7 @@ describe("AgentCreatePanel", () => {
     await waitFor(() => {
       expect(mockQuickCreateIssue).toHaveBeenCalledWith({
         agent_id: "agent-1",
-        prompt: "Create issue with ![image](/api/attachments/019ec09d-6222-722b-bdfa-427b105d80be/download)",
+        prompt: "Create task with ![image](/api/attachments/019ec09d-6222-722b-bdfa-427b105d80be/download)",
         project_id: undefined,
         parent_issue_id: undefined,
         attachment_ids: ["019ec09d-6222-722b-bdfa-427b105d80be"],

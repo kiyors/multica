@@ -1,3 +1,193 @@
+# Multica Detailed Implementation Plan
+
+## Features
+
+### 1. MCP (Model Context Protocol) Server Integration
+
+**Context:** We want to allow external AI clients (like ChatGPT Desktop, Cursor, or Claude) to interact with Multica via MCP, enabling them to create tasks, manage issues, and read workspace context on the user's behalf.
+
+**Authentication Strategy:**
+1. **User/Client ID:** Identify the user through their `Client ID`.
+2. **API Key Authentication:** Secure the MCP connection using a Personal Access Token (API Key) generated from the Multica settings.
+
+**Implementation Steps:**
+1. **Create the MCP Server Entrypoint:** 
+   - Expose a new command in the Multica CLI (e.g., `multica mcp`).
+   - Use the official Go MCP SDK to build a `stdio`-based MCP server in `server/cmd/mcp` or as part of the existing agent handlers.
+2. **Authentication Middleware:**
+   - Require the user to pass `--client-id` and `--api-key` arguments to the MCP server command.
+   - Verify these credentials against the Multica backend DB (`personal_access_tokens` table) before exposing any tools.
+3. **Expose Core Tools (JSON RPC over Stdio):**
+   - `create_task`: Schema for Title, Description, Status, and Assignee. Triggers the internal Go `CreateIssue` logic.
+   - `list_tasks`: Allows querying active tasks in the user's workspace.
+   - `get_task_details`: Fetches full context (comments, attachments) for a specific issue.
+   - `update_task`: Allows the LLM to change status, change assignee, or add comments.
+
+---
+
+### 2. Big Calendar View Integration
+
+**Context:** We need a "proper big calendar view" to visualize issues by their start and due dates. We currently use `@base-ui/react` and `shadcn/ui` (ZCN) components, including `react-day-picker` for small popovers, but need a full-screen calendar for the main Views section.
+
+**Implementation Steps:**
+1. **Calendar Component (`packages/views/issues/surface/calendar-view.tsx`)**:
+   - Build a custom monthly/weekly grid layout using CSS Grid (`grid-cols-7`). A custom Tailwind + `date-fns` grid is recommended over `react-big-calendar` to ensure 100% design fidelity with Multica's existing Shadcn UI.
+   - Use `date-fns` functions (`startOfMonth`, `endOfMonth`, `eachDayOfInterval`) to generate the correct grid cells and headers.
+2. **Data Fetching & Mapping**:
+   - Consume the existing `useIssues()` React Query hook to get the workspace's issues in real-time.
+   - Map issues that have `start_date` or `due_date` to the respective days on the calendar grid.
+3. **Interactivity**:
+   - Render issues as draggable chips using `@dnd-kit/core`.
+   - Implement an `onDrop` handler that fires the `useUpdateIssue` mutation to instantly change dates when an issue is dragged to a new day.
+4. **View Navigation**:
+   - Add "Calendar" to the `IssueSurface` modes array (alongside List, Board, Table, Swimlane, Gantt).
+   - Add calendar-specific navigation controls (Today, Previous Month, Next Month) inside the surface toolbar.
+
+---
+
+### 3. Sidebar (Tabs) Position Preference
+
+**Context:** Users have requested the ability to move the main navigation sidebar (tabs) from the left side of the screen to the right side based on personal preference.
+
+**Implementation Steps:**
+1. **Update User Preferences (`packages/views/settings/components/preferences-tab.tsx`)**:
+   - Add a new "Sidebar Position" (Left/Right) select dropdown in the General/Appearance section.
+2. **State Management (`packages/core/preferences`)**:
+   - Store the `sidebarPosition` preference in `localStorage` (or sync via `api.updateMe` if attached to user settings) so the app remembers their choice across sessions.
+3. **Layout Adjustment (`packages/views/layout/workspace-layout.tsx` or similar)**:
+   - Read the preference value and conditionally adjust the CSS/flex direction (e.g., swapping the order of the sidebar and the main content area) so the navigation renders on the chosen side.
+
+---
+
+### 4. Issue Quick Filters (Assignee & Time-based Tabs)
+
+**Context:** Users need a faster way to toggle visibility of tasks on the kanban/issue surface without digging through the dropdown filters. We will add a quick-toggle toolbar.
+
+**Implementation Steps:**
+1. **Assignee Quick Filters (Left Side)**:
+   - Add a segmented control / tabs component to the left side of the `IssuesHeader` (in `packages/views/issues/components/issues-header.tsx`).
+   - Tabs: `All` | `Members` | `Agents`.
+   - `All`: Shows both member and agent assigned tasks.
+   - `Members`: Filters the view to show only tasks assigned to human members.
+   - `Agents`: Filters the view to show only tasks assigned to AI agents.
+2. **Time-based Quick Filters (Right Side)**:
+   - Add a matching segmented control to the right side of the `IssuesHeader`.
+   - Tabs: `Today` | `Weekly` | `Monthly`.
+   - Default state should be `Monthly`.
+   - Clicking these sets the date filter (`start_date` / `due_date`) for the issues query:
+     - `Today`: Tasks due or starting today.
+     - `Weekly`: Tasks for the current week.
+     - `Monthly`: Tasks for the current month.
+3. **State Management (`packages/core/issues/stores/view-store.ts`)**:
+   - Extend the view store state to accommodate these active quick filters so they persist during the session and correctly filter the `controller.issues` array.
+
+---
+
+### 5. Distinct URLs for Project Tabs (Documents, Milestones, Settings)
+
+**Context:** Currently, navigating between Project subsections (Documents, Milestones, Settings) operates on local React state. If a user refreshes the page while reading a document or viewing a milestone, the local state resets and they are dropped back onto the main Project Kanban board.
+
+**Implementation Steps:**
+1. **Refactor Next.js Routing for Projects:**
+   - Convert the current catch-all `apps/web/app/[workspaceSlug]/(dashboard)/projects/[id]/page.tsx` into a Layout component (`layout.tsx`).
+   - Create nested route folders: 
+     - `.../projects/[id]/board/page.tsx` (Default Kanban)
+     - `.../projects/[id]/documents/[docId]/page.tsx`
+     - `.../projects/[id]/milestones/page.tsx`
+     - `.../projects/[id]/settings/page.tsx`
+2. **Update UI Navigation State:**
+   - Update `packages/views/projects/components/project-detail.tsx` to use `<Link href="...">` or the router adapter instead of `useState` for tab switching.
+   - Ensure the sidebar navigation highlights the currently active tab based on the URL pathname.
+3. **Persist State via URL:**
+   - Any open overlay (like a document modal) should append its ID to the URL (e.g., `?doc=123`) or navigate to the sub-route so that refreshing the page perfectly rehydrates the view.
+
+---
+
+### 6. Admin Member Management: Bulk Assignment
+
+**Context:** In the Workspace Settings > Members view, admins currently manage members individually. We need a way to easily add a person to multiple projects and squads at once.
+
+**Implementation Steps:**
+1. **Update Members UI (`packages/views/settings/components/members-tab.tsx`)**:
+   - Add a "Manage Access" button to the `DropdownMenu` for each member row.
+   - Open a Dialog or Sheet containing a dual-pane selector or multi-select dropdown for all available Projects and Squads.
+2. **Add Bulk Mutation Hooks**:
+   - Create a new React Query mutation `useUpdateMemberAccess` that accepts an array of `projectIds` and `squadIds`.
+3. **Backend API Endpoint**:
+   - Ensure the Go handler can process a batch assignment payload, performing a database transaction to insert the user into the `project_members` and `squad_members` tables, safely ignoring existing constraints.
+
+---
+
+## Fixes
+
+### 1. Windows Desktop App Login Fix
+
+**Context:** The deep linking authentication flow (via OTP) fails on Windows. Instead of redirecting into the workspace, the app fails to parse the token.
+
+**Implementation Steps:**
+1. **Normalize Pathnames:** Windows often appends a trailing slash to custom protocol URLs (e.g., `multica://auth/callback/`). Update `handleDeepLink()` in `apps/desktop/src/main/index.ts` to strip trailing slashes using `pathname.replace(/\/$/, "")`.
+2. **Argument Parsing:** Ensure the URL extraction in the `second-instance` event correctly trims surrounding quotes from `process.argv` before passing it to `handleDeepLink`.
+
+---
+
+### 2. Task Visibility Issue
+
+**Context:** Certain tasks don't show up for some people even if they are correctly added as members of that specific project.
+
+**Root Cause Analysis & Fix:**
+1. **Audit SQL Queries (`server/internal/store`):** The `GetIssues` query likely has an overly strict `WHERE` clause. It might be filtering out issues based on the assignee or issue privacy settings, overriding the user's `ProjectMember` access.
+2. **Update Authorization Logic:** Modify the query to ensure: `IF user is Workspace Admin OR user is Project Member -> return ALL issues in the project` (unless specifically marked as restricted/private, if applicable).
+3. **Write Unit Tests:** Add a test case in the Go backend where a non-admin Project Member requests the issue list and verifies they receive unassigned tasks and tasks assigned to others.
+
+---
+
+### 3. Media (Attachment) Visibility Issue
+
+**Context:** Images and media attached to tasks are failing to load (returning 403 or 404) for some users who otherwise have access to the task.
+
+**Root Cause Analysis & Fix:**
+1. **Audit `CheckAttachmentAccess` (`server/internal/handler`):** The authorization check for downloading/viewing attachments might currently only check if the user is the *creator* of the attachment or the *assignee* of the issue.
+2. **Expand Permission Scope:** Update the handler to query the parent issue's project, and grant read access to the attachment if the user is a verified member of that project.
+
+---
+
+### 4. Inviting Members with Project Access Crash
+
+**Context:** When an admin invites a new user and grants them access to specific projects during the invitation flow, the system crashes. The system incorrectly treats the project IDs as individual workspace invites.
+
+**Root Cause Analysis & Fix:**
+1. **Audit Invite Payload Processing (`server/internal/invite`):** The frontend is likely sending a JSON payload containing `project_ids: [1, 2]`. The Go backend might be mistakenly iterating over these IDs and passing them into a workspace-join function.
+2. **Correct the Join Flow:** 
+   - Step 1: Create the user/invite and add them to the *Workspace*.
+   - Step 2: Iterate over the provided `project_ids` and insert rows into the `project_members` table linked to the newly created user ID.
+   - Step 3: Wrap this entire operation in a single database transaction so a failure in project assignment rolls back the invite, preventing corrupted state.
+
+---
+
+### 5. Desktop Auto-Updater Fails to Install
+
+**Context:** The GitHub response for desktop updates is fast, and the package downloads successfully. However, clicking "refresh" or restarting the application does not install the update, leaving the user on the old version.
+
+**Root Cause Analysis & Fix:**
+1. **Audit Desktop Updater Lifecycle (`apps/desktop/src/main/updater.ts`):** 
+   - `autoUpdater.autoInstallOnAppQuit = true` is currently set, but `electron-updater` sometimes fails to correctly hook the `app.quit()` lifecycle on macOS, or a custom UI refresh button is calling `updater:install` but failing to successfully trigger `autoUpdater.quitAndInstall()`.
+2. **Correct the Install Hook:**
+   - Ensure the UI button correctly dispatches the IPC `updater:install` call.
+   - If `autoUpdater.quitAndInstall(false, true)` is failing, test calling it with `(true, true)` (silent, force restart) or explicitly binding it to `app.on("before-quit", () => { ... })`.
+   - Add logging around the `quitAndInstall` promise/events so silent failures are properly caught and displayed to the user if permission errors (e.g. macOS App Translocation or Squirrel locks) block the update.
+
+---
+
+### 6. Real-time Task Sync & Media Visibility Issue
+
+**Context:** Some tasks are not syncing state properly across clients in real-time. A task marked as "done" by one user still appears as "in progress" to another user until a manual refresh. Additionally, media inside the task is failing to render for some users.
+
+**Root Cause Analysis & Fix:**
+1. **Audit WebSocket/Realtime Events (`server/internal/realtime`):** Verify that issue state changes (like status updates) correctly broadcast WebSocket invalidate/update events to all active clients in the workspace.
+2. **Audit React Query Cache Invalidation:** Check the frontend `useUpdateIssue` mutation and related hooks to ensure the local cache correctly updates and subscribes to the realtime server events for that specific issue.
+3. **Media Visibility:** Investigate if the media visibility issue is a side effect of the same caching issue or related to the permissions bug (Bug #3). Ensure media URLs and permissions are correctly synchronized along with the task state.
+
+---
 # Multica — Master Improvement Plan
 
 > **Generated:** 2026-07-03 · **Last reconciled:** 2026-07-10

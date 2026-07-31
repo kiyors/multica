@@ -24,7 +24,7 @@ export function IssueTypeBadge({
 
   return (
     <span
-      className={`inline-flex items-center gap-1 text-xs text-muted-foreground ${className}`}
+      className={`inline-flex items-center gap-1 text-micro text-muted-foreground ${className}`}
       title={issueType.name}
     >
       <IssueTypeIcon

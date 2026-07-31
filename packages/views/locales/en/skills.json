@@ -112,9 +112,6 @@
     "delete_aria": "Delete skill",
     "delete_tooltip": "Delete skill",
     "supporting_data_warning": "Some workspace data failed to load. Creator attribution, agent environment names, or edit permissions may appear incomplete until the next refresh.",
-    "files_label": "Files · {{count}}",
-    "add_file_aria": "Add file",
-    "add_file_tooltip": "Add file",
     "delete_file": "Delete file",
     "name_placeholder": "skill-name",
     "description_placeholder": "One sentence describing when an agent should use this skill…",
@@ -125,7 +122,7 @@
       "origin_clawhub": "Imported · ClawHub",
       "origin_skills_sh": "Imported · Skills.sh",
       "origin_github": "Imported · GitHub",
-      "origin_workspace": "Created manually"
+      "origin_workspace": "Workspace"
     },
     "conflict_banner": {
       "title": "Someone else updated this skill",
@@ -138,29 +135,6 @@
       "discard": "Discard",
       "save": "Save changes",
       "saving": "Saving…"
-    },
-    "sidebar": {
-      "metadata": "Metadata",
-      "created": "Created",
-      "updated": "Updated",
-      "created_by": "Created by",
-      "files": "Files",
-      "id": "ID",
-      "origin": "Origin",
-      "used_by_one": "Used by {{count}} agent",
-      "used_by_other": "Used by {{count}} agents",
-      "permissions": "Permissions",
-      "permissions_owner": "You can edit and delete this skill. Changes take effect on the next agent run.",
-      "permissions_locked_creator": "Only the creator ({{name}}) or a workspace admin can edit this skill.",
-      "permissions_locked": "Only the creator or a workspace admin can edit this skill.",
-      "used_by_empty": "Not assigned to any agent yet. Open an agent's Skills tab to assign."
-    },
-    "origin_card": {
-      "imported_runtime": "Imported from local agent environment",
-      "imported_clawhub": "Imported from ClawHub",
-      "imported_skills_sh": "Imported from Skills.sh",
-      "imported_github": "Imported from GitHub",
-      "provider": "provider · {{provider}}"
     },
     "not_found": {
       "title": "Skill not found",
@@ -304,6 +278,9 @@
     "not_supported": "This agent environment provider does not expose local skill inventory yet.",
     "no_skills_title": "No local skills found",
     "no_skills_hint": "This agent environment does not have any discoverable local skills yet.",
+    "search_placeholder": "Search local skills",
+    "no_search_results_title": "No matching local skills",
+    "no_search_results_hint": "No local skills match \"{{query}}\".",
     "ignored_files_hint": "Symlinks, unreadable files, oversized files, and very large bundles are ignored during import.",
     "ready": "Ready to import",
     "into_workspace": "into this workspace.",

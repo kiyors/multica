@@ -565,7 +565,7 @@ func (h *Handler) UploadFile(w http.ResponseWriter, r *http.Request) {
 		}
 
 		writeJSON(w, http.StatusOK, map[string]string{
-			"id":           "",
+			"id":           id.String(),
 			"url":          link,
 			"download_url": link,
 			"markdown_url": link,

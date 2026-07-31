@@ -1,4 +1,3 @@
-/* eslint-disable i18next/no-literal-string */
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -9,7 +8,14 @@ import { useAuthStore } from "@multica/core/auth";
 import { api } from "@multica/core/api";
 import { AvatarUploadControl } from "../../common/avatar-upload-control";
 import { useT } from "../../i18n";
-import { Checkbox } from "@multica/ui/components/ui/checkbox";
+import {
+  SettingsCard,
+  SettingsRow,
+  SettingsSaveState,
+  SettingsSection,
+  SettingsTab,
+} from "./settings-layout";
+import { useAutoSave } from "./use-auto-save";
 
 // Mirror server/internal/handler/auth.go:MaxProfileDescriptionLen. Counted in
 // JS String.length (UTF-16 code units) here while the server counts runes,
@@ -35,91 +41,55 @@ export function AccountTab() {
   const [profileDescription, setProfileDescription] = useState(
     user?.profile_description ?? "",
   );
-  const [profileSaving, setProfileSaving] = useState(false);
-  const { upload, uploading } = useFileUpload(api);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const { t: tOnboarding } = useT("onboarding");
-
-  const rawRole = user?.onboarding_questionnaire?.role;
-  const initialRoles = Array.isArray(rawRole) ? rawRole : typeof rawRole === "string" ? [rawRole] : [];
-  const [roles, setRoles] = useState<string[]>(initialRoles);
 
   useEffect(() => {
     setProfileName(user?.name ?? "");
     setProfileDescription(user?.profile_description ?? "");
-    const rawR = user?.onboarding_questionnaire?.role;
-    setRoles(Array.isArray(rawR) ? rawR : typeof rawR === "string" ? [rawR] : []);
-  }, [user]);
+    // Preserve in-progress edits when an avatar upload or auto-save replaces
+    // the current user object in the auth store.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally keyed on user identity
+  }, [user?.id]);
 
   const descriptionTooLong = profileDescription.length > MAX_PROFILE_DESCRIPTION_LEN;
 
-  const initials = (user?.name ?? "")
-    .split(" ")
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    // Reset input so the same file can be re-selected
-    e.target.value = "";
-    try {
-      const result = await upload(file);
-      if (!result) return;
-      const updated = await api.updateMe({ avatar_url: result.markdownLink || result.link });
-      setUser(updated);
-      toast.success(t(($) => $.account.toast_avatar_updated));
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : t(($) => $.account.toast_avatar_failed));
-    }
-  };
-
-  const handleProfileSave = async () => {
-    if (descriptionTooLong) return;
-    setProfileSaving(true);
-    try {
-      await api.patchOnboarding({
-        questionnaire: {
-          ...user?.onboarding_questionnaire,
-          role: roles,
-        },
-      });
+  const draft = useMemo(
+    () => ({ name: profileName, profileDescription }),
+    [profileDescription, profileName],
+  );
+  const savedDraft = useMemo(
+    () => ({
+      name: user?.name ?? "",
+      profileDescription: user?.profile_description ?? "",
+    }),
+    [user?.name, user?.profile_description],
+  );
+  const saveProfile = useCallback(
+    async (next: ProfileDraft) => {
       const updated = await api.updateMe({
         name: next.name,
         profile_description: next.profileDescription,
       });
       setUser(updated);
-      toast.success(t(($) => $.account.toast_profile_updated));
-      window.location.reload();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t(($) => $.account.toast_profile_failed));
-    } finally {
-      setProfileSaving(false);
-    }
-  };
-
-  const handleConnectGitHub = async () => {
-    try {
-      const { url } = await api.getGitHubUserConnectUrl();
-      window.location.href = url;
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : t(($) => $.account.toast_profile_failed));
-    }
-  };
-
-  const handleDisconnectGitHub = async () => {
-    try {
-      const updated = await api.disconnectGitHubUser();
-      setUser(updated);
-      toast.success(t(($) => $.account.toast_profile_updated));
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : t(($) => $.account.toast_profile_failed));
-    }
-  };
-
-
+    },
+    [setUser],
+  );
+  const autoSave = useAutoSave({
+    value: draft,
+    savedValue: savedDraft,
+    onSave: saveProfile,
+    onSuccess: () =>
+      toast.success(t(($) => $.account.toast_profile_updated), {
+        id: "settings-auto-save",
+      }),
+    onError: (error) =>
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : t(($) => $.account.toast_profile_failed),
+      ),
+    enabled: !!user && !!profileName.trim() && !descriptionTooLong,
+    isEqual: profilesEqual,
+  });
 
   return (
     <SettingsTab title={t(($) => $.page.tabs.profile)}>
@@ -187,22 +157,6 @@ export function AccountTab() {
             align="start"
           >
             <div>
-              <Label className="text-xs text-muted-foreground">{t(($) => $.account.email_label)}</Label>
-              <Input
-                type="email"
-                value={user?.email ?? ""}
-                readOnly
-                aria-readonly="true"
-                className="mt-1 bg-muted/40 text-muted-foreground"
-              />
-              <p className="mt-1 text-xs text-muted-foreground">
-                {t(($) => $.account.email_hint)}
-              </p>
-            </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">
-                {t(($) => $.account.profile_description_label)}
-              </Label>
               <Textarea
                 name="profile-description"
                 autoComplete="off"
@@ -233,89 +187,9 @@ export function AccountTab() {
                 </p>
               ) : null}
             </div>
-
-            <div>
-              <Label className="text-xs text-muted-foreground">
-                Roles (Select up to 3)
-              </Label>
-              <div className="grid grid-cols-2 gap-3 mt-2">
-                {[
-                  { slug: "engineer", label: tOnboarding(($) => $.questions.role.engineer) },
-                  { slug: "product", label: tOnboarding(($) => $.questions.role.product) },
-                  { slug: "designer", label: tOnboarding(($) => $.questions.role.designer) },
-                  { slug: "founder", label: tOnboarding(($) => $.questions.role.founder) },
-                  { slug: "marketing", label: tOnboarding(($) => $.questions.role.marketing) },
-                  { slug: "creative", label: tOnboarding(($) => $.questions.role.creative) },
-                  { slug: "graphic_designer", label: tOnboarding(($) => $.questions.role.graphic_designer) },
-                  { slug: "marketing_team", label: tOnboarding(($) => $.questions.role.marketing_team) },
-                  { slug: "video_writer", label: tOnboarding(($) => $.questions.role.video_writer) },
-                  { slug: "videographer", label: tOnboarding(($) => $.questions.role.videographer) },
-                  { slug: "social_media", label: tOnboarding(($) => $.questions.role.social_media) },
-                  { slug: "writer", label: tOnboarding(($) => $.questions.role.writer) },
-                  { slug: "research", label: tOnboarding(($) => $.questions.role.research) },
-                  { slug: "ops", label: tOnboarding(($) => $.questions.role.ops) },
-                  { slug: "student", label: tOnboarding(($) => $.questions.role.student) },
-                ].map((role) => (
-                  <label key={role.slug} className="flex items-center gap-2 cursor-pointer">
-                    <Checkbox
-                      checked={roles.includes(role.slug)}
-                      onCheckedChange={(c) => {
-                        if (c) {
-                          if (roles.length < 3) {
-                            setRoles((prev) => [...prev, role.slug]);
-                          } else {
-                            toast.warning("You can only select up to 3 roles.");
-                          }
-                        } else {
-                          setRoles((prev) => prev.filter((r) => r !== role.slug));
-                        }
-                      }}
-                    />
-                    <span className="text-sm">{role.label}</span>
-                  </label>
-                ))}
-              </div>
-              <p className="mt-2 text-xs text-muted-foreground">
-                This adjusts terminology (e.g., Issues vs. Tasks) to match your workflow.
-              </p>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-1">
-              <Button
-                size="sm"
-                onClick={handleProfileSave}
-                disabled={profileSaving || !profileName.trim() || descriptionTooLong}
-              >
-                <Save className="h-3 w-3" />
-                {profileSaving ? t(($) => $.account.saving) : t(($) => $.account.save)}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </section>
-
-      <section className="space-y-4">
-        <h2 className="text-sm font-semibold">{t(($) => $.account.section_connected_accounts || "Connected Accounts")}</h2>
-        <Card>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <p className="text-sm font-medium leading-none">GitHub</p>
-                <p className="text-sm text-muted-foreground">
-                  {user?.github_login ? `@${user.github_login}` : (t(($) => $.account.github_not_connected) || "Not connected")}
-                </p>
-              </div>
-              <Button
-                variant={user?.github_login ? "outline" : "default"}
-                size="sm"
-                onClick={user?.github_login ? handleDisconnectGitHub : handleConnectGitHub}
-              >
-                {user?.github_login ? (t(($) => $.account.disconnect) || "Disconnect") : (t(($) => $.account.connect) || "Connect")}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </section>
-    </div>
+          </SettingsRow>
+        </SettingsCard>
+      </SettingsSection>
+    </SettingsTab>
   );
 }

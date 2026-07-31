@@ -1,4 +1,4 @@
-import { queryOptions, useQuery } from "@tanstack/react-query";
+import { queryOptions, infiniteQueryOptions, useQuery } from "@tanstack/react-query";
 import { api } from "../api";
 
 export const githubKeys = {
@@ -22,13 +22,13 @@ export const githubInstallationRepositoriesOptions = (
 ) =>
   infiniteQueryOptions({
     queryKey: githubKeys.repositories(wsId, installationId),
-    queryFn: ({ pageParam }) =>
+    queryFn: ({ pageParam }: { pageParam: number }) =>
       api.listGitHubInstallationRepositories(wsId, installationId, {
         page: pageParam,
         per_page: 100,
       }),
     initialPageParam: 1,
-    getNextPageParam: (lastPage) => lastPage.next_page ?? undefined,
+    getNextPageParam: (lastPage: any) => lastPage.next_page ?? undefined,
     enabled: !!wsId && !!installationId,
   });
 

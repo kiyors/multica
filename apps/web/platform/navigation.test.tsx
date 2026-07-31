@@ -115,7 +115,7 @@ describe("WebNavigationProvider canGoBack", () => {
 
     adapter().push("/acme/issues");
 
-    expect(router.push).toHaveBeenCalledWith("/acme/issues");
+    expect(router.push).toHaveBeenCalledWith("/acme/issues", undefined);
     expect(adapter().canGoBack!()).toBe(false);
   });
 

@@ -9,6 +9,7 @@ import type { SupportedLocale } from "@multica/core/i18n";
 import { RESOURCES } from "@multica/views/locales";
 import { getRequestLocale } from "@/lib/request-locale";
 import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
+import { resolveBrowserApiBaseUrl, resolveBrowserWsUrl } from "@/config/runtime-urls";
 import "./globals.css";
 
 // Inter is the Latin UI face. next/font produces a hashed family (`__Inter_xxx`)
@@ -109,8 +110,6 @@ const HTML_LANG: Record<SupportedLocale, string> = {
   "zh-Hans": "zh-CN",
   ko: "ko-KR",
   ja: "ja-JP",
-  "en-marketing": "en",
-  "en-creative": "en",
 };
 
 export default async function RootLayout({

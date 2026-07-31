@@ -488,7 +488,7 @@ describe("SlashCommandList built-in command rendering", () => {
       </I18nWrapper>,
     );
 
-    expect(getByText("note")).toBeInTheDocument();
+    expect(getByText("/note")).toBeInTheDocument();
     expect(
       getByText("Add a note — won't trigger any agents"),
     ).toBeInTheDocument();

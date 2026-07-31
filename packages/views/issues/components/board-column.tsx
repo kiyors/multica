@@ -169,6 +169,10 @@ export const BoardColumn = memo(function BoardColumn({
         project={
           issue.project_id ? projectMap?.get(issue.project_id) : undefined
         }
+        parentIssue={
+          issue.parent_issue_id ? issueMap.get(issue.parent_issue_id) : undefined
+        }
+        subtasks={subtasksMap?.get(issue.id)}
         disableSorting={!!sortLabel}
       />
     </div>
@@ -258,27 +262,61 @@ export const BoardColumn = memo(function BoardColumn({
                 : ""
           }`}
         >
-          <SortableContext items={issueIds} strategy={verticalListSortingStrategy}>
-            {resolvedIssues.map((issue) => (
-              <DraggableBoardCard
-                key={issue.id}
-                issue={issue}
-                childProgress={childProgressMap?.get(issue.id)}
-                project={
-                  issue.project_id ? projectMap?.get(issue.project_id) : undefined
-                }
-                parentIssue={
-                  issue.parent_issue_id ? issueMap.get(issue.parent_issue_id) : undefined
-                }
-                subtasks={subtasksMap?.get(issue.id)}
-                disableSorting={!!sortLabel}
-              />
-            ))}
-          </SortableContext>
-          {issueIds.length === 0 && (
-            <p className="py-8 text-center text-xs text-muted-foreground">
-              {t(($) => $.board.empty_column)}
-            </p>
+          {resolvedIssues.length > 0 ? (
+            <SortableContext items={issueIds} strategy={verticalListSortingStrategy}>
+              {resolvedIssues.length <= BOARD_VIRTUALIZE_THRESHOLD ? (
+                /* Small column: plain full render (reusing the same
+                   itemContent, so it is byte-identical to the virtualized
+                   rows). No handoff, no estimates — see
+                   BOARD_VIRTUALIZE_THRESHOLD. The footer (infinite-scroll
+                   sentinel) renders at the real end of the flow, where its
+                   IntersectionObserver works the same as in Virtuoso's
+                   Footer slot. */
+                <>
+                  <VirtuosoSeed
+                    data={resolvedIssues}
+                    itemContent={itemContent}
+                    computeItemKey={computeItemKey}
+                    count={resolvedIssues.length}
+                  />
+                  {footer}
+                </>
+              ) : scrollEl ? (
+                <Virtuoso
+                  customScrollParent={scrollEl}
+                  data={resolvedIssues}
+                  computeItemKey={computeItemKey}
+                  initialScrollTop={restoredScrollTop}
+                  initialItemCount={Math.min(resolvedIssues.length, BOARD_SEED_COUNT)}
+                  defaultItemHeight={BOARD_CARD_ESTIMATED_HEIGHT}
+                  increaseViewportBy={{ top: 300, bottom: 300 }}
+                  components={footerComponents}
+                  itemContent={itemContent}
+                />
+              ) : (
+                /* Large column, merged scroll ref not settled yet after a
+                   remount: seed a bounded slice of real cards so the column
+                   never paints blank; once the ref lands, mount the Virtuoso
+                   with a matching `initialItemCount` to survive the
+                   measurement frame (MUL-4750). */
+                <VirtuosoSeed
+                  data={resolvedIssues}
+                  itemContent={itemContent}
+                  computeItemKey={computeItemKey}
+                  count={BOARD_SEED_COUNT}
+                  estimatedItemHeight={BOARD_CARD_ESTIMATED_HEIGHT}
+                />
+              )}
+            </SortableContext>
+          ) : (
+            <>
+              {issueIds.length === 0 && (
+                <p className="py-8 text-center text-caption text-muted-foreground">
+                  {t(($) => $.board.empty_column)}
+                </p>
+              )}
+              {footer}
+            </>
           )}
         </div>
       </div>

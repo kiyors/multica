@@ -107,30 +107,30 @@ export function UpdatesSettingsTab() {
 
         <div className="flex items-start justify-between gap-6 py-4">
           <div className="min-w-0">
-            <p className="text-sm font-medium">{t(($) => $.desktop.updates.check_section_title)}</p>
-            <p className="text-sm text-muted-foreground mt-0.5">
+            <p className="text-body font-medium">{t(($) => $.desktop.updates.check_section_title)}</p>
+            <p className="text-body text-muted-foreground mt-0.5">
               {t(($) => $.desktop.updates.check_section_description)}
             </p>
             {state.status === "up-to-date" && (
-              <p className="text-sm text-muted-foreground mt-2 inline-flex items-center gap-1.5">
+              <p className="text-body text-muted-foreground mt-2 inline-flex items-center gap-1.5">
                 <Check className="size-3.5 text-success" />
                 {t(($) => $.desktop.updates.up_to_date)}
               </p>
             )}
             {state.status === "available" && (
-              <p className="text-sm text-muted-foreground mt-2 inline-flex items-center gap-1.5">
+              <p className="text-body text-muted-foreground mt-2 inline-flex items-center gap-1.5">
                 <ArrowDownToLine className="size-3.5 text-primary" />
                 {t(($) => $.desktop.updates.downloading, { version: state.latestVersion })}
               </p>
             )}
             {state.status === "ready" && (
-              <p className="text-sm text-success mt-2 inline-flex items-center gap-1.5">
+              <p className="text-body text-success mt-2 inline-flex items-center gap-1.5">
                 <Check className="size-3.5" />
                 {t(($) => $.desktop.updates.ready_to_install, { version: state.latestVersion })}
               </p>
             )}
             {state.status === "error" && (
-              <p className="text-sm text-destructive mt-2 inline-flex items-center gap-1.5">
+              <p className="text-body text-destructive mt-2 inline-flex items-center gap-1.5">
                 <AlertCircle className="size-3.5" />
                 {state.message}
               </p>
@@ -153,39 +153,9 @@ export function UpdatesSettingsTab() {
               ) : (
                 t(($) => $.desktop.updates.check_now)
               )}
-              {state.status === "available" && (
-                <p className="mt-2 inline-flex items-center gap-1.5">
-                  <ArrowDownToLine className="size-3.5 text-primary" />
-                  {t(($) => $.desktop.updates.downloading, {
-                    version: state.latestVersion,
-                  })}
-                </p>
-              )}
-              {state.status === "error" && (
-                <p className="mt-2 inline-flex items-center gap-1.5 text-destructive">
-                  <AlertCircle className="size-3.5" />
-                  {state.message}
-                </p>
-              )}
-            </>
-          }
-        >
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleCheck}
-            disabled={state.status === "checking"}
-          >
-            {state.status === "checking" ? (
-              <>
-                <Loader2 className="size-3.5 animate-spin" />
-                {t(($) => $.desktop.updates.checking)}
-              </>
-            ) : (
-              t(($) => $.desktop.updates.check_now)
-            )}
-          </Button>
-        </SettingsRow>
+            </Button>
+          </div>
+        </div>
       </SettingsCard>
     </SettingsTab>
   );

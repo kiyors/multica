@@ -259,7 +259,7 @@
     "close": "关闭",
     "title_placeholder": "自动化名称",
     "runbook_label": "Runbook",
-    "runbook_hint": "智能体每次智能体环境读取",
+    "runbook_hint": "智能体每次运行时读取",
     "description_placeholder": "# 目标\n你希望智能体完成什么？\n\n# 上下文\n这是给谁的？有什么约束？\n\n# 步骤\n1. ...\n2. ...",
     "auto_run_hint": "保存后会自动运行，直到暂停。",
     "cancel": "取消",
@@ -442,6 +442,51 @@
       "cancel": "取消",
       "confirm": "永久删除",
       "deleting": "删除中…"
+    }
+  },
+  "trigger_config": {
+    "frequencies": {
+      "hourly": "Hourly",
+      "daily": "Daily",
+      "weekdays": "Weekdays",
+      "weekly": "Days",
+      "custom": "Custom"
+    },
+    "days_short": {
+      "sun": "Sun",
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat"
+    },
+    "cron_label": "Cron Expression",
+    "cron_hint": "Standard 5-field cron (min hour dom month dow)",
+    "minute_label": "Minute",
+    "time_label": "Time",
+    "timezone_label": "Timezone",
+    "days_label": "Days",
+    "summary": {
+      "hourly": "Hourly · :{{min}}",
+      "daily": "Daily {{time}}",
+      "weekdays": "Weekdays {{time}}",
+      "weekly": "{{days}} {{time}}",
+      "custom": "Custom cron",
+      "no_days": "—"
+    },
+    "describe": {
+      "hourly": "Runs every hour at :{{min}}",
+      "daily": "Runs daily at {{time}} {{offset}}",
+      "weekdays": "Runs weekdays at {{time}} {{offset}}",
+      "weekly": "Runs every {{days}} at {{time}} {{offset}}",
+      "custom": "Custom schedule: {{cron}}"
+    },
+    "countdown": {
+      "days_hours": "{{days}}d {{hours}}h",
+      "hours_minutes": "{{hours}}h {{minutes}}m",
+      "minutes": "{{minutes}}m",
+      "less_than_minute": "<1m"
     }
   }
 }

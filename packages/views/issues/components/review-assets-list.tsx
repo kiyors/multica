@@ -50,7 +50,7 @@ export function ReviewAssetsList({ workspaceId, issueId, onOpenAsset }: ReviewAs
   }, [uploadAsset.isSuccess]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (isLoading) {
-    return <div className="text-sm text-muted-foreground animate-pulse">Loading review assets...</div>;
+    return <div className="text-body text-muted-foreground animate-pulse">Loading review assets...</div>;
   }
 
   // Filter out older versions, only show the latest version per asset group
@@ -104,8 +104,8 @@ export function ReviewAssetsList({ workspaceId, issueId, onOpenAsset }: ReviewAs
         ) : (
           <div className="flex flex-col items-center justify-center border-2 border-dashed border-border rounded-lg p-10 bg-muted/30">
             <Video className="w-10 h-10 text-muted-foreground mb-3" />
-            <h3 className="text-sm font-semibold text-foreground">No media reviews yet</h3>
-            <p className="text-xs text-muted-foreground mb-4 text-center max-w-sm">
+            <h3 className="text-body font-semibold text-foreground">No media reviews yet</h3>
+            <p className="text-micro text-muted-foreground mb-4 text-center max-w-sm">
               Upload a video or image to start a timestamped review and collaborate with your team.
             </p>
             <Button size="sm" onClick={() => fileInputRef.current?.click()}>
@@ -121,7 +121,7 @@ export function ReviewAssetsList({ workspaceId, issueId, onOpenAsset }: ReviewAs
   return (
     <div className="mt-8 flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold">Media Reviews</h3>
+        <h3 className="text-title-sm font-semibold">Media Reviews</h3>
         <div className="flex gap-2">
           {hasPending && (
             <Button
@@ -202,10 +202,10 @@ export function ReviewAssetsList({ workspaceId, issueId, onOpenAsset }: ReviewAs
             </div>
             <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium truncate" title={asset.name}>
+                <span className="text-body font-medium truncate" title={asset.name}>
                   {asset.name}
                 </span>
-                <span className="text-xs bg-muted px-1.5 py-0.5 rounded text-muted-foreground font-medium">
+                <span className="text-micro bg-muted px-1.5 py-0.5 rounded text-muted-foreground font-medium">
                   v{asset.version}
                 </span>
               </div>
@@ -214,7 +214,7 @@ export function ReviewAssetsList({ workspaceId, issueId, onOpenAsset }: ReviewAs
                   {asset.status === "approved" && <Check className="w-3.5 h-3.5 text-success" />}
                   {asset.status === "changes_requested" && <AlertCircle className="w-3.5 h-3.5 text-destructive" />}
                   {asset.status === "pending" && <Clock className="w-3.5 h-3.5 text-yellow-500" />}
-                  <span className="text-xs text-muted-foreground capitalize">
+                  <span className="text-micro text-muted-foreground capitalize">
                     {asset.status.replace("_", " ")}
                   </span>
                 </div>

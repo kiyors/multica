@@ -79,8 +79,8 @@ export function IssueTypesTab({ projectId }: { projectId?: string } = {}) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-medium">Issue Types</h2>
-          <p className="text-sm text-muted-foreground">
+          <h2 className="text-title font-medium">Issue Types</h2>
+          <p className="text-body text-muted-foreground">
             Manage custom issue types for this workspace.
           </p>
         </div>
@@ -96,9 +96,9 @@ export function IssueTypesTab({ projectId }: { projectId?: string } = {}) {
             <div className="flex items-center gap-3">
               <IssueTypeIcon icon={type.icon} color={type.color} className="h-5 w-5" />
               <div>
-                <p className="font-medium text-sm">{type.name}</p>
+                <p className="font-medium text-body">{type.name}</p>
                 {type.description && (
-                  <p className="text-xs text-muted-foreground">{type.description}</p>
+                  <p className="text-micro text-muted-foreground">{type.description}</p>
                 )}
               </div>
             </div>
@@ -123,21 +123,21 @@ export function IssueTypesTab({ projectId }: { projectId?: string } = {}) {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Name</label>
+              <label className="text-body font-medium">Name</label>
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Campaign" />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Description</label>
+              <label className="text-body font-medium">Description</label>
               <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional description" />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Icon ID</label>
+                <label className="text-body font-medium">Icon ID</label>
                 <Input value={icon} onChange={(e) => setIcon(e.target.value)} placeholder="e.g. sparkles" />
-                <p className="text-xs text-muted-foreground">Supported: check-square, bug, sparkles, book-open, palette, file-text, megaphone</p>
+                <p className="text-micro text-muted-foreground">Supported: check-square, bug, sparkles, book-open, palette, file-text, megaphone</p>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Color (Hex)</label>
+                <label className="text-body font-medium">Color (Hex)</label>
                 <Input value={color} onChange={(e) => setColor(e.target.value)} placeholder="#8B5CF6" />
               </div>
             </div>

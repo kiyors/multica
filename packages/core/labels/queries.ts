@@ -1,6 +1,5 @@
 import { queryOptions } from "@tanstack/react-query";
 import { api } from "../api";
-import type { LabelResourceType } from "../types";
 
 export const labelKeys = {
   all: (wsId: string) => ["labels", wsId] as const,

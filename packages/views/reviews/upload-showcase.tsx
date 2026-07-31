@@ -143,7 +143,7 @@ export function UploadShowcase({
           {isPending && (
             <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center">
               {phase === "uploading" && (
-                <div className="text-white font-medium text-lg mb-2">
+                <div className="text-white font-medium text-title mb-2">
                   {Math.round(progress)}%
                 </div>
               )}

@@ -19,6 +19,8 @@ import type {
 } from "../shared/daemon-types";
 
 interface DesktopAPI {
+  /** Injected by main process for multi-window context (e.g. issue detatch). */
+  windowContext: DesktopWindowContext;
   /** App version + normalized OS, captured synchronously at preload time. */
   appInfo: {
     version: string;

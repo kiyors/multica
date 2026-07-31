@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@multica/core/i18n/react";
 import { SearchCommand } from "./search-command";
-import { useSearchStore } from "@multica/core/search";
+import { useSearchStore } from "./search-store";
 import enCommon from "../locales/en/common.json";
 import enAuth from "../locales/en/auth.json";
 import enSettings from "../locales/en/settings.json";
@@ -301,7 +301,7 @@ describe("SearchCommand", () => {
     expect(screen.queryByPlaceholderText("Type a command or search...")).not.toBeInTheDocument();
   });
 
-  it("shows only New Issue by default and hides Pages / low-frequency commands until query", () => {
+  it("shows only New Task by default and hides Pages / low-frequency commands until query", () => {
     renderSearch();
 
     expect(screen.queryByText("Pages")).not.toBeInTheDocument();
@@ -309,7 +309,7 @@ describe("SearchCommand", () => {
     // else (theme, copy, New Project) must be revealed by typing.
     expect(screen.getByText("Commands")).toBeInTheDocument();
     expect(
-      screen.getByText((_, el) => el?.textContent === "New Issue" && el?.tagName === "SPAN"),
+      screen.getByText((_, el) => el?.textContent === "New Task" && el?.tagName === "SPAN"),
     ).toBeInTheDocument();
     expect(screen.queryByText("New Project")).not.toBeInTheDocument();
     expect(screen.queryByText("Switch to Light Theme")).not.toBeInTheDocument();
@@ -394,7 +394,7 @@ describe("SearchCommand", () => {
     expect(useSearchStore.getState().open).toBe(false);
   });
 
-  it("renders recent issues from query cache joined with store visit records", () => {
+  it("renders recent tasks from query cache joined with store visit records", () => {
     mockRecentItems.current = [
       { id: "issue-1", visitedAt: 1000 },
       { id: "issue-2", visitedAt: 900 },
@@ -413,7 +413,7 @@ describe("SearchCommand", () => {
     expect(screen.getByText("MUL-2")).toBeInTheDocument();
   });
 
-  it("shows New Issue / New Project under Commands and triggers the modal store", async () => {
+  it("shows New Task / New Project under Commands and triggers the modal store", async () => {
     const user = userEvent.setup();
     renderSearch();
 
@@ -423,7 +423,7 @@ describe("SearchCommand", () => {
     await waitFor(() => {
       expect(screen.getByText("Commands")).toBeInTheDocument();
       expect(
-        screen.getByText((_, el) => el?.textContent === "New Issue" && el?.tagName === "SPAN"),
+        screen.getByText((_, el) => el?.textContent === "New Task" && el?.tagName === "SPAN"),
       ).toBeInTheDocument();
       expect(
         screen.getByText((_, el) => el?.textContent === "New Project" && el?.tagName === "SPAN"),
@@ -431,7 +431,7 @@ describe("SearchCommand", () => {
     });
 
     const newIssue = await screen.findByText(
-      (_, el) => el?.textContent === "New Issue" && el?.tagName === "SPAN",
+      (_, el) => el?.textContent === "New Task" && el?.tagName === "SPAN",
     );
     await user.click(newIssue);
 
@@ -448,7 +448,7 @@ describe("SearchCommand", () => {
     await user.type(input, "copy");
 
     // Commands section may still be empty / absent.
-    expect(screen.queryByText("Copy Issue Link")).not.toBeInTheDocument();
+    expect(screen.queryByText("Copy Task Link")).not.toBeInTheDocument();
   });
 
   it("copies issue link and identifier when on an issue detail route", async () => {
@@ -468,7 +468,7 @@ describe("SearchCommand", () => {
     await user.type(input, "copy");
 
     const linkItem = await screen.findByText(
-      (_, el) => el?.textContent === "Copy Issue Link" && el?.tagName === "SPAN",
+      (_, el) => el?.textContent === "Copy Task Link" && el?.tagName === "SPAN",
     );
     await user.click(linkItem);
 
@@ -703,7 +703,7 @@ describe("SearchCommand", () => {
     expect(screen.queryByText("In Review")).not.toBeInTheDocument();
   });
 
-  it("shows the assignee avatar instead of status text for recent issues", () => {
+  it("shows the assignee avatar instead of status text for recent tasks", () => {
     mockRecentItems.current = [{ id: "issue-1", visitedAt: 1000 }];
     mockAgents.current = [{ id: "agent-1", name: "Niko", avatar_url: null }];
     mockAllIssues.current = [
@@ -793,10 +793,10 @@ describe("SearchCommand", () => {
     ) as HTMLInputElement;
     await user.type(input, "new");
 
-    // "new" surfaces New Issue + New Project, so cmdk has a multi-item list.
+    // "new" surfaces New Task + New Project, so cmdk has a multi-item list.
     await waitFor(() => {
       expect(
-        screen.getByText((_, el) => el?.textContent === "New Issue" && el?.tagName === "SPAN"),
+        screen.getByText((_, el) => el?.textContent === "New Task" && el?.tagName === "SPAN"),
       ).toBeInTheDocument();
       expect(
         screen.getByText((_, el) => el?.textContent === "New Project" && el?.tagName === "SPAN"),

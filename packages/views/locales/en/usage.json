@@ -49,7 +49,7 @@
       "rate_limit": "Rate limit",
       "timeout": "Timeout",
       "provider": "Provider",
-      "runtime": "Runtime",
+      "runtime": "Agent Environment",
       "agent": "Agent",
       "other": "Other"
     },

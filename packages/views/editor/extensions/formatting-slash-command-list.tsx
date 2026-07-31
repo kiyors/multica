@@ -91,7 +91,7 @@ export const FormattingSlashCommandList = forwardRef<
       transition={{ duration: 0.15, ease: "easeOut" }}
       className="flex max-h-[300px] w-[320px] flex-col overflow-y-auto rounded-xl border bg-popover p-1.5 text-popover-foreground shadow-xl shadow-black/5"
     >
-      <div className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+      <div className="px-2 py-1.5 text-micro font-semibold uppercase tracking-wider text-faint-foreground">
         Basic Blocks
       </div>
       {items.map((item, index) => {
@@ -105,7 +105,7 @@ export const FormattingSlashCommandList = forwardRef<
             }}
             type="button"
             className={cn(
-              "flex items-start gap-2.5 rounded-lg px-2 py-1.5 text-left text-sm cursor-pointer transition-colors outline-none",
+              "flex items-start gap-2.5 rounded-lg px-2 py-1.5 text-left text-body cursor-pointer transition-colors outline-none",
               index === selectedIndex
                 ? "bg-accent text-accent-foreground"
                 : "hover:bg-accent/50",
@@ -117,7 +117,7 @@ export const FormattingSlashCommandList = forwardRef<
             </div>
             <div className="flex flex-col justify-center min-h-[40px] overflow-hidden">
               <span className="truncate font-medium">{item.title}</span>
-              <span className="truncate text-[11.5px] text-muted-foreground/80 leading-tight mt-0.5">
+              <span className="truncate text-micro text-muted-foreground leading-tight mt-0.5">
                 {item.description}
               </span>
             </div>

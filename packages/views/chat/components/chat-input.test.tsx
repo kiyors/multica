@@ -517,7 +517,7 @@ describe("ChatInput project context", () => {
     title: "Project Alpha",
     description: null,
     icon: "📘",
-    status: "planned",
+    status: "planned", prefix: "P1",
     priority: "none",
     lead_type: null,
     lead_id: null,

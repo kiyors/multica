@@ -215,10 +215,10 @@ describe("runtime list row menu", () => {
     );
 
     fireEvent.click(screen.getByLabelText("Row actions"));
-    fireEvent.click(screen.getByText("Edit custom runtime"));
+    fireEvent.click(screen.getByText("Edit custom agent environment"));
 
     expect(
-      screen.getByRole("heading", { name: "Edit custom runtime" }),
+      screen.getByRole("heading", { name: "Edit custom agent environment" }),
     ).toBeInTheDocument();
     expect(screen.getByLabelText("Display name")).toHaveValue("Custom Codex");
   });

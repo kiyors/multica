@@ -7,7 +7,7 @@ import { useWorkspaceId } from "@multica/core/hooks";
 import { useQuery } from "@tanstack/react-query";
 import { ActorAvatar } from "../../common/actor-avatar";
 import { Button } from "@multica/ui/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@multica/ui/components/ui/select";
+import { Select } from "@multica/ui/components/ui/select";
 import type { MemberWithUser, ProjectMember } from "@multica/core/types";
 import { useT } from "../../i18n";
 
@@ -47,25 +47,23 @@ export function ProjectMembersTab({ projectId }: { projectId: string }) {
     <div className="p-6 space-y-6 max-w-3xl">
       <div className="flex flex-col gap-1">
         <h3 className="font-medium">{t(($) => $.members.title)}</h3>
-        <p className="text-sm text-muted-foreground">{t(($) => $.members.description)}</p>
+        <p className="text-body text-muted-foreground">{t(($) => $.members.description)}</p>
       </div>
 
       <div className="flex items-center gap-2">
-        <Select value={selectedMember} onValueChange={(val) => setSelectedMember(val || "")}>
-          <SelectTrigger className="w-[250px]">
-            <SelectValue placeholder={t(($) => $.members.select_placeholder)} />
-          </SelectTrigger>
-          <SelectContent>
-            {unaddedMembers.map(m => (
-              <SelectItem key={m.id} value={m.id}>
-                <div className="flex items-center gap-2">
-                  <ActorAvatar actorType="member" actorId={m.user_id} size={16} />
-                  <span>{m.name}</span>
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Select 
+          value={selectedMember} 
+          onValueChange={(val) => setSelectedMember(val || "")}
+          items={unaddedMembers.map(m => ({ 
+            label: (
+              <div className="flex items-center gap-2">
+                <ActorAvatar actorType="member" actorId={m.user_id} size="sm" />
+                <span>{m.name}</span>
+              </div>
+            ), 
+            value: m.id 
+          }))}
+        />
         <Button onClick={handleAdd} disabled={!selectedMember || addMut.isPending}>{t(($) => $.members.add)}</Button>
       </div>
 
@@ -75,26 +73,22 @@ export function ProjectMembersTab({ projectId }: { projectId: string }) {
           return (
             <div key={pm.member_id} className="flex items-center justify-between p-4">
               <div className="flex items-center gap-3">
-                <ActorAvatar actorType="member" actorId={m?.user_id ?? pm.member_id} size={32} />
+                <ActorAvatar actorType="member" actorId={m?.user_id ?? pm.member_id} size="md" />
                 <div className="flex flex-col">
-                  <span className="text-sm font-medium">{m?.name || t(($) => $.members.unknown)}</span>
-                  <span className="text-xs text-muted-foreground">{m?.email}</span>
+                  <span className="text-body font-medium">{m?.name || t(($) => $.members.unknown)}</span>
+                  <span className="text-micro text-muted-foreground">{m?.email}</span>
                 </div>
               </div>
               <div className="flex items-center gap-3">
                 <Select
                   value={pm.role}
                   onValueChange={(val) => { if (val) updateMut.mutate({ memberId: pm.member_id, role: val }); }}
-                >
-                  <SelectTrigger className="w-[120px] h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="admin">{t(($) => $.members.roles.admin)}</SelectItem>
-                    <SelectItem value="editor">{t(($) => $.members.roles.editor)}</SelectItem>
-                    <SelectItem value="viewer">{t(($) => $.members.roles.viewer)}</SelectItem>
-                  </SelectContent>
-                </Select>
+                  items={[
+                    { label: t(($) => $.members.roles.admin), value: "admin" },
+                    { label: t(($) => $.members.roles.editor), value: "editor" },
+                    { label: t(($) => $.members.roles.viewer), value: "viewer" }
+                  ]}
+                />
                 <Button 
                   variant="ghost" 
                   size="sm" 
@@ -108,7 +102,7 @@ export function ProjectMembersTab({ projectId }: { projectId: string }) {
           );
         })}
         {projectMembers.length === 0 && (
-          <div className="p-8 text-center text-sm text-muted-foreground">
+          <div className="p-8 text-center text-body text-muted-foreground">
             {t(($) => $.members.empty)}
           </div>
         )}

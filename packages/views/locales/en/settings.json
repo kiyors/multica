@@ -1,7 +1,7 @@
 {
   "quick_actions": {
     "title": "Quick Actions",
-    "description": "Preset an agent and a prompt once, then trigger it from any issue's sidebar with a single click.",
+    "description": "Preset an agent and a prompt once, then trigger it from any task's sidebar with a single click.",
     "add": "New quick action",
     "search_placeholder": "Search quick actions",
     "loading": "Loading quick actions…",
@@ -35,16 +35,16 @@
     "used_count": "Used {{count}}×",
     "create_title": "New quick action",
     "edit_title": "Edit quick action",
-    "dialog_description": "Runs as a comment on the issue, like an @mention.",
+    "dialog_description": "Runs as a comment on the task, like an @mention.",
     "field_name": "Name",
     "field_name_placeholder": "Code Review",
     "field_target": "Runs as",
     "field_prompt": "Prompt",
-    "field_prompt_placeholder": "Review the code linked to this issue. Focus on correctness and edge cases.",
-    "prompt_hint": "Sent as written. The agent already sees the issue.",
-    "template_not_supported": "Variables aren’t supported yet — remove {{token}}. The agent already reads this issue.",
+    "field_prompt_placeholder": "Review the code linked to this task. Focus on correctness and edge cases.",
+    "prompt_hint": "Sent as written. The agent already sees the task.",
+    "template_not_supported": "Variables aren’t supported yet — remove {{token}}. The agent already reads this task.",
     "delete_title": "Delete this quick action?",
-    "delete_description": "It disappears from every issue sidebar. Past runs stay in the execution log. Archive instead if you may want it back."
+    "delete_description": "It disappears from every task sidebar. Past runs stay in the execution log. Archive instead if you may want it back."
   },
   "auto_save": {
     "saving": "Saving…",
@@ -59,6 +59,11 @@
       "light": "Light",
       "dark": "Dark",
       "system": "System"
+    },
+    "sidebar": {
+      "title": "Sidebar Position",
+      "left": "Left",
+      "right": "Right"
     },
     "language": {
       "title": "Language",
@@ -76,11 +81,11 @@
     },
     "sticky_comment_bar": {
       "title": "Sticky comment bar",
-      "hint": "Keep the comment bar pinned to the bottom while scrolling an issue page."
+      "hint": "Keep the comment bar pinned to the bottom while scrolling an task page."
     },
     "issue_link_new_tab": {
-      "title": "Open issue links in new tab",
-      "hint": "Issue links in descriptions, comments, and chat open in a new tab instead of navigating in place."
+      "title": "Open task links in new tab",
+      "hint": "Task links in descriptions, comments, and chat open in a new tab instead of navigating in place."
     }
   },
   "shortcuts": {
@@ -113,24 +118,78 @@
       "navigation": "Navigation"
     },
     "actions": {
-      "openSearch": { "label": "Open search", "description": "Search and run commands from anywhere." },
-      "createIssue": { "label": "Create issue", "description": "Open your preferred issue creation flow." },
-      "toggleSidebar": { "label": "Toggle sidebar", "description": "Show or hide the main sidebar." },
-      "toggleChat": { "label": "Toggle chat window", "description": "Open or close the floating chat window. Opening it focuses the message input." },
-      "findInIssue": { "label": "Find in issue", "description": "Search within the open issue detail." },
-      "send": { "label": "Send", "description": "Send chat messages, comments, replies, feedback, and prompts, and create issues in the create dialog." },
-      "goInbox": { "label": "Go to Inbox", "description": "Open the workspace inbox." },
-      "goChat": { "label": "Go to Chat", "description": "Open workspace chat." },
-      "goMyIssues": { "label": "Go to My Issues", "description": "Open issues assigned to you." },
-      "goIssues": { "label": "Go to Issues", "description": "Open the issue list." },
-      "goProjects": { "label": "Go to Projects", "description": "Open the project list." },
-      "goAutopilots": { "label": "Go to Autopilot", "description": "Open workspace automations." },
-      "goAgents": { "label": "Go to Agents", "description": "Open the agent list." },
-      "goSquads": { "label": "Go to Squads", "description": "Open the squad list." },
-      "goUsage": { "label": "Go to Usage", "description": "Open usage analytics." },
-      "goRuntimes": { "label": "Go to Runtimes", "description": "Open runtime configuration." },
-      "goSkills": { "label": "Go to Skills", "description": "Open the skill library." },
-      "goSettings": { "label": "Go to Settings", "description": "Open workspace settings." }
+      "openSearch": {
+        "label": "Open search",
+        "description": "Search and run commands from anywhere."
+      },
+      "createIssue": {
+        "label": "Create task",
+        "description": "Open your preferred task creation flow."
+      },
+      "toggleSidebar": {
+        "label": "Toggle sidebar",
+        "description": "Show or hide the main sidebar."
+      },
+      "toggleChat": {
+        "label": "Toggle chat window",
+        "description": "Open or close the floating chat window. Opening it focuses the message input."
+      },
+      "findInIssue": {
+        "label": "Find in task",
+        "description": "Search within the open task detail."
+      },
+      "send": {
+        "label": "Send",
+        "description": "Send chat messages, comments, replies, feedback, and prompts, and create tasks in the create dialog."
+      },
+      "goInbox": {
+        "label": "Go to Inbox",
+        "description": "Open the workspace inbox."
+      },
+      "goChat": {
+        "label": "Go to Chat",
+        "description": "Open workspace chat."
+      },
+      "goMyIssues": {
+        "label": "Go to My Tasks",
+        "description": "Open tasks assigned to you."
+      },
+      "goIssues": {
+        "label": "Go to Tasks",
+        "description": "Open the task list."
+      },
+      "goProjects": {
+        "label": "Go to Projects",
+        "description": "Open the project list."
+      },
+      "goAutopilots": {
+        "label": "Go to Autopilot",
+        "description": "Open workspace automations."
+      },
+      "goAgents": {
+        "label": "Go to Agents",
+        "description": "Open the agent list."
+      },
+      "goSquads": {
+        "label": "Go to Squads",
+        "description": "Open the squad list."
+      },
+      "goUsage": {
+        "label": "Go to Usage",
+        "description": "Open usage analytics."
+      },
+      "goRuntimes": {
+        "label": "Go to Agent Environments",
+        "description": "Open agent environment configuration."
+      },
+      "goSkills": {
+        "label": "Go to Skills",
+        "description": "Open the skill library."
+      },
+      "goSettings": {
+        "label": "Go to Settings",
+        "description": "Open workspace settings."
+      }
     },
     "fixed": {
       "title": "Fixed system shortcuts",
@@ -171,12 +230,11 @@
       "profile": "Profile",
       "preferences": "Preferences",
       "shortcuts": "Shortcuts",
-      "issue": "Issue",
+      "issue": "Task",
       "chat": "Chat",
       "notifications": "Notifications",
       "tokens": "API Tokens",
       "general": "General",
-      "issue_types": "Task Types",
       "repositories": "Repositories",
       "github": "GitHub",
       "integrations": "Integrations",
@@ -189,7 +247,7 @@
   },
   "properties": {
     "title": "Properties",
-    "description": "Define typed custom properties for issues in this workspace. Values are set on each issue and are readable and writable by agents.",
+    "description": "Define typed custom properties for tasks in this workspace. Values are set on each task and are readable and writable by agents.",
     "search_placeholder": "Filter by name...",
     "new_property": "New property",
     "show_archived": "Show archived",
@@ -200,8 +258,8 @@
       "usage": "Used by",
       "updated": "Updated"
     },
-    "usage_count_one": "{{count}} issue",
-    "usage_count_other": "{{count}} issues",
+    "usage_count_one": "{{count}} task",
+    "usage_count_other": "{{count}} tasks",
     "loading": "Loading properties...",
     "empty": "No properties yet",
     "empty_hint": "Create typed fields like Severity or Environment — agents can read and write them with validation.",
@@ -247,7 +305,7 @@
     },
     "archive_dialog": {
       "title": "Archive property?",
-      "description": "\"{{name}}\" will be hidden from pickers and filters. Existing values on issues are preserved. You can restore it later.",
+      "description": "\"{{name}}\" will be hidden from pickers and filters. Existing values on tasks are preserved. You can restore it later.",
       "cancel": "Cancel",
       "confirm": "Archive property",
       "failed": "Couldn't archive property"
@@ -255,10 +313,9 @@
   },
   "labels": {
     "title": "Labels",
-    "description": "Manage the separate label catalogs used to organize issues, agents, and skills in this workspace.",
+    "description": "Manage the separate label catalogs used to organize tasks and skills in this workspace.",
     "scopes": {
-      "issue": "Issues",
-      "agent": "Agents",
+      "issue": "Tasks",
       "skill": "Skills"
     },
     "search_placeholder": "Filter by name or description...",
@@ -301,20 +358,14 @@
     }
   },
   "account": {
-    "section_profile": "Personal information",
+    "section_profile": "Profile",
     "avatar_label": "Avatar",
     "click_avatar_hint": "Click to upload avatar",
     "name_label": "Name",
-    "email_label": "Email",
-    "email_hint": "Your sign-in email is managed by your authentication provider.",
     "profile_description_label": "About you",
     "profile_description_hint": "Shared with agents working on your behalf — role, stack, preferences, anything you'd tell a new collaborator on day one.",
     "profile_description_placeholder": "e.g. Backend engineer (Go + Postgres). Prefer terse PRs and tests alongside the change.",
     "profile_description_too_long": "Profile is too long (max {{max}} characters; currently {{count}}).",
-    "section_connected_accounts": "Connected Accounts",
-    "github_not_connected": "Not connected",
-    "connect": "Connect",
-    "disconnect": "Disconnect",
     "save": "Update Profile",
     "saving": "Updating...",
     "toast_avatar_updated": "Avatar updated",
@@ -365,7 +416,7 @@
   },
   "tokens": {
     "title": "API Tokens",
-    "description": "Personal access tokens allow the CLI and external integrations to authenticate with your account. Use one via multica login --token, or as a Bearer token when calling the API.",
+    "description": "Personal access tokens allow the CLI and external integrations to authenticate with your account.",
     "security_note": "A token grants full access to your account — treat it like a password.",
     "empty": "No API tokens yet. Create one above to get started.",
     "load_failed": "Could not load your API tokens. Reload the page to try again.",
@@ -395,7 +446,7 @@
       "confirm": "Revoke"
     },
     "created_dialog": {
-      "title": "Personal access token created",
+      "title": "Token created",
       "warning_prefix": "Your new personal access token has been created. For security reasons, it is ",
       "warning_emphasis": "displayed only once",
       "warning_suffix": " — store it securely and never share it. A lost token cannot be recovered; revoke it and create a new one instead.",
@@ -407,7 +458,7 @@
     }
   },
   "workspace": {
-    "section_general": "Workspace details",
+    "section_general": "General",
     "logo_label": "Workspace logo",
     "change_logo_aria": "Change workspace logo",
     "click_logo_hint": "Click the logo to upload a new image",
@@ -498,8 +549,6 @@
     "feature_co_author_description_suffix": "to commits authored by agents.",
     "feature_auto_link_label": "Auto-link tasks and PRs",
     "feature_auto_link_description": "Match PR titles, bodies, and branch names against task identifiers and create the link automatically.",
-    "feature_auto_transitions_label": "Auto-transition task status",
-    "feature_auto_transitions_description": "Move tasks to 'In Review' when PRs open, and 'Done' when PRs merge.",
     "section_repositories": "Repositories",
     "repositories_shortcut_label": "Repository URLs live in the Repositories tab",
     "repositories_shortcut_link": "Manage repositories →",
@@ -507,7 +556,7 @@
   },
   "vcs": {
     "section_title": "Git providers (self-hosted)",
-    "page_description": "Connect a self-hosted Forgejo, Gitea, or GitLab instance to mirror pull requests onto issues. Each connection uses an access token; agents push branches and open PRs using the runtime's own Git credentials.",
+    "page_description": "Connect a self-hosted Forgejo, Gitea, or GitLab instance to mirror pull requests onto tasks. Each connection uses an access token; agents push branches and open PRs using the agent environment's own Git credentials.",
     "connect_title": "Connect a provider instance",
     "connected_as": "Connected as {{login}}",
     "form_provider_label": "Provider",
@@ -530,7 +579,7 @@
     "copied": "Copied to clipboard",
     "copy_failed": "Could not copy",
     "disconnect_confirm_title": "Disconnect this provider?",
-    "disconnect_confirm_description": "Mirrored pull requests and their issue links for this connection will be removed. This cannot be undone.",
+    "disconnect_confirm_description": "Mirrored pull requests and their task links for this connection will be removed. This cannot be undone.",
     "disconnect_confirm_cancel": "Cancel",
     "disconnect_confirm_action": "Disconnect",
     "toast_connected": "Provider connected",
@@ -743,18 +792,18 @@
     },
     "updates": {
       "title": "Updates",
-      "description": "Control automatic background updates or check for a new version manually.",
+      "description": "The desktop app checks for new versions automatically once an hour and shortly after launch, downloading them in the background. You'll be prompted to restart once an update is ready.",
       "current_version": "Current version",
       "automatic_updates_title": "Automatic background updates",
       "automatic_updates_description": "Check shortly after launch and every hour, then download available updates in the background.",
       "automatic_updates_save_failed": "Failed to save automatic update settings",
       "check_section_title": "Check for updates",
-      "check_section_description": "Check now regardless of your automatic update preference. Available updates download in the background and show a restart prompt when ready.",
+      "check_section_description": "Trigger a check now instead of waiting for the next automatic poll. Available updates download in the background and show a restart prompt when ready.",
       "up_to_date": "You're on the latest version.",
       "downloading": "v{{version}} is downloading in the background — you'll be notified when it's ready to install.",
+      "ready_to_install": "Update ready! Restart to install v{{version}}.",
       "check_now": "Check now",
-      "checking": "Checking…",
-      "ready_to_install": "Update ready! Restart to install v{{version}}."
+      "checking": "Checking…"
     }
   },
   "members": {

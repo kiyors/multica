@@ -1,6 +1,7 @@
 import type { Issue, IssueMetadata, IssueStatus, IssuePriority, IssueAssigneeType } from "./issue";
 import type { MemberRole } from "./workspace";
 import type { Project } from "./project";
+import type { IssuePropertyValues } from "./property";
 
 export interface IssueAssigneeInput {
   assignee_type: IssueAssigneeType;
@@ -23,7 +24,9 @@ export interface CreateIssueRequest {
   start_date?: string;
   due_date?: string;
   attachment_ids?: string[];
+  label_ids?: string[];
   assignees?: IssueAssigneeInput[];
+  properties?: IssuePropertyValues;
   issue_type_id?: string;
   milestone_id?: string;
 }
@@ -255,7 +258,7 @@ export type IssueTableScope =
   | { kind: "project"; project_id: string }
   | { kind: "assignee"; actor: IssueActorRef }
   | { kind: "creator"; actor: IssueActorRef }
-  | { kind: "my"; relation: "assigned" | "created" | "involved" | "any" };
+  | { kind: "my"; relation: "assigned" | "created" | "involved" | "approvals" | "any" };
 
 export interface IssueTableFilters {
   statuses?: IssueStatus[];

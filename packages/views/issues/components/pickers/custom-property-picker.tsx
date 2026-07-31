@@ -53,7 +53,7 @@ export function CustomPropertyValueEditor({
 }) {
   const setProperty = useSetIssueProperty();
   const unsetProperty = useUnsetIssueProperty();
-  const value = issue.properties[property.id];
+  const value = issue.properties?.[property.id];
   const onError = (error: unknown) =>
     toast.error(error instanceof Error ? error.message : String(error));
 

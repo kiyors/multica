@@ -47,8 +47,8 @@ function HostSetup() {
         <div className="w-full max-w-sm space-y-6">
           <div className="flex flex-col items-center space-y-2 text-center">
             <MulticaIcon bordered size="lg" />
-            <h1 className="text-2xl font-semibold tracking-tight">Connect to Server</h1>
-            <p className="text-sm text-muted-foreground">
+            <h1 className="text-display-sm font-semibold tracking-tight">Connect to Server</h1>
+            <p className="text-body text-muted-foreground">
               Enter the API URL of your Multica instance to get started.
             </p>
           </div>
@@ -63,7 +63,7 @@ function HostSetup() {
                 autoFocus
               />
             </div>
-            {error && <div className="text-sm text-destructive">{error}</div>}
+            {error && <div className="text-body text-destructive">{error}</div>}
             <Button type="submit" className="w-full" disabled={loading || !url.trim()}>
               {loading ? "Connecting..." : "Continue"}
             </Button>

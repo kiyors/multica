@@ -49,7 +49,7 @@ describe("AccessPicker bulk mode (hideFooter)", () => {
     const readyFn = vi.fn();
     render(<Harness onReadyChange={readyFn} />);
     const workspaceRadio = screen.getByRole("radio", {
-      name: /Entire workspace/,
+      name: /Public to workspace/,
     });
     fireEvent.click(workspaceRadio);
     expect(readyFn).toHaveBeenCalledWith(true, expect.objectContaining({
@@ -58,11 +58,11 @@ describe("AccessPicker bulk mode (hideFooter)", () => {
     }));
   });
 
-  it("clicking Specific people without selecting a member keeps onReadyChange(false)", () => {
+  it("clicking Public to specific people", () => {
     const readyFn = vi.fn();
     render(<Harness onReadyChange={readyFn} />);
     const membersRadio = screen.getByRole("radio", {
-      name: /Specific people/,
+      name: /Public to specific people/,
     });
     fireEvent.click(membersRadio);
     expect(readyFn).toHaveBeenCalledWith(false, undefined);
@@ -75,7 +75,7 @@ describe("AccessPicker bulk mode (hideFooter)", () => {
   it("does not re-notify the parent when re-rendered with a stable callback", () => {
     const readyFn = vi.fn();
     const { rerender } = render(<Harness onReadyChange={readyFn} />);
-    fireEvent.click(screen.getByRole("radio", { name: /Entire workspace/ }));
+    fireEvent.click(screen.getByRole("radio", { name: /Public to workspace/ }));
 
     const callsAfterSelect = readyFn.mock.calls.length;
     const changeAfterSelect = readyFn.mock.calls.at(-1)?.[1];

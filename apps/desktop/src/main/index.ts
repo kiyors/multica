@@ -63,10 +63,7 @@ import {
   type MainRendererMessageChannel,
 } from "../shared/main-renderer-messages";
 import { AuthSessionCoordinator } from "./auth-session-coordinator";
-import {
-  NotificationGate,
-  parseNativeNotificationPayload,
-} from "./notification-gate";
+import { installNavigationGuard } from "./navigation-guard";
 
 // Guards against registering the will-download handler more than once on the
 // same session. window.webContents.session is shared, and createWindow() can
@@ -142,7 +139,6 @@ const authSessionCoordinator = new AuthSessionCoordinator<BrowserWindow>(
     if (!window.isDestroyed()) window.close();
   },
 );
-const notificationGate = new NotificationGate();
 const mainRendererMessages = new MainRendererMessageQueue();
 let desktopInitialized = false;
 let authSessionGeneration = 0;
@@ -221,9 +217,10 @@ function handleDeepLink(url: string): void {
   try {
     const parsed = new URL(url);
     if (parsed.protocol !== `${PROTOCOL}:`) return;
+    const pathname = parsed.pathname.replace(/\/$/, "");
 
     // multica://auth/callback?token=<jwt>
-    if (parsed.hostname === "auth" && parsed.pathname === "/callback") {
+    if (parsed.hostname === "auth" && pathname === "/callback") {
       const token = parsed.searchParams.get("token");
       if (token) dispatchToMainRenderer("auth:token", token);
       return;
@@ -234,7 +231,7 @@ function handleDeepLink(url: string): void {
     // desktop app". The renderer opens the invite overlay — no tab, no
     // route persistence, so deep-linking the same invite twice stays safe.
     if (parsed.hostname === "invite") {
-      const id = parsed.pathname.replace(/^\//, "");
+      const id = pathname.replace(/^\//, "");
       if (id) dispatchToMainRenderer("invite:open", decodeURIComponent(id));
       return;
     }
@@ -656,9 +653,9 @@ if (!gotTheLock) {
     const window = ensureMainWindow();
     if (window) focusMainWindow(window);
 
-    // On Windows the deep link URL is the last argv entry
-    const deepLinkUrl = argv.find((arg) => arg.startsWith(`${PROTOCOL}://`));
-    if (deepLinkUrl) handleDeepLink(deepLinkUrl);
+    // On Windows the deep link URL is the last argv entry. Strip surrounding quotes if present.
+    const rawUrl = argv.find((arg) => arg.replace(/^"|"$/g, "").startsWith(`${PROTOCOL}://`));
+    if (rawUrl) handleDeepLink(rawUrl.replace(/^"|"$/g, ""));
   });
 
   // Windows/Linux cold-start deep links are safe to parse now. Delivery is
@@ -912,9 +909,9 @@ if (!gotTheLock) {
             issueKey,
           });
         });
-      });
-      notification.show();
-    });
+        notification.show();
+      },
+    );
 
     // IPC: update the dock / taskbar unread badge. Values above 99 render as
     // "99+". macOS is the primary target (user-visible dock badge); Linux

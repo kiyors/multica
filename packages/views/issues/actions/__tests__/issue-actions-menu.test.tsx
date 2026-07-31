@@ -181,7 +181,7 @@ describe("IssueActionsDropdown", () => {
     expect(screen.getByText("Open in new tab")).toBeInTheDocument();
     expect(screen.getByText("Copy link")).toBeInTheDocument();
     expect(screen.getByText("Relations")).toBeInTheDocument();
-    expect(screen.getByText("Delete issue")).toBeInTheDocument();
+    expect(screen.getByText("Delete task")).toBeInTheDocument();
     // Relationship actions are hidden inside the "Relations" submenu by default.
     expect(screen.queryByText("Create sub-issue")).not.toBeInTheDocument();
     expect(screen.queryByText("Set parent issue...")).not.toBeInTheDocument();
@@ -225,7 +225,7 @@ describe("IssueActionsDropdown", () => {
     fireEvent.click(screen.getByTestId("trigger"));
     fireEvent.click(await screen.findByText("Relations"));
 
-    expect(await screen.findByText("Remove parent issue")).toBeInTheDocument();
+    expect(await screen.findByText("Remove parent task")).toBeInTheDocument();
   });
 
   it("hides 'Remove parent issue' when the issue has no parent", async () => {
@@ -241,12 +241,12 @@ describe("IssueActionsDropdown", () => {
     fireEvent.click(screen.getByTestId("trigger"));
     fireEvent.click(await screen.findByText("Relations"));
 
-    // The sibling "Set parent issue..." proves the submenu opened.
-    expect(await screen.findByText("Set parent issue...")).toBeInTheDocument();
-    expect(screen.queryByText("Remove parent issue")).not.toBeInTheDocument();
+    // The sibling "Set parent task..." proves the submenu opened.
+    expect(await screen.findByText("Set parent task...")).toBeInTheDocument();
+    expect(screen.queryByText("Remove parent task")).not.toBeInTheDocument();
   });
 
-  it("clicking Delete issue opens the delete-confirm modal", async () => {
+  it("clicking Delete task opens the delete-confirm modal", async () => {
     render(
       wrap(
         <IssueActionsDropdown
@@ -258,7 +258,7 @@ describe("IssueActionsDropdown", () => {
     );
 
     fireEvent.click(screen.getByTestId("trigger"));
-    const del = await screen.findByText("Delete issue");
+    const del = await screen.findByText("Delete task");
     fireEvent.click(del);
 
     expect(mockOpenModal).toHaveBeenCalledWith("issue-delete-confirm", {
@@ -342,6 +342,6 @@ describe("IssueActionsContextMenu", () => {
     // The right-click surface is what list rows, board cards, gantt bars and
     // sub-issue rows all share, so this one assertion covers them together.
     expect(screen.getByText("Open in new tab")).toBeInTheDocument();
-    expect(screen.getByText("Delete issue")).toBeInTheDocument();
+    expect(screen.getByText("Delete task")).toBeInTheDocument();
   });
 });

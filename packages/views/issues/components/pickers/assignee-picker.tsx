@@ -10,7 +10,7 @@ import { useActorName } from "@multica/core/workspace/hooks";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { memberListOptions, agentListOptions, squadListOptions, assigneeFrequencyOptions } from "@multica/core/workspace/queries";
 import { ActorAvatar } from "../../../common/actor-avatar";
-import { ActorAvatarStack } from "../../../common/actor-avatar-stack";
+import { DeferredPopup } from "../../../common/deferred-popup";
 import {
   PropertyPicker,
   PickerItem,
@@ -39,21 +39,9 @@ export function canAssignAgent(
   }).allowed;
 }
 
-export function AssigneePicker({
-  assigneeType,
-  assigneeId,
-  assignees,
-  mixed = false,
-  onUpdate,
-  trigger: customTrigger,
-  triggerRender,
-  open: controlledOpen,
-  onOpenChange: controlledOnOpenChange,
-  align,
-}: {
-  assigneeType?: IssueAssigneeType | null;
-  assigneeId?: string | null;
-  assignees?: { type: IssueAssigneeType; id: string }[];
+interface AssigneePickerProps {
+  assigneeType: IssueAssigneeType | null;
+  assigneeId: string | null;
   /**
    * `true` when a batch selection spans different assignees ("mixed"): no row
    * is checked, including the unassigned row. Distinct from `assigneeType` /
@@ -149,37 +137,11 @@ function AssigneePickerImpl({
     .filter((s) => !s.archived_at && (s.name.toLowerCase().includes(query) || matchesPinyin(s.name, query)))
     .sort((a, b) => getFreq("squad", b.id) - getFreq("squad", a.id));
 
-  const isSelected = (type: string, id: string) => {
-    if (assignees !== undefined) {
-      return assignees.some((a) => a.type === type && a.id === id);
-    }
-    return assigneeType === type && assigneeId === id;
-  };
+  const isSelected = (type: string, id: string) =>
+    assigneeType === type && assigneeId === id;
 
-  const handleToggle = (type: IssueAssigneeType, id: string) => {
-    if (assignees !== undefined) {
-      const exists = assignees.some((a) => a.type === type && a.id === id);
-      const next = exists
-        ? assignees.filter((a) => !(a.type === type && a.id === id))
-        : [...assignees, { type, id }];
-      onUpdate({
-        assignee_type: next.length > 0 ? next[0]!.type : null,
-        assignee_id: next.length > 0 ? next[0]!.id : null,
-        assignees: next.map((a) => ({ assignee_type: a.type, assignee_id: a.id })),
-      });
-      // Do not close popover for multi-select
-    } else {
-      onUpdate({
-        assignee_type: type,
-        assignee_id: id,
-      });
-      setOpen(false);
-    }
-  };
-
-  const triggerLabel = assignees && assignees.length > 0
-    ? assignees.length === 1 ? getActorName(assignees[0]!.type, assignees[0]!.id) : `${assignees.length} assignees`
-    : assigneeType && assigneeId
+  const triggerLabel =
+    assigneeType && assigneeId
       ? getActorName(assigneeType, assigneeId)
       : t(($) => $.pickers.assignee.trigger_unassigned);
 
@@ -197,12 +159,7 @@ function AssigneePickerImpl({
       onSearchChange={setFilter}
       triggerRender={triggerRender}
       trigger={
-        customTrigger ? customTrigger : assignees && assignees.length > 0 ? (
-          <>
-            <ActorAvatarStack actors={assignees} size={18} />
-            <span className="truncate">{triggerLabel}</span>
-          </>
-        ) : assigneeType && assigneeId ? (
+        customTrigger ? customTrigger : assigneeType && assigneeId ? (
           <>
             <ActorAvatar actorType={assigneeType} actorId={assigneeId} size="sm" enableHoverCard showStatusDot />
             <span className="truncate">{triggerLabel}</span>
@@ -215,15 +172,10 @@ function AssigneePickerImpl({
       {/* Unassigned option — hidden when search is active */}
       {!query && (
         <PickerItem
-          selected={assignees ? assignees.length === 0 : (!mixed && !assigneeType && !assigneeId)}
+          selected={!mixed && !assigneeType && !assigneeId}
           onClick={() => {
-            if (assignees !== undefined) {
-              onUpdate({ assignees: [] });
-              setOpen(false);
-            } else {
-              onUpdate({ assignee_type: null, assignee_id: null });
-              setOpen(false);
-            }
+            onUpdate({ assignee_type: null, assignee_id: null });
+            setOpen(false);
           }}
         >
           <UserMinus className="h-3.5 w-3.5 text-muted-foreground" />
@@ -238,7 +190,13 @@ function AssigneePickerImpl({
             <PickerItem
               key={m.user_id}
               selected={isSelected("member", m.user_id)}
-              onClick={() => handleToggle("member", m.user_id)}
+              onClick={() => {
+                onUpdate({
+                  assignee_type: "member",
+                  assignee_id: m.user_id,
+                });
+                setOpen(false);
+              }}
             >
               <ActorAvatar actorType="member" actorId={m.user_id} size="sm" />
               <span className="truncate">{m.name}</span>
@@ -269,7 +227,11 @@ function AssigneePickerImpl({
                 tooltip={!allowed ? decision.message : undefined}
                 onClick={() => {
                   if (!allowed) return;
-                  handleToggle("agent", a.id);
+                  onUpdate({
+                    assignee_type: "agent",
+                    assignee_id: a.id,
+                  });
+                  setOpen(false);
                 }}
               >
                 <ActorAvatar actorType="agent" actorId={a.id} size="sm" showStatusDot />
@@ -291,7 +253,13 @@ function AssigneePickerImpl({
             <PickerItem
               key={s.id}
               selected={isSelected("squad", s.id)}
-              onClick={() => handleToggle("squad", s.id)}
+              onClick={() => {
+                onUpdate({
+                  assignee_type: "squad",
+                  assignee_id: s.id,
+                });
+                setOpen(false);
+              }}
             >
               <ActorAvatar actorType="squad" actorId={s.id} size="sm" />
               <span className="truncate">{s.name}</span>

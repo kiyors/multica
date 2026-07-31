@@ -6,7 +6,6 @@ import type { Agent, MemberWithUser, Squad } from "../types";
 import { useWorkspaceId } from "../hooks";
 import { memberListOptions, agentListOptions, squadListOptions } from "./queries";
 import { resolvePublicFileUrl } from "./avatar-url";
-import type { MemberWithUser } from "../types";
 
 export function findMemberByActorId(
   members: MemberWithUser[],

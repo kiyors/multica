@@ -171,7 +171,7 @@ describe("WorkspaceAgentActivityHoverContent", () => {
         />,
     );
 
-    expect(screen.getByText("3 issues · 4 tasks")).toBeInTheDocument();
+    expect(screen.getByText("3 tasks · 4 tasks")).toBeInTheDocument();
     // Rows group under their issue, mirroring what clicking the chip does.
     expect(screen.getByText("MUL-4879")).toBeInTheDocument();
     expect(screen.getByText("Counting logic looks wrong")).toBeInTheDocument();
@@ -193,7 +193,7 @@ describe("WorkspaceAgentActivityHoverContent", () => {
     );
 
     expect(screen.queryByText(/not counted/)).not.toBeInTheDocument();
-    expect(screen.getByText("1 issue · 1 task")).toBeInTheDocument();
+    expect(screen.getByText("1 task · 1 task")).toBeInTheDocument();
   });
 
   it("falls back to the agent-worded empty copy when nothing is counted", () => {
@@ -205,7 +205,7 @@ describe("WorkspaceAgentActivityHoverContent", () => {
       />,
     );
 
-    expect(screen.getByText("No agents working right now")).toBeInTheDocument();
+    expect(screen.getByText("No agents currently working")).toBeInTheDocument();
     expect(screen.queryByText(/not counted/)).not.toBeInTheDocument();
   });
 
