@@ -219,7 +219,9 @@
       "labels": "Labels",
       "project": "Project",
       "due_date": "Due date",
-      "start_date": "Start date"
+      "start_date": "Start date",
+      "issue_type": "Issue Type",
+      "milestone": "Milestone"
     }
   },
   "page": {

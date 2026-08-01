@@ -179,6 +179,8 @@
     "set_assignee": "Set assignee...",
     "set_labels": "Set labels...",
     "set_project": "Set project...",
+    "set_issue_type": "Set issue type...",
+    "set_milestone": "Set milestone...",
     "customize_fields": "Customize fields...",
     "custom_properties": "Custom properties",
     "remove_parent": "Remove parent",

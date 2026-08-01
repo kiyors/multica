@@ -52,6 +52,7 @@ export interface IssueCreateManual {
   assigneeId?: string;
   assignees?: { type: IssueAssigneeType; id: string }[];
   issueTypeId: string | null;
+  milestoneId: string | null;
   startDate: string | null;
   dueDate: string | null;
   /** Label IDs chosen in the create dialog. Attached to the issue right
@@ -89,6 +90,7 @@ const emptyManual = (): IssueCreateManual => ({
   assigneeId: undefined,
   assignees: [],
   issueTypeId: null,
+  milestoneId: null,
   startDate: null,
   dueDate: null,
   labelIds: [],

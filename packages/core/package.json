@@ -62,6 +62,7 @@
     "./notification-preferences/mutations": "./notification-preferences/mutations.ts",
     "./projects/members": "./projects/members.ts",
     "./milestones": "./milestones/index.ts",
+    "./milestones/queries": "./milestones/queries.ts",
     "./documents": "./documents/index.ts",
     "./chat": "./chat/index.ts",
     "./chat/queries": "./chat/queries.ts",

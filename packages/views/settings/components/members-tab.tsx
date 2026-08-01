@@ -42,6 +42,7 @@ import { useWorkspaceId } from "@multica/core/hooks";
 import { useCurrentWorkspace } from "@multica/core/paths";
 import { memberListOptions, invitationListOptions, workspaceKeys } from "@multica/core/workspace/queries";
 import { api } from "@multica/core/api";
+import { useModalStore } from "@multica/core/modals";
 import { useT } from "../../i18n";
 import { SettingsCard, SettingsSection, SettingsTab } from "./settings-layout";
 
@@ -81,6 +82,7 @@ function MemberRow({
   busy,
   onRoleChange,
   onRemove,
+  onBulkAssign,
 }: {
   member: MemberWithUser;
   canManage: boolean;
@@ -92,6 +94,7 @@ function MemberRow({
   busy: boolean;
   onRoleChange: (role: MemberRole) => void;
   onRemove: () => void;
+  onBulkAssign: () => void;
 }) {
   const { t } = useT("settings");
   const roleConfig = useRoleLabels();
@@ -165,6 +168,13 @@ function MemberRow({
               </DropdownMenuSub>
             )}
             {canEditRole && canRemove && <DropdownMenuSeparator />}
+            {canEditRole && (
+              <DropdownMenuItem onClick={onBulkAssign}>
+                <Plus className="h-3.5 w-3.5" />
+                Assign to Projects/Squads
+              </DropdownMenuItem>
+            )}
+            {canEditRole && canRemove && <DropdownMenuSeparator />}
             {canRemove && (
               <DropdownMenuItem variant="destructive" onClick={onRemove}>
                 <UserMinus className="h-3.5 w-3.5" />
@@ -236,6 +246,7 @@ export function MembersTab() {
   const wsId = useWorkspaceId();
   const { data: members = [] } = useQuery(memberListOptions(wsId));
   const { data: invitations = [] } = useQuery(invitationListOptions(wsId));
+  const openModal = useModalStore((s) => s.open);
 
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<MemberRole>("member");
@@ -396,6 +407,7 @@ export function MembersTab() {
                   busy={memberActionId === m.id}
                   onRoleChange={(role) => handleRoleChange(m.id, role)}
                   onRemove={() => handleRemoveMember(m)}
+                  onBulkAssign={() => openModal("member-bulk-assign", { member: m })}
                 />
               </div>
             ))}

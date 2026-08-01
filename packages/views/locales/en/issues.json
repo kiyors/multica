@@ -291,6 +291,8 @@
     "prop_due_date": "Due date",
     "prop_project": "Project",
     "prop_labels": "Labels",
+    "prop_issue_type": "Type",
+    "prop_milestone": "Milestone",
     "add_property_action": "Add property",
     "prop_created_by": "Created by",
     "prop_created": "Created",

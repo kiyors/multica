@@ -25,7 +25,7 @@
 
 ---
 
-### 2. Big Calendar View Integration
+### 2. Big Calendar View Integration (Completed)
 
 **Context:** We need a "proper big calendar view" to visualize issues by their start and due dates. We currently use `@base-ui/react` and `shadcn/ui` (ZCN) components, including `react-day-picker` for small popovers, but need a full-screen calendar for the main Views section.
 
@@ -59,7 +59,7 @@
 
 ---
 
-### 4. Issue Quick Filters (Assignee & Time-based Tabs)
+### 4. Issue Quick Filters (Assignee & Time-based Tabs) (Completed)
 
 **Context:** Users need a faster way to toggle visibility of tasks on the kanban/issue surface without digging through the dropdown filters. We will add a quick-toggle toolbar.
 
@@ -83,7 +83,7 @@
 
 ---
 
-### 5. Distinct URLs for Project Tabs (Documents, Milestones, Settings)
+### 5. Distinct URLs for Project Tabs (Documents, Milestones, Settings) (Completed)
 
 **Context:** Currently, navigating between Project subsections (Documents, Milestones, Settings) operates on local React state. If a user refreshes the page while reading a document or viewing a milestone, the local state resets and they are dropped back onto the main Project Kanban board.
 
@@ -103,7 +103,7 @@
 
 ---
 
-### 6. Admin Member Management: Bulk Assignment
+### 6. Admin Member Management: Bulk Assignment (Completed)
 
 **Context:** In the Workspace Settings > Members view, admins currently manage members individually. We need a way to easily add a person to multiple projects and squads at once.
 
@@ -119,6 +119,18 @@
 ---
 
 ## Fixes
+
+### 7. Gantt View in Tasks
+**Context:** The user requested a Gantt view to visualize all tasks across projects in a timeline format.
+**Status:** Pending
+
+### 8. Global Date Filter Support & Fixes
+**Context:** Currently, the date filter is only available in "All Tasks". We need to add it inside the "Project" and "My Tasks" views as well. Additionally, the functionality is a little broken when selecting a date and range, which needs fixing.
+**Status:** Pending
+
+### 9. Issue Types and Milestones in Create Issue Modal (Completed)
+**Context:** Add fields to select Issue Types and Milestones when creating or editing a task.
+**Status:** Completed
 
 ### 1. ~~Windows Desktop App Login Fix~~ (Completed)
 

@@ -13,7 +13,9 @@ export type ManualCreateField =
   | "labels"
   | "project"
   | "due_date"
-  | "start_date";
+  | "start_date"
+  | "issue_type"
+  | "milestone";
 
 // Canonical field order — the settings tab renders rows in this order and
 // setters normalize persisted arrays against it, so a toggle sequence never
@@ -27,6 +29,8 @@ export const MANUAL_CREATE_FIELDS: ManualCreateField[] = [
   "project",
   "due_date",
   "start_date",
+  "issue_type",
+  "milestone",
 ];
 
 export const DEFAULT_QUICK_CREATE_FIELDS: QuickCreateField[] = ["project"];
@@ -38,6 +42,8 @@ export const DEFAULT_MANUAL_CREATE_FIELDS: ManualCreateField[] = [
   "assignee",
   "labels",
   "project",
+  "issue_type",
+  "milestone",
 ];
 
 // Which optional fields each create-issue mode keeps on its toolbar. Owned by

@@ -6,6 +6,7 @@ import { useDefaultLayout, usePanelRef } from "react-resizable-panels";
 import { AppLink, useBackOrReplace } from "../../navigation";
 import {
   Archive,
+  Box,
   Calendar,
   CalendarClock,
   CalendarDays,
@@ -19,6 +20,7 @@ import {
   Pin,
   PinOff,
   Plus,
+  Target,
   SlidersHorizontal,
   Tag,
   Unlink,
@@ -57,7 +59,7 @@ import { STATUS_CONFIG, PRIORITY_CONFIG } from "@multica/core/issues/config";
 import { formatDateOnly, isPastDateOnly } from "@multica/core/issues/date";
 import { useUpdateIssue } from "@multica/core/issues/mutations";
 import { toast } from "sonner";
-import { StatusIcon, PriorityIcon, StatusPicker, PriorityPicker, StagePicker, StartDatePicker, DueDatePicker, AssigneePicker, LabelPicker } from ".";
+import { StatusIcon, PriorityIcon, StatusPicker, PriorityPicker, StagePicker, StartDatePicker, DueDatePicker, AssigneePicker, LabelPicker, IssueTypePicker, MilestonePicker } from ".";
 import { maxSiblingStage } from "./pickers/stage-picker";
 import { CustomPropertyValueEditor, CustomPropertyValueDisplay } from "./pickers/custom-property-picker";
 import { Switch } from "@multica/ui/components/ui/switch";
@@ -335,7 +337,7 @@ const EMPTY_REPLIES: TimelineEntry[] = [];
 // its row and add-property entry are gated on `issue.parent_issue_id` at the
 // render site below — it stays in this list so seeding/visibility flow through
 // the same machinery as the other optional props.
-const OPTIONAL_PROP_KEYS = ["priority", "stage", "start_date", "due_date", "labels"] as const;
+const OPTIONAL_PROP_KEYS = ["priority", "stage", "start_date", "due_date", "labels", "issue_type", "milestone"] as const;
 type OptionalPropKey = (typeof OPTIONAL_PROP_KEYS)[number];
 
 function isOptionalPropSet(
@@ -354,6 +356,10 @@ function isOptionalPropSet(
       return !!issue.due_date;
     case "labels":
       return attachedLabelsCount > 0;
+    case "issue_type":
+      return !!issue.issue_type_id;
+    case "milestone":
+      return !!issue.milestone_id;
   }
 }
 
@@ -1894,6 +1900,28 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
               />
             </PropRow>
           )}
+          {visibleOptionalProps.has("issue_type") && (
+            <PropRow label={t(($) => $.detail.prop_issue_type)}>
+              <IssueTypePicker
+                issueTypeId={issue.issue_type_id ?? null}
+                projectId={issue.project_id ?? null}
+                onUpdate={handleUpdateField}
+                align="start"
+                open={autoOpenProp === "issue_type" ? true : undefined}
+              />
+            </PropRow>
+          )}
+          {visibleOptionalProps.has("milestone") && (
+            <PropRow label={t(($) => $.detail.prop_milestone)}>
+              <MilestonePicker
+                milestoneId={issue.milestone_id ?? null}
+                projectId={issue.project_id ?? null}
+                onUpdate={handleUpdateField}
+                align="start"
+                open={autoOpenProp === "milestone" ? true : undefined}
+              />
+            </PropRow>
+          )}
 
           {/* Custom properties — same progressive disclosure as the
               built-in optional props: a row renders when the issue has a
@@ -1964,12 +1992,20 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
                       {k === "labels" && (
                         <Tag className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                       )}
+                      {k === "issue_type" && (
+                        <Box className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                      )}
+                      {k === "milestone" && (
+                        <Target className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                      )}
                       <span className="truncate">
                         {k === "priority" && t(($) => $.detail.prop_priority)}
                         {k === "stage" && t(($) => $.detail.prop_stage)}
                         {k === "start_date" && t(($) => $.detail.prop_start_date)}
                         {k === "due_date" && t(($) => $.detail.prop_due_date)}
                         {k === "labels" && t(($) => $.detail.prop_labels)}
+                        {k === "issue_type" && t(($) => $.detail.prop_issue_type)}
+                        {k === "milestone" && t(($) => $.detail.prop_milestone)}
                       </span>
                     </button>
                   ))}

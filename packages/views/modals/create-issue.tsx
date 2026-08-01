@@ -20,6 +20,8 @@ import {
   Settings2,
   Shapes,
   Tag,
+  Target,
+  Box,
   X as XIcon,
 } from "lucide-react";
 import { cn } from "@multica/ui/lib/utils";
@@ -53,7 +55,19 @@ import { ContentEditor, type ContentEditorRef, TitleEditor, type TitleEditorRef,
 import { useIssueCreateUploads } from "./use-issue-create-uploads";
 import { useShortcut } from "@multica/core/shortcuts";
 import { ShortcutKeycaps } from "../common/shortcut-keycaps";
-import { StatusIcon, StatusPicker, PriorityIcon, PriorityPicker, StagePicker, AssigneePicker, StartDatePicker, DueDatePicker, LabelPicker } from "../issues/components";
+import {
+  StatusIcon,
+  StatusPicker,
+  PriorityIcon,
+  PriorityPicker,
+  StagePicker,
+  AssigneePicker,
+  StartDatePicker,
+  DueDatePicker,
+  IssueTypePicker,
+  MilestonePicker,
+  LabelPicker,
+} from "../issues/components";
 import { maxSiblingStage } from "../issues/components/pickers/stage-picker";
 import { ProjectPicker } from "../projects/components/project-picker";
 import { useIssueTriggerPreview } from "../issues/hooks/use-issue-trigger-preview";
@@ -248,6 +262,12 @@ export function ManualCreatePanel({
     }
     return draft.manual.assigneeId;
   });
+  const [issueTypeId, setIssueTypeId] = useState<string | null>(
+    (data?.issue_type_id as string | undefined) ?? draft.manual.issueTypeId,
+  );
+  const [milestoneId, setMilestoneId] = useState<string | null>(
+    (data?.milestone_id as string | undefined) ?? draft.manual.milestoneId,
+  );
   const [startDate, setStartDate] = useState<string | null>(draft.manual.startDate);
   const [dueDate, setDueDate] = useState<string | null>(
     (data?.due_date as string | undefined) ?? draft.shared.dueDate,
@@ -357,7 +377,12 @@ export function ManualCreatePanel({
     setAssigneeType(type); setAssigneeId(id);
     setManual({ assigneeType: type, assigneeId: id });
   };
-  const updateProject = (id?: string) => { setProjectId(id); setShared({ projectId: id }); };
+  const updateProject = (id?: string) => { 
+    setProjectId(id); 
+    setShared({ projectId: id });
+    setIssueTypeId(null);
+    setMilestoneId(null);
+  };
   const updateStartDate = (v: string | null) => { setStartDate(v); setManual({ startDate: v }); };
   const updateDueDate = (v: string | null) => { setDueDate(v); setShared({ dueDate: v }); };
   const updateLabelIds = (ids: string[]) => { setLabelIds(ids); setManual({ labelIds: ids }); };
@@ -379,6 +404,8 @@ export function ManualCreatePanel({
     assignee: manualFields.includes("assignee") || assigneeId != null || fieldPickerOpen === "assignee",
     labels: manualFields.includes("labels") || labelIds.length > 0 || fieldPickerOpen === "labels",
     project: manualFields.includes("project") || projectId != null || fieldPickerOpen === "project",
+    issue_type: manualFields.includes("issue_type") || issueTypeId != null || fieldPickerOpen === "issue_type",
+    milestone: manualFields.includes("milestone") || milestoneId != null || fieldPickerOpen === "milestone",
     due_date: manualFields.includes("due_date") || dueDate !== null || dueDatePickerOpen,
     start_date: manualFields.includes("start_date") || startDate !== null || startDatePickerOpen,
   };
@@ -405,6 +432,8 @@ export function ManualCreatePanel({
     setPropertyValues({});
     setCustomPropertyPickerId(null);
     setProjectId(undefined);
+    setIssueTypeId(null);
+    setMilestoneId(null);
     setParentIssueId(undefined);
     setStage(null);
     setChildIssues([]);
@@ -416,6 +445,8 @@ export function ManualCreatePanel({
       status: "todo",
       assigneeType,
       assigneeId,
+      issueTypeId: null,
+      milestoneId: null,
       startDate: null,
       labelIds: [],
       propertyValues: {},
@@ -472,6 +503,8 @@ export function ManualCreatePanel({
         priority,
         assignee_type: assigneeType,
         assignee_id: assigneeId,
+        issue_type_id: issueTypeId || undefined,
+        milestone_id: milestoneId || undefined,
         start_date: startDate || undefined,
         due_date: dueDate || undefined,
         attachment_ids: activeAttachmentIds.length > 0 ? activeAttachmentIds : undefined,
@@ -950,6 +983,32 @@ export function ManualCreatePanel({
                 />
               )}
 
+              {/* Issue Type */}
+              {showField.issue_type && (
+                <IssueTypePicker
+                  issueTypeId={issueTypeId ?? null}
+                  projectId={projectId ?? null}
+                  onUpdate={(u: { issue_type_id: string | null }) => setIssueTypeId(u.issue_type_id ?? null)}
+                  triggerRender={<PillButton />}
+                  align="start"
+                  open={fieldPickerOpen === "issue_type" ? true : undefined}
+                  onOpenChange={(open: boolean) => setFieldPickerOpen(open ? "issue_type" : null)}
+                />
+              )}
+
+              {/* Milestone */}
+              {showField.milestone && (
+                <MilestonePicker
+                  milestoneId={milestoneId ?? null}
+                  projectId={projectId ?? null}
+                  onUpdate={(u: { milestone_id: string | null }) => setMilestoneId(u.milestone_id ?? null)}
+                  triggerRender={<PillButton />}
+                  align="start"
+                  open={fieldPickerOpen === "milestone" ? true : undefined}
+                  onOpenChange={(open: boolean) => setFieldPickerOpen(open ? "milestone" : null)}
+                />
+              )}
+
               {/* Stage — only relevant when creating a sub-issue under a parent */}
               {parentIssueId && (
                 <StagePicker
@@ -1120,6 +1179,18 @@ export function ManualCreatePanel({
                     <DropdownMenuItem onClick={() => setFieldPickerOpen("project")}>
                       <FolderKanban className="h-3.5 w-3.5" />
                       {t(($) => $.create_issue.set_project)}
+                    </DropdownMenuItem>
+                  )}
+                  {!showField.issue_type && (
+                    <DropdownMenuItem onClick={() => setFieldPickerOpen("issue_type")}>
+                      <Box className="h-3.5 w-3.5" />
+                      {t(($) => $.create_issue.set_issue_type)}
+                    </DropdownMenuItem>
+                  )}
+                  {!showField.milestone && (
+                    <DropdownMenuItem onClick={() => setFieldPickerOpen("milestone")}>
+                      <Target className="h-3.5 w-3.5" />
+                      {t(($) => $.create_issue.set_milestone)}
                     </DropdownMenuItem>
                   )}
                   {!showField.due_date && (
