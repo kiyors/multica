@@ -130,7 +130,7 @@ func (q *Queries) GetMemberByUserAndWorkspace(ctx context.Context, arg GetMember
 }
 
 const getWorkspaceAndMemberBySlug = `-- name: GetWorkspaceAndMemberBySlug :one
-SELECT w.id, w.name, w.slug, w.description, w.settings, w.created_at, w.updated_at, w.context, w.repos, w.issue_prefix, w.issue_counter, w.avatar_url, m.id, m.workspace_id, m.user_id, m.role, m.created_at
+SELECT w.id, w.name, w.slug, w.description, w.settings, w.created_at, w.updated_at, w.context, w.repos, w.issue_prefix, w.issue_counter, w.avatar_url, w.attribution_fail_closed, m.id, m.workspace_id, m.user_id, m.role, m.created_at
 FROM workspace w
 JOIN member m ON m.workspace_id = w.id AND m.user_id = $2
 WHERE w.slug = $1
@@ -166,6 +166,7 @@ func (q *Queries) GetWorkspaceAndMemberBySlug(ctx context.Context, arg GetWorksp
 		&i.Workspace.IssuePrefix,
 		&i.Workspace.IssueCounter,
 		&i.Workspace.AvatarUrl,
+		&i.Workspace.AttributionFailClosed,
 		&i.Member.ID,
 		&i.Member.WorkspaceID,
 		&i.Member.UserID,

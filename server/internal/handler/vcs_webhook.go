@@ -231,10 +231,9 @@ func (h *Handler) mirrorVCSPullRequest(ctx context.Context, conn db.VcsConnectio
 	}
 	// Freeze close_intent once the terminal merge/close event has arrived.
 	preserveCloseIntent := !ev.Terminal() && (ev.State == "merged" || ev.State == "closed")
-	prefix := h.getIssuePrefix(ctx, conn.WorkspaceID)
 	reevalIssues := make([]db.Issue, 0, len(idents))
 	for _, id := range idents {
-		issue, ok := h.lookupIssueByIdentifier(ctx, conn.WorkspaceID, prefix, id)
+		issue, ok := h.lookupIssueByIdentifier(ctx, conn.WorkspaceID, id)
 		if !ok {
 			continue
 		}
@@ -269,7 +268,7 @@ func (h *Handler) mirrorVCSPullRequest(ctx context.Context, conn db.VcsConnectio
 				continue
 			}
 			if counts.OpenCount == 0 && counts.MergedWithCloseIntentCount > 0 {
-				h.advanceIssueToDone(ctx, issue, workspaceID)
+				h.advanceIssueStatus(ctx, issue, workspaceID, "done", "vcs_pr_merged")
 			}
 		}
 	}

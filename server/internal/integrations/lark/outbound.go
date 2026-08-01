@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/kiyors/multica/server/internal/events"
+	"github.com/kiyors/multica/server/internal/integrations/channel/engine"
 	db "github.com/kiyors/multica/server/pkg/db/generated"
 	"github.com/kiyors/multica/server/pkg/protocol"
 )

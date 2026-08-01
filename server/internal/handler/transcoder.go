@@ -98,7 +98,7 @@ func (h *Handler) processVideoAsync(assetID pgtype.UUID, fileKey string) {
 
 	hlsDir := filepath.Join(tmpDir, "hls")
 	os.Mkdir(hlsDir, 0755)
-	
+
 	// Create resolution folders
 	os.Mkdir(filepath.Join(hlsDir, "720p"), 0755)
 	os.Mkdir(filepath.Join(hlsDir, "480p"), 0755)
@@ -133,8 +133,8 @@ func (h *Handler) processVideoAsync(assetID pgtype.UUID, fileKey string) {
 		varStreamMap = "v:0,a:0 v:1,a:1"
 	}
 	ffmpegArgs = append(ffmpegArgs, "-var_stream_map", varStreamMap)
-	
-	ffmpegArgs = append(ffmpegArgs, 
+
+	ffmpegArgs = append(ffmpegArgs,
 		"-hls_segment_filename", filepath.Join(hlsDir, "%v", "seg_%03d.ts"),
 		filepath.Join(hlsDir, "%v", "playlist.m3u8"),
 	)
@@ -154,7 +154,7 @@ func (h *Handler) processVideoAsync(assetID pgtype.UUID, fileKey string) {
 
 	baseKey := "reviews/" + util.UUIDToString(assetID)
 	masterM3u8Key := baseKey + "/hls/master.m3u8"
-	
+
 	// Upload HLS
 	filepath.Walk(hlsDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil || info.IsDir() {
@@ -162,17 +162,17 @@ func (h *Handler) processVideoAsync(assetID pgtype.UUID, fileKey string) {
 		}
 		rel, _ := filepath.Rel(hlsDir, path)
 		s3Key := baseKey + "/hls/" + rel
-		
+
 		data, err := os.ReadFile(path)
 		if err != nil {
 			return nil
 		}
-		
+
 		contentType := "video/MP2T"
 		if strings.HasSuffix(path, ".m3u8") {
 			contentType = "application/vnd.apple.mpegurl"
 		}
-		
+
 		h.Storage.Upload(context.Background(), s3Key, data, contentType, info.Name())
 		return nil
 	})
@@ -188,11 +188,11 @@ func (h *Handler) processVideoAsync(assetID pgtype.UUID, fileKey string) {
 	// Update Database
 	ctx := context.Background()
 	params := db.UpdateReviewAssetMetadataParams{
-		ID:        assetID,
-		FileUrl:   masterM3u8Key,
-		Width:     pgtype.Int4{Int32: meta.Width, Valid: meta.Width > 0},
-		Height:    pgtype.Int4{Int32: meta.Height, Valid: meta.Height > 0},
-		Duration:  pgtype.Float4{Float32: meta.Duration, Valid: meta.Duration > 0},
+		ID:       assetID,
+		FileUrl:  masterM3u8Key,
+		Width:    pgtype.Int4{Int32: meta.Width, Valid: meta.Width > 0},
+		Height:   pgtype.Int4{Int32: meta.Height, Valid: meta.Height > 0},
+		Duration: pgtype.Float4{Float32: meta.Duration, Valid: meta.Duration > 0},
 	}
 	if thumbKey != nil {
 		params.ThumbnailUrl = pgtype.Text{String: *thumbKey, Valid: true}

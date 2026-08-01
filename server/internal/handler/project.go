@@ -16,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/kiyors/multica/server/internal/logger"
 	"github.com/kiyors/multica/server/internal/middleware"
+	"github.com/kiyors/multica/server/internal/util"
 	db "github.com/kiyors/multica/server/pkg/db/generated"
 	"github.com/kiyors/multica/server/pkg/protocol"
 )
@@ -109,6 +110,8 @@ type CreateProjectRequest struct {
 	LeadType    *string                               `json:"lead_type"`
 	LeadID      *string                               `json:"lead_id"`
 	Prefix      *string                               `json:"prefix"`
+	StartDate   *string                               `json:"start_date"`
+	DueDate     *string                               `json:"due_date"`
 	Resources   []CreateProjectResourceRequestPayload `json:"resources,omitempty"`
 }
 
@@ -394,6 +397,8 @@ func (h *Handler) CreateProject(w http.ResponseWriter, r *http.Request) {
 		LeadID:      leadID,
 		Priority:    priority,
 		Prefix:      ptrToText(req.Prefix),
+		StartDate:   startDate,
+		DueDate:     dueDate,
 	}
 
 	// Without resources, keep the simple non-tx path.

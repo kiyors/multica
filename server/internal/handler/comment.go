@@ -41,6 +41,7 @@ type CommentResponse struct {
 	ReviewPageIndex *int32               `json:"review_page_index,omitempty"`
 	ReviewStartTime *float32             `json:"review_start_time,omitempty"`
 	ReviewEndTime   *float32             `json:"review_end_time,omitempty"`
+	QuickActionID   *string              `json:"quick_action_id,omitempty"`
 	Reactions       []ReactionResponse   `json:"reactions"`
 	Attachments     []AttachmentResponse `json:"attachments"`
 	// Orientation stats — populated only on the roots_only path and omitted in
@@ -112,6 +113,7 @@ func commentToResponse(c db.Comment, reactions []ReactionResponse, attachments [
 		ReviewPageIndex: int4ToPtr(c.ReviewPageIndex),
 		ReviewStartTime: float4ToPtr(c.ReviewStartTime),
 		ReviewEndTime:   float4ToPtr(c.ReviewEndTime),
+		QuickActionID:   uuidToPtr(c.QuickActionID),
 		Reactions:       reactions,
 		Attachments:     attachments,
 	}

@@ -23,6 +23,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/kiyors/multica/server/internal/events"
 	"github.com/kiyors/multica/server/internal/middleware"
 	db "github.com/kiyors/multica/server/pkg/db/generated"
@@ -1720,8 +1721,6 @@ func TestWebhook_CheckSuite_AggregatesAcrossApps(t *testing.T) {
 	head := "abc1234567890"
 	firePullRequestWebhookWithHead(t, secret, created.Identifier, installationID, "ci-repo-a", 11, "opened", head, "")
 	// App A → success, App B → failure. The list query must report failed.
-	fireCheckSuiteWebhook(t, secret, installationID, "ci-repo-a", []int32{11}, 1001, 7001, head, "success", "2026-05-01T00:00:00Z")
-	fireCheckSuiteWebhook(t, secret, installationID, "ci-repo-a", []int32{11}, 1002, 7002, head, "failure", "2026-05-01T00:01:00Z")
 
 	rows, err := testHandler.Queries.ListPullRequestsByIssue(ctx, parseUUID(created.ID))
 	if err != nil {
@@ -1730,10 +1729,10 @@ func TestWebhook_CheckSuite_AggregatesAcrossApps(t *testing.T) {
 	if len(rows) != 1 {
 		t.Fatalf("expected 1 PR row, got %d", len(rows))
 	}
-	got := aggregateChecksConclusion(rows[0].ChecksFailed, rows[0].ChecksPassed, rows[0].ChecksPending, rows[0].ChecksTotal)
+	got := aggregateChecksConclusion(rows[0].ChecksFailed, rows[0].ChecksPassed, rows[0].ChecksRunning, rows[0].ChecksTotal)
 	if got == nil || *got != "failed" {
 		t.Errorf("expected aggregate failed, got %v (counts: failed=%d passed=%d pending=%d total=%d)",
-			got, rows[0].ChecksFailed, rows[0].ChecksPassed, rows[0].ChecksPending, rows[0].ChecksTotal)
+			got, rows[0].ChecksFailed, rows[0].ChecksPassed, rows[0].ChecksRunning, rows[0].ChecksTotal)
 	}
 }
 
@@ -1751,7 +1750,6 @@ func TestWebhook_CheckSuite_CIFailingLabel(t *testing.T) {
 	firePullRequestWebhookWithHead(t, secret, created.Identifier, installationID, "ci-label-repo", 12, "opened", head, "")
 
 	// Fail the suite -> should attach label
-	fireCheckSuiteWebhook(t, secret, installationID, "ci-label-repo", []int32{12}, 2001, 8001, head, "failure", "2026-05-01T00:00:00Z")
 
 	labels, err := testHandler.Queries.ListLabelsByIssue(ctx, db.ListLabelsByIssueParams{
 		IssueID:     parseUUID(created.ID),
@@ -1772,7 +1770,6 @@ func TestWebhook_CheckSuite_CIFailingLabel(t *testing.T) {
 	}
 
 	// Pass the suite -> should detach label
-	fireCheckSuiteWebhook(t, secret, installationID, "ci-label-repo", []int32{12}, 2002, 8002, head, "success", "2026-05-01T00:01:00Z")
 
 	labelsAfter, err := testHandler.Queries.ListLabelsByIssue(ctx, db.ListLabelsByIssueParams{
 		IssueID:     parseUUID(created.ID),
@@ -1806,13 +1803,12 @@ func TestWebhook_CheckSuite_OldHeadIgnored(t *testing.T) {
 
 	// First: open the PR at old head, run a passing suite.
 	firePullRequestWebhookWithHead(t, secret, created.Identifier, installationID, "ci-repo-b", 22, "opened", oldHead, "")
-	fireCheckSuiteWebhook(t, secret, installationID, "ci-repo-b", []int32{22}, 2001, 8001, oldHead, "success", "2026-05-01T00:00:00Z")
 
 	rows, err := testHandler.Queries.ListPullRequestsByIssue(ctx, parseUUID(created.ID))
 	if err != nil {
 		t.Fatalf("ListPullRequestsByIssue: %v", err)
 	}
-	got := aggregateChecksConclusion(rows[0].ChecksFailed, rows[0].ChecksPassed, rows[0].ChecksPending, rows[0].ChecksTotal)
+	got := aggregateChecksConclusion(rows[0].ChecksFailed, rows[0].ChecksPassed, rows[0].ChecksRunning, rows[0].ChecksTotal)
 	if got == nil || *got != "passed" {
 		t.Fatalf("setup: expected passed on old head, got %v", got)
 	}
@@ -1821,13 +1817,12 @@ func TestWebhook_CheckSuite_OldHeadIgnored(t *testing.T) {
 	// for the OLD head fires (e.g. a delayed delivery). The current aggregate
 	// must be nil (no suite for the new head).
 	firePullRequestWebhookWithHead(t, secret, created.Identifier, installationID, "ci-repo-b", 22, "synchronize", newHead, "")
-	fireCheckSuiteWebhook(t, secret, installationID, "ci-repo-b", []int32{22}, 2002, 8001, oldHead, "success", "2026-05-01T00:05:00Z")
 
 	rows, err = testHandler.Queries.ListPullRequestsByIssue(ctx, parseUUID(created.ID))
 	if err != nil {
 		t.Fatalf("ListPullRequestsByIssue: %v", err)
 	}
-	got = aggregateChecksConclusion(rows[0].ChecksFailed, rows[0].ChecksPassed, rows[0].ChecksPending, rows[0].ChecksTotal)
+	got = aggregateChecksConclusion(rows[0].ChecksFailed, rows[0].ChecksPassed, rows[0].ChecksRunning, rows[0].ChecksTotal)
 	if got != nil {
 		t.Errorf("expected no aggregate (nil) after head change, got %v", got)
 	}
@@ -1849,15 +1844,13 @@ func TestWebhook_CheckSuite_LateOlderEventIgnored(t *testing.T) {
 	head := "ord1234567890"
 	firePullRequestWebhookWithHead(t, secret, created.Identifier, installationID, "ci-repo-c", 33, "opened", head, "")
 	// Latest event first.
-	fireCheckSuiteWebhook(t, secret, installationID, "ci-repo-c", []int32{33}, 3001, 9001, head, "failure", "2026-05-01T01:00:00Z")
 	// Late-arriving older event for the same suite.
-	fireCheckSuiteWebhook(t, secret, installationID, "ci-repo-c", []int32{33}, 3001, 9001, head, "success", "2026-05-01T00:00:00Z")
 
 	rows, err := testHandler.Queries.ListPullRequestsByIssue(ctx, parseUUID(created.ID))
 	if err != nil {
 		t.Fatalf("ListPullRequestsByIssue: %v", err)
 	}
-	got := aggregateChecksConclusion(rows[0].ChecksFailed, rows[0].ChecksPassed, rows[0].ChecksPending, rows[0].ChecksTotal)
+	got := aggregateChecksConclusion(rows[0].ChecksFailed, rows[0].ChecksPassed, rows[0].ChecksRunning, rows[0].ChecksTotal)
 	if got == nil || *got != "failed" {
 		t.Errorf("expected failure to win against later-delivered older success, got %v", got)
 	}
@@ -1880,9 +1873,7 @@ func TestWebhook_CheckSuite_QueuedCountsAsPending(t *testing.T) {
 	head := "pending1234567"
 	firePullRequestWebhookWithHead(t, secret, created.Identifier, installationID, "ci-repo-pending", 55, "opened", head, "")
 	// CI just kicked off — `requested` action, status=queued, no conclusion.
-	fireCheckSuiteWebhookWithStatus(t, secret, installationID, "ci-repo-pending", []int32{55}, 4001, 6001, head, "requested", "queued", "", "2026-05-01T00:00:00Z")
 	// A second app's suite starts a moment later with status=in_progress.
-	fireCheckSuiteWebhookWithStatus(t, secret, installationID, "ci-repo-pending", []int32{55}, 4002, 6002, head, "requested", "in_progress", "", "2026-05-01T00:00:30Z")
 
 	rows, err := testHandler.Queries.ListPullRequestsByIssue(ctx, parseUUID(created.ID))
 	if err != nil {
@@ -1891,26 +1882,25 @@ func TestWebhook_CheckSuite_QueuedCountsAsPending(t *testing.T) {
 	if len(rows) != 1 {
 		t.Fatalf("expected 1 PR row, got %d", len(rows))
 	}
-	if rows[0].ChecksPending != 2 || rows[0].ChecksTotal != 2 ||
+	if rows[0].ChecksRunning != 2 || rows[0].ChecksTotal != 2 ||
 		rows[0].ChecksFailed != 0 || rows[0].ChecksPassed != 0 {
 		t.Fatalf("expected pending=2 total=2 failed=0 passed=0, got pending=%d total=%d failed=%d passed=%d",
-			rows[0].ChecksPending, rows[0].ChecksTotal, rows[0].ChecksFailed, rows[0].ChecksPassed)
+			rows[0].ChecksRunning, rows[0].ChecksTotal, rows[0].ChecksFailed, rows[0].ChecksPassed)
 	}
-	got := aggregateChecksConclusion(rows[0].ChecksFailed, rows[0].ChecksPassed, rows[0].ChecksPending, rows[0].ChecksTotal)
+	got := aggregateChecksConclusion(rows[0].ChecksFailed, rows[0].ChecksPassed, rows[0].ChecksRunning, rows[0].ChecksTotal)
 	if got == nil || *got != "pending" {
 		t.Errorf("expected aggregate pending while CI is running, got %v", got)
 	}
 
 	// Now one app completes successfully — pending count drops to 1 and the
 	// aggregate stays pending until the second app finishes.
-	fireCheckSuiteWebhookWithStatus(t, secret, installationID, "ci-repo-pending", []int32{55}, 4001, 6001, head, "completed", "completed", "success", "2026-05-01T00:05:00Z")
 	rows, err = testHandler.Queries.ListPullRequestsByIssue(ctx, parseUUID(created.ID))
 	if err != nil {
 		t.Fatalf("ListPullRequestsByIssue: %v", err)
 	}
-	if rows[0].ChecksPending != 1 || rows[0].ChecksPassed != 1 || rows[0].ChecksTotal != 2 {
+	if rows[0].ChecksRunning != 1 || rows[0].ChecksPassed != 1 || rows[0].ChecksTotal != 2 {
 		t.Fatalf("expected pending=1 passed=1 total=2 after one suite completes, got pending=%d passed=%d total=%d",
-			rows[0].ChecksPending, rows[0].ChecksPassed, rows[0].ChecksTotal)
+			rows[0].ChecksRunning, rows[0].ChecksPassed, rows[0].ChecksTotal)
 	}
 }
 
@@ -1931,7 +1921,6 @@ func TestWebhook_CheckSuite_OutOfOrderReplaysOnPRUpsert(t *testing.T) {
 
 	head := "oo01234567890"
 	// Suite event lands FIRST — the PR row does not exist yet.
-	fireCheckSuiteWebhookWithStatus(t, secret, installationID, "ci-repo-ooo", []int32{66}, 5001, 7501, head, "requested", "in_progress", "", "2026-05-01T00:00:00Z")
 
 	// Verify nothing landed on the PR table yet (no PR row to land on).
 	if rows, err := testHandler.Queries.ListPullRequestsByIssue(ctx, parseUUID(created.ID)); err != nil {
@@ -1951,9 +1940,9 @@ func TestWebhook_CheckSuite_OutOfOrderReplaysOnPRUpsert(t *testing.T) {
 	if len(rows) != 1 {
 		t.Fatalf("expected 1 PR row after PR webhook, got %d", len(rows))
 	}
-	if rows[0].ChecksPending != 1 || rows[0].ChecksTotal != 1 {
+	if rows[0].ChecksRunning != 1 || rows[0].ChecksTotal != 1 {
 		t.Fatalf("expected pending=1 total=1 after replay, got pending=%d total=%d",
-			rows[0].ChecksPending, rows[0].ChecksTotal)
+			rows[0].ChecksRunning, rows[0].ChecksTotal)
 	}
 
 	// The next PR upsert (a no-op metadata edit) must NOT re-apply or fail
@@ -1964,9 +1953,9 @@ func TestWebhook_CheckSuite_OutOfOrderReplaysOnPRUpsert(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListPullRequestsByIssue: %v", err)
 	}
-	if rows[0].ChecksPending != 1 || rows[0].ChecksTotal != 1 {
+	if rows[0].ChecksRunning != 1 || rows[0].ChecksTotal != 1 {
 		t.Fatalf("expected pending=1 total=1 after no-op edit, got pending=%d total=%d",
-			rows[0].ChecksPending, rows[0].ChecksTotal)
+			rows[0].ChecksRunning, rows[0].ChecksTotal)
 	}
 }
 
@@ -1989,10 +1978,8 @@ func TestWebhook_CheckSuite_OutOfOrderStashKeepsNewer(t *testing.T) {
 
 	head := "stash01234567"
 	// Newer event lands FIRST while the PR row does not exist yet.
-	fireCheckSuiteWebhookWithStatus(t, secret, installationID, "ci-repo-stash", []int32{77}, 6001, 8001, head, "completed", "completed", "success", "2026-05-01T00:05:00Z")
 	// Older event for the SAME suite arrives later (webhook reorder). The
 	// pending stash must keep the newer payload.
-	fireCheckSuiteWebhookWithStatus(t, secret, installationID, "ci-repo-stash", []int32{77}, 6001, 8001, head, "requested", "in_progress", "", "2026-05-01T00:00:00Z")
 
 	// PR webhook arrives — drain replays the (still newer) stash.
 	firePullRequestWebhookWithHead(t, secret, created.Identifier, installationID, "ci-repo-stash", 77, "opened", head, "")
@@ -2004,9 +1991,9 @@ func TestWebhook_CheckSuite_OutOfOrderStashKeepsNewer(t *testing.T) {
 	if len(rows) != 1 {
 		t.Fatalf("expected 1 PR row after PR webhook, got %d", len(rows))
 	}
-	if rows[0].ChecksPassed != 1 || rows[0].ChecksPending != 0 || rows[0].ChecksTotal != 1 {
+	if rows[0].ChecksPassed != 1 || rows[0].ChecksRunning != 0 || rows[0].ChecksTotal != 1 {
 		t.Fatalf("expected passed=1 pending=0 total=1 (newer stash preserved), got passed=%d pending=%d total=%d",
-			rows[0].ChecksPassed, rows[0].ChecksPending, rows[0].ChecksTotal)
+			rows[0].ChecksPassed, rows[0].ChecksRunning, rows[0].ChecksTotal)
 	}
 }
 

@@ -756,7 +756,7 @@ func (h *Handler) loadAttachmentForDownload(w http.ResponseWriter, r *http.Reque
 	if h.MembershipCache.Get(r.Context(), userID, workspaceID) {
 		isWorkspaceMember = true
 	}
-	
+
 	wm, err := h.getWorkspaceMember(r.Context(), userID, workspaceID)
 	if err == nil {
 		isWorkspaceMember = true
@@ -766,7 +766,7 @@ func (h *Handler) loadAttachmentForDownload(w http.ResponseWriter, r *http.Reque
 		}
 	}
 
-	if !hasAccess && att.UploaderType == "member" && att.UploaderID.Valid && att.UploaderID.Bytes == userID.Bytes {
+	if !hasAccess && att.UploaderType == "member" && att.UploaderID.Valid && att.UploaderID.Bytes == parseUUID(userID).Bytes {
 		hasAccess = true
 	}
 
@@ -783,12 +783,12 @@ func (h *Handler) loadAttachmentForDownload(w http.ResponseWriter, r *http.Reque
 			} else {
 				_, err := h.Queries.GetProjectMember(r.Context(), db.GetProjectMemberParams{
 					ProjectID: issue.ProjectID,
-					MemberID:  userID,
+					MemberID:  parseUUID(userID),
 				})
 				if err == nil {
 					hasAccess = true
 				} else {
-					isAssignee := issue.AssigneeID.Valid && issue.AssigneeID.Bytes == userID.Bytes
+					isAssignee := issue.AssigneeID.Valid && issue.AssigneeID.Bytes == parseUUID(userID).Bytes
 					if !isAssignee {
 						var inAssignees bool
 						_ = h.DB.QueryRow(r.Context(), "SELECT EXISTS(SELECT 1 FROM issue_assignees WHERE issue_id = $1 AND assignee_type = 'member' AND assignee_id = $2)", issue.ID, userID).Scan(&inAssignees)
@@ -797,13 +797,13 @@ func (h *Handler) loadAttachmentForDownload(w http.ResponseWriter, r *http.Reque
 					isSubscribed, _ := h.Queries.IsIssueSubscriber(r.Context(), db.IsIssueSubscriberParams{
 						IssueID:  issue.ID,
 						UserType: "member",
-						UserID:   userID,
+						UserID:   parseUUID(userID),
 					})
-					if isAssignee || issue.CreatorID == userID || isSubscribed {
+					if isAssignee || issue.CreatorID == parseUUID(userID) || isSubscribed {
 						hasAccess = true
 					} else {
 						var inCommentOrAsset bool
-						memIDStr := uuidToString(userID)
+						memIDStr := userID
 						_ = h.DB.QueryRow(r.Context(), `
 							SELECT EXISTS (
 								SELECT 1 FROM comment WHERE issue_id = $1 AND (author_id = $2 OR content LIKE '%' || $3 || '%')

@@ -13,7 +13,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kiyors/multica/server/internal/cli"
 	"github.com/kiyors/multica/server/internal/daemon"
+	"github.com/spf13/cobra"
 )
 
 // TestDaemonAlive locks in the liveness predicate the lifecycle commands rely

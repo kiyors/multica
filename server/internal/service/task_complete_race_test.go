@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/kiyors/multica/server/internal/events"
 	db "github.com/kiyors/multica/server/pkg/db/generated"
+	"github.com/kiyors/multica/server/pkg/taskfailure"
 )
 
 // mockRow implements pgx.Row, returning either a scanned task or pgx.ErrNoRows.

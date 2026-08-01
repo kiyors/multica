@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/kiyors/multica/server/internal/service"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/kiyors/multica/server/internal/events"

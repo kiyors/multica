@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/kiyors/multica/server/internal/service"
 	db "github.com/kiyors/multica/server/pkg/db/generated"
 )
 

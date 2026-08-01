@@ -23,6 +23,7 @@ import (
 	"github.com/kiyors/multica/server/internal/daemon/execenv"
 	"github.com/kiyors/multica/server/internal/daemon/repocache"
 	"github.com/kiyors/multica/server/pkg/agent"
+	"github.com/pelletier/go-toml/v2"
 )
 
 func createDaemonTestRepo(t *testing.T) string {

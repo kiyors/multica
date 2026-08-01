@@ -8,7 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/kiyors/multica/server/pkg/db/generated"
+	db "github.com/kiyors/multica/server/pkg/db/generated"
 	"github.com/kiyors/multica/server/pkg/protocol"
 )
 
@@ -64,7 +64,7 @@ func pendingApprovalRowToResponse(row db.ListPendingApprovalsByApproverRow) Appr
 		da := timestampToString(row.DecidedAt)
 		decidedAt = &da
 	}
-	
+
 	issueTitle := row.IssueTitle
 	issueNumber := row.IssueNumber
 

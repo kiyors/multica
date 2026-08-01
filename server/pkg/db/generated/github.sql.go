@@ -115,6 +115,67 @@ func (q *Queries) DeletePendingGitHubInstallation(ctx context.Context, installat
 	return err
 }
 
+const drainPendingCheckSuitesForPR = `-- name: DrainPendingCheckSuitesForPR :many
+DELETE FROM github_pending_check_suite
+WHERE workspace_id = $1
+  AND repo_owner   = $2
+  AND repo_name    = $3
+  AND pr_number    = $4
+RETURNING suite_id, head_sha, app_id, conclusion, status, suite_updated_at
+`
+
+type DrainPendingCheckSuitesForPRParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	RepoOwner   string      `json:"repo_owner"`
+	RepoName    string      `json:"repo_name"`
+	PrNumber    int32       `json:"pr_number"`
+}
+
+type DrainPendingCheckSuitesForPRRow struct {
+	SuiteID        int64              `json:"suite_id"`
+	HeadSha        string             `json:"head_sha"`
+	AppID          int64              `json:"app_id"`
+	Conclusion     pgtype.Text        `json:"conclusion"`
+	Status         string             `json:"status"`
+	SuiteUpdatedAt pgtype.Timestamptz `json:"suite_updated_at"`
+}
+
+// Atomically reads + deletes all pending suites for the given PR address.
+// Caller replays each row through UpsertPullRequestCheckSuite. RETURNING
+// gives us the payloads we need without a separate SELECT, so two parallel
+// handlers racing on the same PR can't double-apply the same row.
+func (q *Queries) DrainPendingCheckSuitesForPR(ctx context.Context, arg DrainPendingCheckSuitesForPRParams) ([]DrainPendingCheckSuitesForPRRow, error) {
+	rows, err := q.db.Query(ctx, drainPendingCheckSuitesForPR,
+		arg.WorkspaceID,
+		arg.RepoOwner,
+		arg.RepoName,
+		arg.PrNumber,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []DrainPendingCheckSuitesForPRRow{}
+	for rows.Next() {
+		var i DrainPendingCheckSuitesForPRRow
+		if err := rows.Scan(
+			&i.SuiteID,
+			&i.HeadSha,
+			&i.AppID,
+			&i.Conclusion,
+			&i.Status,
+			&i.SuiteUpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getGitHubInstallationByID = `-- name: GetGitHubInstallationByID :one
 SELECT id, workspace_id, installation_id, account_login, account_type, account_avatar_url, connected_by_id, created_at, updated_at FROM github_installation
 WHERE id = $1
@@ -459,10 +520,17 @@ checks AS (
         SUM(CASE WHEN cr.status = 'completed' AND cr.conclusion IN
                 ('success','neutral','skipped')
             THEN 1 ELSE 0 END)::bigint AS passed,
-        SUM(CASE WHEN status <> 'completed' OR conclusion IS NULL
-            THEN 1 ELSE 0 END)::bigint AS pending
-    FROM per_app_latest
-    GROUP BY pr_id
+        SUM(CASE WHEN cr.status <> 'completed' OR cr.conclusion IS NULL
+            THEN 1 ELSE 0 END)::bigint AS running,
+        COALESCE(
+            array_agg(cr.name) FILTER (WHERE cr.status = 'completed' AND cr.conclusion IN
+                ('failure','cancelled','timed_out','action_required','startup_failure','stale','error')),
+            '{}'
+        )::text[] AS failed_names
+    FROM github_pull_request_check_run cr
+    JOIN issue_prs ip ON ip.id = cr.pr_id
+    WHERE cr.head_sha = ip.snapshot_head_sha AND ip.snapshot_head_sha <> ''
+    GROUP BY cr.pr_id
 ),
 per_reviewer_latest AS (
     SELECT DISTINCT ON (r.pr_id, r.reviewer_login)
@@ -492,7 +560,8 @@ SELECT
     COALESCE(c.total, 0)::bigint   AS checks_total,
     COALESCE(c.passed, 0)::bigint  AS checks_passed,
     COALESCE(c.failed, 0)::bigint  AS checks_failed,
-    COALESCE(c.pending, 0)::bigint AS checks_pending,
+    COALESCE(c.running, 0)::bigint AS checks_running,
+    COALESCE(c.failed_names, '{}')::text[] AS failed_check_names,
     COALESCE(r.approved, 0)::bigint AS reviews_approved,
     COALESCE(r.changes_requested, 0)::bigint AS reviews_changes_requested
 FROM github_pull_request pr
@@ -525,12 +594,18 @@ type ListPullRequestsByIssueRow struct {
 	Additions               int32              `json:"additions"`
 	Deletions               int32              `json:"deletions"`
 	ChangedFiles            int32              `json:"changed_files"`
+	ApiMergeable            pgtype.Text        `json:"api_mergeable"`
+	ApiMergeStateStatus     pgtype.Text        `json:"api_merge_state_status"`
+	ChecksRollupState       pgtype.Text        `json:"checks_rollup_state"`
+	SnapshotHeadSha         string             `json:"snapshot_head_sha"`
+	SnapshotFetchedAt       pgtype.Timestamptz `json:"snapshot_fetched_at"`
 	CreatedAt               pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt               pgtype.Timestamptz `json:"updated_at"`
 	ChecksTotal             int64              `json:"checks_total"`
 	ChecksPassed            int64              `json:"checks_passed"`
 	ChecksFailed            int64              `json:"checks_failed"`
-	ChecksPending           int64              `json:"checks_pending"`
+	ChecksRunning           int64              `json:"checks_running"`
+	FailedCheckNames        []string           `json:"failed_check_names"`
 	ReviewsApproved         int64              `json:"reviews_approved"`
 	ReviewsChangesRequested int64              `json:"reviews_changes_requested"`
 }
@@ -586,7 +661,8 @@ func (q *Queries) ListPullRequestsByIssue(ctx context.Context, issueID pgtype.UU
 			&i.ChecksTotal,
 			&i.ChecksPassed,
 			&i.ChecksFailed,
-			&i.ChecksPending,
+			&i.ChecksRunning,
+			&i.FailedCheckNames,
 			&i.ReviewsApproved,
 			&i.ReviewsChangesRequested,
 		); err != nil {
@@ -802,6 +878,67 @@ func (q *Queries) UpsertGitHubPullRequest(ctx context.Context, arg UpsertGitHubP
 		&i.SnapshotFetchedAt,
 	)
 	return i, err
+}
+
+const upsertPendingCheckSuite = `-- name: UpsertPendingCheckSuite :exec
+
+INSERT INTO github_pending_check_suite (
+    workspace_id, installation_id, repo_owner, repo_name, pr_number,
+    suite_id, head_sha, app_id, conclusion, status, suite_updated_at
+) VALUES (
+    $1, $2, $3, $4, $5,
+    $6, $7, $8, $11, $9, $10
+)
+ON CONFLICT (workspace_id, repo_owner, repo_name, pr_number, suite_id) DO UPDATE SET
+    installation_id  = EXCLUDED.installation_id,
+    head_sha         = EXCLUDED.head_sha,
+    app_id           = EXCLUDED.app_id,
+    conclusion       = EXCLUDED.conclusion,
+    status           = EXCLUDED.status,
+    suite_updated_at = EXCLUDED.suite_updated_at,
+    received_at      = now()
+WHERE EXCLUDED.suite_updated_at >= github_pending_check_suite.suite_updated_at
+`
+
+type UpsertPendingCheckSuiteParams struct {
+	WorkspaceID    pgtype.UUID        `json:"workspace_id"`
+	InstallationID int64              `json:"installation_id"`
+	RepoOwner      string             `json:"repo_owner"`
+	RepoName       string             `json:"repo_name"`
+	PrNumber       int32              `json:"pr_number"`
+	SuiteID        int64              `json:"suite_id"`
+	HeadSha        string             `json:"head_sha"`
+	AppID          int64              `json:"app_id"`
+	Status         string             `json:"status"`
+	SuiteUpdatedAt pgtype.Timestamptz `json:"suite_updated_at"`
+	Conclusion     pgtype.Text        `json:"conclusion"`
+}
+
+// =====================
+// GitHub pending check_suite (out-of-order arrival stash)
+// =====================
+// Stashes a check_suite event whose PR row is not yet mirrored. Replayed
+// (and deleted) by DrainPendingCheckSuitesForPR once the matching
+// `pull_request` webhook lands. ON CONFLICT keeps the newest payload
+// for the same (workspace, repo, pr_number, suite_id) — repeated
+// deliveries while the PR is still missing are idempotent. The
+// suite_updated_at guard mirrors UpsertPullRequestCheckSuite so an older
+// event arriving after a newer one cannot overwrite the newer payload.
+func (q *Queries) UpsertPendingCheckSuite(ctx context.Context, arg UpsertPendingCheckSuiteParams) error {
+	_, err := q.db.Exec(ctx, upsertPendingCheckSuite,
+		arg.WorkspaceID,
+		arg.InstallationID,
+		arg.RepoOwner,
+		arg.RepoName,
+		arg.PrNumber,
+		arg.SuiteID,
+		arg.HeadSha,
+		arg.AppID,
+		arg.Status,
+		arg.SuiteUpdatedAt,
+		arg.Conclusion,
+	)
+	return err
 }
 
 const upsertPendingGitHubInstallation = `-- name: UpsertPendingGitHubInstallation :one

@@ -23,16 +23,14 @@ import (
 	"github.com/kiyors/multica/server/internal/cloudruntime"
 	"github.com/kiyors/multica/server/internal/daemonws"
 	"github.com/kiyors/multica/server/internal/events"
-	"github.com/kiyors/multica/server/internal/featureflagdispatch"
 	"github.com/kiyors/multica/server/internal/featureflags"
 	"github.com/kiyors/multica/server/internal/handler"
-	"github.com/kiyors/multica/server/internal/mcpserver"
-	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/kiyors/multica/server/internal/integrations/channel"
 	"github.com/kiyors/multica/server/internal/integrations/channel/engine"
 	composiointeg "github.com/kiyors/multica/server/internal/integrations/composio"
 	"github.com/kiyors/multica/server/internal/integrations/lark"
 	"github.com/kiyors/multica/server/internal/integrations/slack"
+	"github.com/kiyors/multica/server/internal/mcpserver"
 	obsmetrics "github.com/kiyors/multica/server/internal/metrics"
 	"github.com/kiyors/multica/server/internal/middleware"
 	"github.com/kiyors/multica/server/internal/realtime"
@@ -43,6 +41,7 @@ import (
 	composiosdk "github.com/kiyors/multica/server/pkg/composio"
 	db "github.com/kiyors/multica/server/pkg/db/generated"
 	"github.com/kiyors/multica/server/pkg/featureflag"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 var defaultOrigins = []string{
@@ -1181,16 +1180,16 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 			sseHandler := mcp.NewSSEHandler(func(request *http.Request) *mcp.Server {
 				authHeader := request.Header.Get("Authorization")
 				token := strings.TrimPrefix(authHeader, "Bearer ")
-				
+
 				workspaceID := request.Header.Get("X-Workspace-ID")
 				if workspaceID == "" {
 					workspaceID = request.URL.Query().Get("workspace_id")
 				}
-				
+
 				client := cli.NewAPIClient(baseURL, workspaceID, token)
 				return mcpserver.NewServer(client)
 			}, nil)
-			
+
 			r.Handle("/api/mcp", sseHandler)
 			r.Handle("/api/mcp/", sseHandler)
 

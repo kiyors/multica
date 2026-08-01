@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/kiyors/multica/server/internal/cli"
+	"github.com/kiyors/multica/server/internal/daemon/execenv"
 )
 
 var (

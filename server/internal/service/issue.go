@@ -72,6 +72,7 @@ type IssueCreateParams struct {
 	// Stage groups this issue into an ordered barrier group under its parent
 	// (NULL = unstaged). See issue_child_done.go for the staged-barrier wake.
 	Stage pgtype.Int4
+	LabelIDs []pgtype.UUID
 }
 
 type IssueAssigneeInput struct {

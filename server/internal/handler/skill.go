@@ -21,6 +21,7 @@ import (
 	skillpkg "github.com/kiyors/multica/server/internal/skill"
 	db "github.com/kiyors/multica/server/pkg/db/generated"
 	"github.com/kiyors/multica/server/pkg/protocol"
+	"golang.org/x/sync/errgroup"
 )
 
 // sanitizeNullBytes makes a string safe for a PostgreSQL TEXT column.

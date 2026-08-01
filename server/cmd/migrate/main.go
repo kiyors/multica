@@ -9,6 +9,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/kiyors/multica/server/internal/attributionbackfill"
 	"github.com/kiyors/multica/server/internal/logger"
 	"github.com/kiyors/multica/server/internal/migrations"
 	"github.com/kiyors/multica/server/internal/taskusagebackfill"

@@ -223,7 +223,18 @@ func githubPullRequestToResponse(p db.GithubPullRequest, snapshotEnabled bool) G
 	}
 }
 
-func issuePullRequestRowToResponse(p db.ListPullRequestsByIssueRow) GitHubPullRequestResponse {
+const prSnapshotStaleThreshold = 30 * time.Minute
+
+func issuePullRequestRowToResponse(p db.ListPullRequestsByIssueRow, snapshotEnabled bool) GitHubPullRequestResponse {
+	snapshotAvailable := currentGitHubSnapshotAvailable(
+		snapshotEnabled, p.HeadSha, p.SnapshotHeadSha, p.SnapshotFetchedAt,
+	)
+	stale := false
+	if snapshotAvailable && (p.State == "open" || p.State == "draft") {
+		if p.SnapshotFetchedAt.Valid && time.Since(p.SnapshotFetchedAt.Time) > prSnapshotStaleThreshold {
+			stale = true
+		}
+	}
 	var reviewStatus string
 	if p.ReviewsChangesRequested > 0 {
 		reviewStatus = "changes_requested"
@@ -233,32 +244,6 @@ func issuePullRequestRowToResponse(p db.ListPullRequestsByIssueRow) GitHubPullRe
 		reviewStatus = "pending"
 	}
 
-	return GitHubPullRequestResponse{
-		ID:               uuidToString(p.ID),
-		WorkspaceID:      uuidToString(p.WorkspaceID),
-		RepoOwner:        p.RepoOwner,
-		RepoName:         p.RepoName,
-		Number:           p.PrNumber,
-		Title:            p.Title,
-		State:            p.State,
-		HtmlURL:          p.HtmlUrl,
-		Branch:           textToPtr(p.Branch),
-		AuthorLogin:      textToPtr(p.AuthorLogin),
-		AuthorAvatarURL:  textToPtr(p.AuthorAvatarUrl),
-		MergedAt:         timestampToPtr(p.MergedAt),
-		ClosedAt:         timestampToPtr(p.ClosedAt),
-		PRCreatedAt:      timestampToString(p.PrCreatedAt),
-		PRUpdatedAt:      timestampToString(p.PrUpdatedAt),
-		MergeableState:   textToPtr(p.MergeableState),
-		ChecksConclusion: aggregateChecksConclusion(p.ChecksFailed, p.ChecksPassed, p.ChecksPending, p.ChecksTotal),
-		ChecksPassed:     p.ChecksPassed,
-		ChecksFailed:     p.ChecksFailed,
-		ChecksPending:    p.ChecksPending,
-		Additions:        p.Additions,
-		Deletions:        p.Deletions,
-		ChangedFiles:     p.ChangedFiles,
-		ReviewStatus:     reviewStatus,
-	}
 	failedNames := p.FailedCheckNames
 	if failedNames == nil {
 		failedNames = []string{}
@@ -287,6 +272,7 @@ func issuePullRequestRowToResponse(p db.ListPullRequestsByIssueRow) GitHubPullRe
 		Additions:         p.Additions,
 		Deletions:         p.Deletions,
 		ChangedFiles:      p.ChangedFiles,
+		ReviewStatus:      reviewStatus,
 	}
 	if snapshotAvailable {
 		resp.Mergeable = lowerTextPtr(p.ApiMergeable)
@@ -1662,10 +1648,12 @@ func (h *Handler) handlePullRequestReviewEvent(ctx context.Context, body []byte)
 	if err != nil || len(insts) == 0 {
 		return
 	}
-	inst := insts[0]
+	for _, inst := range insts {
+		h.recordPullRequestReviewForWorkspace(ctx, inst.WorkspaceID, &p)
+	}
+}
 
-	wsID := h.resolveWorkspaceForRepo(ctx, inst.WorkspaceID, inst.AccountLogin, p.Repository.Owner.Login, p.Repository.Name)
-
+func (h *Handler) recordPullRequestReviewForWorkspace(ctx context.Context, wsID pgtype.UUID, p *ghPullRequestReviewPayload) {
 	pr, err := h.Queries.GetGitHubPullRequest(ctx, db.GetGitHubPullRequestParams{
 		WorkspaceID: wsID,
 		RepoOwner:   p.Repository.Owner.Login,
@@ -1704,7 +1692,7 @@ func (h *Handler) handlePullRequestReviewEvent(ctx context.Context, body []byte)
 		for i, id := range linkedIssues {
 			linkedIssueIDs[i] = uuidToString(id)
 		}
-		resp := githubPullRequestToResponse(pr)
+		resp := githubPullRequestToResponse(pr, h.PRRefresh.Enabled())
 		h.publish(protocol.EventPullRequestUpdated, uuidToString(wsID), "system", "", map[string]any{
 			"pull_request":           resp,
 			"linked_issue_ids":       linkedIssueIDs,
@@ -1772,9 +1760,6 @@ func (h *Handler) handleCheckSuiteEvent(ctx context.Context, body []byte) {
 	if len(insts) == 0 {
 		return
 	}
-	// Oldest binding is the deterministic routing fallback; see
-	// handlePullRequestEvent.
-	inst := insts[0]
 	if len(p.CheckSuite.PullRequests) == 0 {
 		// Forks emit suites whose `pull_requests` array is empty for
 		// the upstream repo. We have no way to attribute the result
@@ -1784,13 +1769,16 @@ func (h *Handler) handleCheckSuiteEvent(ctx context.Context, body []byte) {
 	}
 	updatedAt := parseGHTimeRequired(p.CheckSuite.UpdatedAt)
 
-	// Route to the workspace that owns this repository (see
-	// handlePullRequestEvent) so the suite lands on the same PR row the
-	// pull_request webhook mirrored, rather than the installation's workspace.
-	wsID := h.resolveWorkspaceForRepo(ctx, inst.WorkspaceID, inst.AccountLogin, p.Repository.Owner.Login, p.Repository.Name)
+	// Fan out to every workspace bound to this installation: each records the
+	// suite against its own mirror of the PR (see handlePullRequestEvent).
+	for _, inst := range insts {
+		h.recordCheckSuiteForWorkspace(ctx, inst.WorkspaceID, &p, updatedAt)
+	}
+}
 
-	affectedWorkspaces := map[string]struct{}{}
+func (h *Handler) recordCheckSuiteForWorkspace(ctx context.Context, wsID pgtype.UUID, p *ghCheckSuitePayload, updatedAt pgtype.Timestamptz) {
 	affectedIssues := map[string]struct{}{}
+	recorded := false
 	for _, prRef := range p.CheckSuite.PullRequests {
 		// Scope the lookup to the repo's workspace. The (workspace_id,
 		// repo_owner, repo_name, pr_number) tuple is the real uniqueness key:
@@ -1842,7 +1830,7 @@ func (h *Handler) handleCheckSuiteEvent(ctx context.Context, body []byte) {
 			slog.Warn("github: upsert check_suite failed", "err", err, "suite_id", p.CheckSuite.ID)
 			continue
 		}
-		affectedWorkspaces[uuidToString(pr.WorkspaceID)] = struct{}{}
+		recorded = true
 		issues, err := h.Queries.ListIssueIDsForPullRequest(ctx, pr.ID)
 		if err == nil {
 			for _, id := range issues {
@@ -1896,19 +1884,19 @@ func (h *Handler) handleCheckSuiteEvent(ctx context.Context, body []byte) {
 		}
 	}
 
-	// Broadcast on the existing event so the issue page just re-queries
-	// the PR list. We don't pass a single pull_request payload here
-	// because a suite can touch several and the listener already
-	// invalidates by issue.
-	for ws := range affectedWorkspaces {
-		linked := make([]string, 0, len(affectedIssues))
-		for id := range affectedIssues {
-			linked = append(linked, id)
-		}
-		h.publish(protocol.EventPullRequestUpdated, ws, "system", "", map[string]any{
-			"linked_issue_ids": linked,
-		})
+	if !recorded {
+		return
 	}
+	// Broadcast on the existing event so the issue page just re-queries the PR
+	// list. We don't pass a single pull_request payload here because a suite can
+	// touch several and the listener already invalidates by issue.
+	linked := make([]string, 0, len(affectedIssues))
+	for id := range affectedIssues {
+		linked = append(linked, id)
+	}
+	h.publish(protocol.EventPullRequestUpdated, uuidToString(wsID), "system", "", map[string]any{
+		"linked_issue_ids": linked,
+	})
 }
 
 // replayPendingCheckSuitesForPR drains the stash table for one PR (any

@@ -1,9 +1,9 @@
 package handler
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
-	"bytes"
 )
 
 func (h *Handler) GetGitHubUserRepos(w http.ResponseWriter, r *http.Request) {
@@ -136,6 +136,6 @@ func (h *Handler) CreateGitHubIssue(w http.ResponseWriter, r *http.Request) {
 	// If they create a GitHub issue, they probably expect it to show up in Multica.
 	// But it will show up when the webhook comes in if the repo is connected.
 	// We can return the GitHub issue response.
-	
+
 	writeJSON(w, http.StatusOK, issue)
 }

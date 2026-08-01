@@ -13,7 +13,6 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/kiyors/multica/server/internal/analytics"
-	"github.com/kiyors/multica/server/internal/daemon/execenv"
 	"github.com/kiyors/multica/server/internal/daemonws"
 	"github.com/kiyors/multica/server/internal/events"
 	"github.com/kiyors/multica/server/internal/handler"

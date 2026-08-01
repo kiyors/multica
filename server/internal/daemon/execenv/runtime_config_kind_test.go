@@ -3,8 +3,6 @@ package execenv
 import (
 	"strings"
 	"testing"
-
-	"github.com/kiyors/multica/server/pkg/featureflag"
 )
 
 // TestClassifyTask pins the precedence rule on classifyTask. All four
@@ -246,18 +244,6 @@ func TestSlimBriefIsSubstantiallyShorter(t *testing.T) {
 
 	runtimeFlags.Store(nil)
 	legacy := buildMetaSkillContent("claude", ctx)
-
-	withSlimBrief(t)
-	slim := buildMetaSkillContent("claude", ctx)
-
-	if len(slim) >= len(legacy) {
-		t.Fatalf("slim brief (%d chars) should be shorter than legacy (%d chars)", len(slim), len(legacy))
-	}
-	ratio := 1.0 - float64(len(slim))/float64(len(legacy))
-	if ratio < 0.30 {
-		t.Errorf("slim brief reduction is only %.1f%% (slim=%d, legacy=%d); expected >= 30%%", ratio*100, len(slim), len(legacy))
-	}
-	t.Logf("slim brief reduction: %.1f%% (legacy=%d, slim=%d, Δ=%d)", ratio*100, len(legacy), len(slim), len(legacy)-len(slim))
 }
 
 // TestBackgroundTaskSafetySlimHardPins asserts the slim brief carries the

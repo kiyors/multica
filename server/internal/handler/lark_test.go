@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/kiyors/multica/server/internal/integrations/lark"
+	"github.com/kiyors/multica/server/internal/util/secretbox"
 )
 
 // Lark-handler unit tests focus on the no-config short-circuits —

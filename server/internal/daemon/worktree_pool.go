@@ -160,7 +160,7 @@ func (m *WorktreePoolManager) Acquire(ctx context.Context, base, poolRoot string
 		return nil, errors.New("worktree pool: pool_root required")
 	}
 	if maxParallel <= 0 {
-		maxParallel = defaultWorktreePoolMaxParallel
+		maxParallel = 3
 	}
 	baseAbs, err := filepath.Abs(base)
 	if err != nil {

@@ -20,6 +20,7 @@ import (
 	"github.com/kiyors/multica/server/internal/analytics"
 	"github.com/kiyors/multica/server/internal/auth"
 	"github.com/kiyors/multica/server/internal/daemonws"
+	"github.com/kiyors/multica/server/internal/integrations/channel"
 	"github.com/kiyors/multica/server/internal/integrations/slack"
 	obsmetrics "github.com/kiyors/multica/server/internal/metrics"
 	"github.com/kiyors/multica/server/internal/middleware"

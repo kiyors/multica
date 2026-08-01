@@ -124,8 +124,8 @@ SELECT count(*) FROM issue i
 WHERE i.workspace_id = $1
   AND ($2::text IS NULL OR i.status = $2)
   AND ($3::text IS NULL OR i.priority = $3)
-  AND ($4::uuid IS NULL OR i.assignee_id = $4)
-  AND ($5::uuid[] IS NULL OR i.assignee_id = ANY($5::uuid[]))
+  AND ($4::uuid IS NULL OR i.assignee_id = $4 OR EXISTS (SELECT 1 FROM issue_assignees ia WHERE ia.issue_id = i.id AND ia.assignee_id = $4))
+  AND ($5::uuid[] IS NULL OR i.assignee_id = ANY($5::uuid[]) OR EXISTS (SELECT 1 FROM issue_assignees ia WHERE ia.issue_id = i.id AND ia.assignee_id = ANY($5::uuid[])))
   AND ($6::uuid IS NULL OR i.creator_id = $6)
   AND ($7::uuid IS NULL OR i.project_id = $7)
   AND ($8::bool IS NULL OR (i.start_date IS NOT NULL OR i.due_date IS NOT NULL))
@@ -146,6 +146,14 @@ WHERE i.workspace_id = $1
            WHERE a.workspace_id = $1
              AND a.owner_id     = $11::uuid
     ))
+    OR EXISTS (
+      SELECT 1 FROM issue_assignees ia
+      WHERE ia.issue_id = i.id AND ia.assignee_type = 'agent' AND ia.assignee_id IN (
+          SELECT a.id FROM agent a
+           WHERE a.workspace_id = $1
+             AND a.owner_id     = $11::uuid
+      )
+    )
     OR (i.assignee_type = 'squad' AND i.assignee_id IN (
           SELECT sm.squad_id
             FROM squad_member sm
@@ -170,6 +178,33 @@ WHERE i.workspace_id = $1
              AND a.workspace_id = $1
              AND a.owner_id     = $11::uuid
     ))
+    OR EXISTS (
+      SELECT 1 FROM issue_assignees ia
+      WHERE ia.issue_id = i.id AND ia.assignee_type = 'squad' AND ia.assignee_id IN (
+          SELECT sm.squad_id
+            FROM squad_member sm
+            JOIN squad s ON s.id = sm.squad_id
+           WHERE s.workspace_id = $1
+             AND sm.member_type = 'member'
+             AND sm.member_id   = $11::uuid
+          UNION
+          SELECT s.id
+            FROM squad s
+            JOIN agent a ON a.id = s.leader_id
+           WHERE s.workspace_id = $1
+             AND a.workspace_id = $1
+             AND a.owner_id     = $11::uuid
+          UNION
+          SELECT sm.squad_id
+            FROM squad_member sm
+            JOIN squad s ON s.id = sm.squad_id
+            JOIN agent a ON a.id = sm.member_id
+           WHERE s.workspace_id = $1
+             AND sm.member_type = 'agent'
+             AND a.workspace_id = $1
+             AND a.owner_id     = $11::uuid
+      )
+    )
   )
 `
 
@@ -216,7 +251,7 @@ INSERT INTO issue (
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
     $16
-) RETURNING id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, issue_type_id, milestone_id
+) RETURNING id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, issue_type_id, milestone_id, properties
 `
 
 type CreateIssueParams struct {
@@ -286,6 +321,7 @@ func (q *Queries) CreateIssue(ctx context.Context, arg CreateIssueParams) (Issue
 		&i.Stage,
 		&i.IssueTypeID,
 		&i.MilestoneID,
+		&i.Properties,
 	)
 	return i, err
 }
@@ -299,7 +335,7 @@ INSERT INTO issue (
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
     $16, $17, $18
-) RETURNING id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, issue_type_id, milestone_id
+) RETURNING id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, issue_type_id, milestone_id, properties
 `
 
 type CreateIssueWithOriginParams struct {
@@ -373,6 +409,7 @@ func (q *Queries) CreateIssueWithOrigin(ctx context.Context, arg CreateIssueWith
 		&i.Stage,
 		&i.IssueTypeID,
 		&i.MilestoneID,
+		&i.Properties,
 	)
 	return i, err
 }
@@ -428,7 +465,7 @@ UPDATE issue SET
     metadata = metadata - $1::text,
     updated_at = now()
 WHERE id = $2 AND workspace_id = $3
-RETURNING id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, issue_type_id, milestone_id
+RETURNING id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, issue_type_id, milestone_id, properties
 `
 
 type DeleteIssueMetadataKeyParams struct {
@@ -470,12 +507,13 @@ func (q *Queries) DeleteIssueMetadataKey(ctx context.Context, arg DeleteIssueMet
 		&i.Stage,
 		&i.IssueTypeID,
 		&i.MilestoneID,
+		&i.Properties,
 	)
 	return i, err
 }
 
 const findActiveDuplicateIssue = `-- name: FindActiveDuplicateIssue :one
-SELECT id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, issue_type_id, milestone_id FROM issue
+SELECT id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, issue_type_id, milestone_id, properties FROM issue
 WHERE workspace_id = $1
   AND status NOT IN ('done', 'cancelled')
   AND project_id IS NOT DISTINCT FROM $2::uuid
@@ -528,12 +566,13 @@ func (q *Queries) FindActiveDuplicateIssue(ctx context.Context, arg FindActiveDu
 		&i.Stage,
 		&i.IssueTypeID,
 		&i.MilestoneID,
+		&i.Properties,
 	)
 	return i, err
 }
 
 const findRecentAutopilotDuplicateIssue = `-- name: FindRecentAutopilotDuplicateIssue :one
-SELECT i.id, i.workspace_id, i.title, i.description, i.status, i.priority, i.assignee_type, i.assignee_id, i.creator_type, i.creator_id, i.parent_issue_id, i.acceptance_criteria, i.context_refs, i.position, i.due_date, i.created_at, i.updated_at, i.number, i.project_id, i.origin_type, i.origin_id, i.first_executed_at, i.start_date, i.metadata, i.stage, i.issue_type_id, i.milestone_id FROM issue i
+SELECT i.id, i.workspace_id, i.title, i.description, i.status, i.priority, i.assignee_type, i.assignee_id, i.creator_type, i.creator_id, i.parent_issue_id, i.acceptance_criteria, i.context_refs, i.position, i.due_date, i.created_at, i.updated_at, i.number, i.project_id, i.origin_type, i.origin_id, i.first_executed_at, i.start_date, i.metadata, i.stage, i.issue_type_id, i.milestone_id, i.properties FROM issue i
 WHERE i.workspace_id = $1
   AND i.status NOT IN ('done', 'cancelled')
   AND i.origin_type = 'autopilot'
@@ -597,12 +636,13 @@ func (q *Queries) FindRecentAutopilotDuplicateIssue(ctx context.Context, arg Fin
 		&i.Stage,
 		&i.IssueTypeID,
 		&i.MilestoneID,
+		&i.Properties,
 	)
 	return i, err
 }
 
 const getIssue = `-- name: GetIssue :one
-SELECT id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, issue_type_id, milestone_id FROM issue
+SELECT id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, issue_type_id, milestone_id, properties FROM issue
 WHERE id = $1
 `
 
@@ -637,12 +677,13 @@ func (q *Queries) GetIssue(ctx context.Context, id pgtype.UUID) (Issue, error) {
 		&i.Stage,
 		&i.IssueTypeID,
 		&i.MilestoneID,
+		&i.Properties,
 	)
 	return i, err
 }
 
 const getIssueByNumber = `-- name: GetIssueByNumber :one
-SELECT id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, issue_type_id, milestone_id FROM issue
+SELECT id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, issue_type_id, milestone_id, properties FROM issue
 WHERE workspace_id = $1 AND number = $2
 `
 
@@ -682,12 +723,13 @@ func (q *Queries) GetIssueByNumber(ctx context.Context, arg GetIssueByNumberPara
 		&i.Stage,
 		&i.IssueTypeID,
 		&i.MilestoneID,
+		&i.Properties,
 	)
 	return i, err
 }
 
 const getIssueByOrigin = `-- name: GetIssueByOrigin :one
-SELECT id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, issue_type_id, milestone_id FROM issue
+SELECT id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, issue_type_id, milestone_id, properties FROM issue
 WHERE workspace_id = $1
   AND origin_type = $2
   AND origin_id = $3
@@ -736,6 +778,7 @@ func (q *Queries) GetIssueByOrigin(ctx context.Context, arg GetIssueByOriginPara
 		&i.Stage,
 		&i.IssueTypeID,
 		&i.MilestoneID,
+		&i.Properties,
 	)
 	return i, err
 }
@@ -760,7 +803,7 @@ func (q *Queries) GetIssueGCStatus(ctx context.Context, id pgtype.UUID) (GetIssu
 }
 
 const getIssueInWorkspace = `-- name: GetIssueInWorkspace :one
-SELECT id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, issue_type_id, milestone_id FROM issue
+SELECT id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, issue_type_id, milestone_id, properties FROM issue
 WHERE id = $1 AND workspace_id = $2
 `
 
@@ -800,6 +843,7 @@ func (q *Queries) GetIssueInWorkspace(ctx context.Context, arg GetIssueInWorkspa
 		&i.Stage,
 		&i.IssueTypeID,
 		&i.MilestoneID,
+		&i.Properties,
 	)
 	return i, err
 }
@@ -838,7 +882,7 @@ func (q *Queries) ListAssigneesByIssueIDs(ctx context.Context, issueIds []pgtype
 }
 
 const listChildIssues = `-- name: ListChildIssues :many
-SELECT id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, issue_type_id, milestone_id FROM issue
+SELECT id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, issue_type_id, milestone_id, properties FROM issue
 WHERE parent_issue_id = $1
 ORDER BY number ASC
 `
@@ -886,6 +930,7 @@ func (q *Queries) ListChildIssues(ctx context.Context, parentIssueID pgtype.UUID
 			&i.Stage,
 			&i.IssueTypeID,
 			&i.MilestoneID,
+			&i.Properties,
 		); err != nil {
 			return nil, err
 		}
@@ -898,7 +943,7 @@ func (q *Queries) ListChildIssues(ctx context.Context, parentIssueID pgtype.UUID
 }
 
 const listChildrenByParents = `-- name: ListChildrenByParents :many
-SELECT id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, issue_type_id, milestone_id FROM issue
+SELECT id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, issue_type_id, milestone_id, properties FROM issue
 WHERE workspace_id = $1
   AND parent_issue_id = ANY($2::uuid[])
 ORDER BY parent_issue_id, number ASC
@@ -953,6 +998,7 @@ func (q *Queries) ListChildrenByParents(ctx context.Context, arg ListChildrenByP
 			&i.Stage,
 			&i.IssueTypeID,
 			&i.MilestoneID,
+			&i.Properties,
 		); err != nil {
 			return nil, err
 		}
@@ -1043,8 +1089,8 @@ FROM issue i
 WHERE i.workspace_id = $1
   AND ($4::text IS NULL OR i.status = $4)
   AND ($5::text IS NULL OR i.priority = $5)
-  AND ($6::uuid IS NULL OR i.assignee_id = $6)
-  AND ($7::uuid[] IS NULL OR i.assignee_id = ANY($7::uuid[]))
+  AND ($6::uuid IS NULL OR i.assignee_id = $6 OR EXISTS (SELECT 1 FROM issue_assignees ia WHERE ia.issue_id = i.id AND ia.assignee_id = $6))
+  AND ($7::uuid[] IS NULL OR i.assignee_id = ANY($7::uuid[]) OR EXISTS (SELECT 1 FROM issue_assignees ia WHERE ia.issue_id = i.id AND ia.assignee_id = ANY($7::uuid[])))
   AND ($8::uuid IS NULL OR i.creator_id = $8)
   AND ($9::uuid IS NULL OR i.project_id = $9)
   AND ($10::bool IS NULL OR (i.start_date IS NOT NULL OR i.due_date IS NOT NULL))
@@ -1058,6 +1104,10 @@ WHERE i.workspace_id = $1
     )
     OR i.creator_id = $13
     OR i.assignee_id = $13
+    OR EXISTS (
+      SELECT 1 FROM issue_assignees ia
+      WHERE ia.issue_id = i.id AND ia.assignee_type = 'member' AND ia.assignee_id = $13
+    )
     OR EXISTS (
       SELECT 1 FROM issue_subscriber sub
       WHERE sub.issue_id = i.id AND sub.user_id = $13
@@ -1089,6 +1139,14 @@ WHERE i.workspace_id = $1
            WHERE a.workspace_id = $1
              AND a.owner_id     = $15::uuid
     ))
+    OR EXISTS (
+      SELECT 1 FROM issue_assignees ia
+      WHERE ia.issue_id = i.id AND ia.assignee_type = 'agent' AND ia.assignee_id IN (
+          SELECT a.id FROM agent a
+           WHERE a.workspace_id = $1
+             AND a.owner_id     = $15::uuid
+      )
+    )
     -- (2)(3)(4) assignee is a squad related to the user — three relations
     OR (i.assignee_type = 'squad' AND i.assignee_id IN (
           -- (2) the user is a human member of the squad
@@ -1120,6 +1178,33 @@ WHERE i.workspace_id = $1
              AND a.workspace_id = $1
              AND a.owner_id     = $15::uuid
     ))
+    OR EXISTS (
+      SELECT 1 FROM issue_assignees ia
+      WHERE ia.issue_id = i.id AND ia.assignee_type = 'squad' AND ia.assignee_id IN (
+          SELECT sm.squad_id
+            FROM squad_member sm
+            JOIN squad s ON s.id = sm.squad_id
+           WHERE s.workspace_id = $1
+             AND sm.member_type = 'member'
+             AND sm.member_id   = $15::uuid
+          UNION
+          SELECT s.id
+            FROM squad s
+            JOIN agent a ON a.id = s.leader_id
+           WHERE s.workspace_id = $1
+             AND a.workspace_id = $1
+             AND a.owner_id     = $15::uuid
+          UNION
+          SELECT sm.squad_id
+            FROM squad_member sm
+            JOIN squad s ON s.id = sm.squad_id
+            JOIN agent a ON a.id = sm.member_id
+           WHERE s.workspace_id = $1
+             AND sm.member_type = 'agent'
+             AND a.workspace_id = $1
+             AND a.owner_id     = $15::uuid
+      )
+    )
   )
 ORDER BY i.position ASC, i.created_at DESC
 LIMIT $2 OFFSET $3
@@ -1239,8 +1324,8 @@ FROM issue i
 WHERE i.workspace_id = $1
   AND i.status NOT IN ('done', 'cancelled')
   AND ($2::text IS NULL OR i.priority = $2)
-  AND ($3::uuid IS NULL OR i.assignee_id = $3)
-  AND ($4::uuid[] IS NULL OR i.assignee_id = ANY($4::uuid[]))
+  AND ($3::uuid IS NULL OR i.assignee_id = $3 OR EXISTS (SELECT 1 FROM issue_assignees ia WHERE ia.issue_id = i.id AND ia.assignee_id = $3))
+  AND ($4::uuid[] IS NULL OR i.assignee_id = ANY($4::uuid[]) OR EXISTS (SELECT 1 FROM issue_assignees ia WHERE ia.issue_id = i.id AND ia.assignee_id = ANY($4::uuid[])))
   AND ($5::uuid IS NULL OR i.creator_id = $5)
   AND ($6::uuid IS NULL OR i.project_id = $6)
   AND ($7::jsonb IS NULL OR i.metadata @> $7::jsonb)
@@ -1250,58 +1335,82 @@ WHERE i.workspace_id = $1
   -- correlated form skips the GIN index, which is fine here: open_only is
   -- an unpaginated workspace scan already narrowed by status.
   AND (
+    $8::jsonb IS NULL
+    OR NOT EXISTS (
+      SELECT 1
+      FROM jsonb_array_elements($8::jsonb) AS pf(alternatives)
+      WHERE NOT EXISTS (
+        SELECT 1
+        FROM jsonb_array_elements(pf.alternatives) AS alt(pattern)
+        WHERE i.properties @> alt.pattern
+      )
+    )
+  )
+  AND (
     i.project_id IS NULL
-    OR $8::boolean = true
+    OR $9::boolean = true
     OR EXISTS (
       SELECT 1 FROM project_member pm
-      WHERE pm.project_id = i.project_id AND pm.member_id = $9
+      WHERE pm.project_id = i.project_id AND pm.member_id = $10
     )
-    OR i.creator_id = $9
-    OR i.assignee_id = $9
+    OR i.creator_id = $10
+    OR i.assignee_id = $10
+    OR EXISTS (
+      SELECT 1 FROM issue_assignees ia
+      WHERE ia.issue_id = i.id AND ia.assignee_type = 'member' AND ia.assignee_id = $10
+    )
     OR EXISTS (
       SELECT 1 FROM issue_subscriber sub
-      WHERE sub.issue_id = i.id AND sub.user_id = $9
+      WHERE sub.issue_id = i.id AND sub.user_id = $10
     )
     OR EXISTS (
       SELECT 1 FROM comment c
       WHERE c.issue_id = i.id
-        AND (c.author_id = $9 OR c.content LIKE '%%' || $9::text || '%%')
+        AND (c.author_id = $10 OR c.content LIKE '%%' || $10::text || '%%')
     )
     OR EXISTS (
       SELECT 1 FROM review_assets ra
-      WHERE ra.issue_id = i.id AND ra.uploaded_by = $9
-    )
-  )
-  AND (
-    $10::uuid IS NULL
-    OR EXISTS (
-      SELECT 1 FROM approvals a
-      WHERE a.issue_id = i.id
-        AND a.approver_id = $10::uuid
-        AND a.status = 'pending'
+      WHERE ra.issue_id = i.id AND ra.uploaded_by = $10
     )
   )
   AND (
     $11::uuid IS NULL
+    OR EXISTS (
+      SELECT 1 FROM approvals a
+      WHERE a.issue_id = i.id
+        AND a.approver_id = $11::uuid
+        AND a.status = 'pending'
+    )
+  )
+  AND (
+    $12::uuid IS NULL
     OR (i.assignee_type = 'agent' AND i.assignee_id IN (
           SELECT a.id FROM agent a
            WHERE a.workspace_id = $1
-             AND a.owner_id     = $11::uuid
+             AND a.owner_id     = $12::uuid
     ))
+    OR EXISTS (
+      SELECT 1 FROM issue_assignees ia
+      WHERE ia.issue_id = i.id AND ia.assignee_type = 'agent' AND ia.assignee_id IN (
+          SELECT a.id FROM agent a
+           WHERE a.workspace_id = $1
+             AND a.owner_id     = $12::uuid
+      )
+    )
     OR (i.assignee_type = 'squad' AND i.assignee_id IN (
           SELECT sm.squad_id
             FROM squad_member sm
             JOIN squad s ON s.id = sm.squad_id
            WHERE s.workspace_id = $1
              AND sm.member_type = 'member'
-             AND sm.member_id   = $11::uuid
+             AND sm.member_id   = $12::uuid
           UNION
           SELECT s.id
             FROM squad s
             JOIN agent a ON a.id = s.leader_id
            WHERE s.workspace_id = $1
              AND a.workspace_id = $1
-             AND a.owner_id     = $11::uuid
+             AND a.owner_id     = $12::uuid
           UNION
           SELECT sm.squad_id
             FROM squad_member sm
@@ -1310,8 +1419,35 @@ WHERE i.workspace_id = $1
            WHERE s.workspace_id = $1
              AND sm.member_type = 'agent'
              AND a.workspace_id = $1
-             AND a.owner_id     = $11::uuid
+             AND a.owner_id     = $12::uuid
     ))
+    OR EXISTS (
+      SELECT 1 FROM issue_assignees ia
+      WHERE ia.issue_id = i.id AND ia.assignee_type = 'squad' AND ia.assignee_id IN (
+          SELECT sm.squad_id
+            FROM squad_member sm
+            JOIN squad s ON s.id = sm.squad_id
+           WHERE s.workspace_id = $1
+             AND sm.member_type = 'member'
+             AND sm.member_id   = $12::uuid
+          UNION
+          SELECT s.id
+            FROM squad s
+            JOIN agent a ON a.id = s.leader_id
+           WHERE s.workspace_id = $1
+             AND a.workspace_id = $1
+             AND a.owner_id     = $12::uuid
+          UNION
+          SELECT sm.squad_id
+            FROM squad_member sm
+            JOIN squad s ON s.id = sm.squad_id
+            JOIN agent a ON a.id = sm.member_id
+           WHERE s.workspace_id = $1
+             AND sm.member_type = 'agent'
+             AND a.workspace_id = $1
+             AND a.owner_id     = $12::uuid
+      )
+    )
   )
 ORDER BY i.position ASC, i.created_at DESC
 `
@@ -1324,6 +1460,7 @@ type ListOpenIssuesParams struct {
 	CreatorID         pgtype.UUID   `json:"creator_id"`
 	ProjectID         pgtype.UUID   `json:"project_id"`
 	MetadataFilter    []byte        `json:"metadata_filter"`
+	PropertiesFilter  []byte        `json:"properties_filter"`
 	IsAdmin           bool          `json:"is_admin"`
 	MemberID          pgtype.UUID   `json:"member_id"`
 	PendingApproverID pgtype.UUID   `json:"pending_approver_id"`
@@ -1365,6 +1502,7 @@ func (q *Queries) ListOpenIssues(ctx context.Context, arg ListOpenIssuesParams) 
 		arg.CreatorID,
 		arg.ProjectID,
 		arg.MetadataFilter,
+		arg.PropertiesFilter,
 		arg.IsAdmin,
 		arg.MemberID,
 		arg.PendingApproverID,
@@ -1473,7 +1611,7 @@ UPDATE issue SET
     metadata = jsonb_set(metadata, ARRAY[$1::text], $2::jsonb),
     updated_at = now()
 WHERE id = $3 AND workspace_id = $4
-RETURNING id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, issue_type_id, milestone_id
+RETURNING id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, issue_type_id, milestone_id, properties
 `
 
 type SetIssueMetadataKeyParams struct {
@@ -1523,6 +1661,7 @@ func (q *Queries) SetIssueMetadataKey(ctx context.Context, arg SetIssueMetadataK
 		&i.Stage,
 		&i.IssueTypeID,
 		&i.MilestoneID,
+		&i.Properties,
 	)
 	return i, err
 }
@@ -1543,7 +1682,7 @@ UPDATE issue SET
     stage = $13,
     updated_at = now()
 WHERE id = $1
-RETURNING id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, issue_type_id, milestone_id
+RETURNING id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, issue_type_id, milestone_id, properties
 `
 
 type UpdateIssueParams struct {
@@ -1607,6 +1746,7 @@ func (q *Queries) UpdateIssue(ctx context.Context, arg UpdateIssueParams) (Issue
 		&i.Stage,
 		&i.IssueTypeID,
 		&i.MilestoneID,
+		&i.Properties,
 	)
 	return i, err
 }
@@ -1616,7 +1756,7 @@ UPDATE issue SET
     status = $2,
     updated_at = now()
 WHERE id = $1 AND workspace_id = $3
-RETURNING id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, issue_type_id, milestone_id
+RETURNING id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, project_id, origin_type, origin_id, first_executed_at, start_date, metadata, stage, issue_type_id, milestone_id, properties
 `
 
 type UpdateIssueStatusParams struct {
@@ -1657,6 +1797,7 @@ func (q *Queries) UpdateIssueStatus(ctx context.Context, arg UpdateIssueStatusPa
 		&i.Stage,
 		&i.IssueTypeID,
 		&i.MilestoneID,
+		&i.Properties,
 	)
 	return i, err
 }

@@ -156,10 +156,17 @@ checks AS (
         SUM(CASE WHEN cr.status = 'completed' AND cr.conclusion IN
                 ('success','neutral','skipped')
             THEN 1 ELSE 0 END)::bigint AS passed,
-        SUM(CASE WHEN status <> 'completed' OR conclusion IS NULL
-            THEN 1 ELSE 0 END)::bigint AS pending
-    FROM per_app_latest
-    GROUP BY pr_id
+        SUM(CASE WHEN cr.status <> 'completed' OR cr.conclusion IS NULL
+            THEN 1 ELSE 0 END)::bigint AS running,
+        COALESCE(
+            array_agg(cr.name) FILTER (WHERE cr.status = 'completed' AND cr.conclusion IN
+                ('failure','cancelled','timed_out','action_required','startup_failure','stale','error')),
+            '{}'
+        )::text[] AS failed_names
+    FROM github_pull_request_check_run cr
+    JOIN issue_prs ip ON ip.id = cr.pr_id
+    WHERE cr.head_sha = ip.snapshot_head_sha AND ip.snapshot_head_sha <> ''
+    GROUP BY cr.pr_id
 ),
 per_reviewer_latest AS (
     SELECT DISTINCT ON (r.pr_id, r.reviewer_login)
@@ -189,7 +196,8 @@ SELECT
     COALESCE(c.total, 0)::bigint   AS checks_total,
     COALESCE(c.passed, 0)::bigint  AS checks_passed,
     COALESCE(c.failed, 0)::bigint  AS checks_failed,
-    COALESCE(c.pending, 0)::bigint AS checks_pending,
+    COALESCE(c.running, 0)::bigint AS checks_running,
+    COALESCE(c.failed_names, '{}')::text[] AS failed_check_names,
     COALESCE(r.approved, 0)::bigint AS reviews_approved,
     COALESCE(r.changes_requested, 0)::bigint AS reviews_changes_requested
 FROM github_pull_request pr

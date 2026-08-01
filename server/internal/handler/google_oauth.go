@@ -11,12 +11,12 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
-	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
 	"github.com/kiyors/multica/server/internal/analytics"
 	"github.com/kiyors/multica/server/internal/auth"
 	obsmetrics "github.com/kiyors/multica/server/internal/metrics"
 	db "github.com/kiyors/multica/server/pkg/db/generated"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
 )
 
 func getGoogleOAuthConfig() *oauth2.Config {
@@ -43,7 +43,7 @@ func (h *Handler) GoogleOAuthLogin(w http.ResponseWriter, r *http.Request) {
 	b := make([]byte, 16)
 	rand.Read(b)
 	state := base64.URLEncoding.EncodeToString(b)
-	
+
 	http.SetCookie(w, &http.Cookie{
 		Name:     "oauth_state",
 		Value:    state,

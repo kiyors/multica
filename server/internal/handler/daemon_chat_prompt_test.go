@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	db "github.com/kiyors/multica/server/pkg/db/generated"
 )
 

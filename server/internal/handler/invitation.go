@@ -461,10 +461,10 @@ func (h *Handler) AcceptInvitation(w http.ResponseWriter, r *http.Request) {
 					role = "viewer" // default
 				}
 				_, err = qtx.AddProjectMember(r.Context(), db.AddProjectMemberParams{
-					ProjectID:   projectUUID,
-					MemberID:    member.ID,
-					Role:        role,
-					InvitedBy:   invitedBy,
+					ProjectID: projectUUID,
+					MemberID:  member.ID,
+					Role:      role,
+					InvitedBy: invitedBy,
 				})
 				if err != nil {
 					slog.Warn("failed to add initial project member", append(logger.RequestAttrs(r), "error", err, "project_id", p.ProjectID, "member_id", uuidToString(member.ID))...)

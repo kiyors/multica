@@ -872,7 +872,7 @@ func (h *Handler) GitHubUserCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, userToResponse(updatedUser))
+	writeJSON(w, http.StatusOK, h.userToResponse(updatedUser))
 }
 
 func (h *Handler) GitHubUserDisconnect(w http.ResponseWriter, r *http.Request) {
@@ -888,7 +888,7 @@ func (h *Handler) GitHubUserDisconnect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, userToResponse(updatedUser))
+	writeJSON(w, http.StatusOK, h.userToResponse(updatedUser))
 }
 
 type githubDeviceCodeResponse struct {
@@ -1030,5 +1030,5 @@ func (h *Handler) GitHubDeviceCodePoll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, userToResponse(updatedUser))
+	writeJSON(w, http.StatusOK, h.userToResponse(updatedUser))
 }

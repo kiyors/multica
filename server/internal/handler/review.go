@@ -419,7 +419,7 @@ func (h *Handler) CreateReviewComment(w http.ResponseWriter, r *http.Request) {
 				Reason:   "commenter",
 			})
 
-			h.triggerTasksForComment(ctx, issue, normalComment, nil, "member", util.UUIDToString(requester.ID), userID, nil)
+			h.triggerTasksForComment(ctx, issue, normalComment, nil, "member", util.UUIDToString(requester.ID), userID, "", nil)
 			h.publish(protocol.EventCommentCreated, workspaceID, "member", userID, map[string]any{
 				"comment": commentToResponse(normalComment, nil, nil),
 			})

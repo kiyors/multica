@@ -22,9 +22,13 @@ import (
 	"github.com/kiyors/multica/server/internal/cli"
 	"github.com/kiyors/multica/server/internal/daemon/execenv"
 	"github.com/kiyors/multica/server/internal/daemon/repocache"
+	"github.com/kiyors/multica/server/internal/selfexec"
 	"github.com/kiyors/multica/server/pkg/agent"
+	"github.com/kiyors/multica/server/pkg/redact"
 	"github.com/kiyors/multica/server/pkg/skillbundle"
 	"github.com/kiyors/multica/server/pkg/taskfailure"
+	"golang.org/x/sync/errgroup"
+	"golang.org/x/sync/singleflight"
 )
 
 // ErrRepoNotConfigured is returned by ensureRepoReady when the requested repo

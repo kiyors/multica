@@ -24,7 +24,7 @@ import (
 	"github.com/kiyors/multica/server/internal/middleware"
 	"github.com/kiyors/multica/server/internal/service"
 	"github.com/kiyors/multica/server/internal/util"
-	"github.com/kiyors/multica/server/pkg/agent"
+	agentpkg "github.com/kiyors/multica/server/pkg/agent"
 	db "github.com/kiyors/multica/server/pkg/db/generated"
 	"github.com/kiyors/multica/server/pkg/protocol"
 )
@@ -182,9 +182,7 @@ func (h *Handler) labelsByIssue(ctx context.Context, wsUUID pgtype.UUID, issueID
 		out[issueID] = append(out[issueID], LabelResponse{
 			ID:           uuidToString(r.ID),
 			WorkspaceID:  uuidToString(r.WorkspaceID),
-			ResourceType: r.ResourceType,
 			Name:         r.Name,
-			Description:  r.Description,
 			Color:        r.Color,
 			CreatedAt:    timestampToString(r.CreatedAt),
 			UpdatedAt:    timestampToString(r.UpdatedAt),
@@ -513,7 +511,7 @@ func buildSearchQuery(phrase string, terms []string, queryNum int, hasNum bool, 
 	if !includeClosed {
 		whereClause += " AND i.status NOT IN ('done', 'cancelled')"
 	}
-	
+
 	// Access Control: Project visibility check
 	isAdminParam := nextArg(isAdmin)
 	memberIDParam := nextArg(memberID)
@@ -2072,6 +2070,13 @@ func (h *Handler) ListChildIssues(w http.ResponseWriter, r *http.Request) {
 	}
 	wsPrefix := h.getIssuePrefix(r.Context(), issue.WorkspaceID)
 	projectPrefixes := h.loadProjectPrefixes(r.Context(), issue.WorkspaceID)
+	
+	ids := make([]pgtype.UUID, len(children))
+	for i, c := range children {
+		ids[i] = c.ID
+	}
+	labelsMap := h.labelsByIssue(r.Context(), issue.WorkspaceID, ids)
+	
 	resp := make([]IssueResponse, len(children))
 	for i, child := range children {
 		prefix := wsPrefix
@@ -2153,6 +2158,13 @@ func (h *Handler) ListChildrenByParents(w http.ResponseWriter, r *http.Request) 
 	}
 	wsPrefix := h.getIssuePrefix(r.Context(), wsUUID)
 	projectPrefixes := h.loadProjectPrefixes(r.Context(), wsUUID)
+	
+	ids := make([]pgtype.UUID, len(children))
+	for i, c := range children {
+		ids[i] = c.ID
+	}
+	labelsMap := h.labelsByIssue(r.Context(), wsUUID, ids)
+
 	resp := make([]IssueResponse, len(children))
 	for i, child := range children {
 		prefix := wsPrefix
@@ -2773,6 +2785,7 @@ func (h *Handler) CreateIssue(w http.ResponseWriter, r *http.Request) {
 		OriginID:      originID,
 		Stage:         ptrToInt4(req.Stage),
 		AttachmentIDs: attachmentIDs,
+		LabelIDs:      labelIDs,
 		Assignees: func() []service.IssueAssigneeInput {
 			var out []service.IssueAssigneeInput
 			for _, a := range req.Assignees {
@@ -2791,7 +2804,7 @@ func (h *Handler) CreateIssue(w http.ResponseWriter, r *http.Request) {
 		ActorID:          actualCreatorID,
 		AnalyticsAgentID: analyticsAgentID,
 		Platform:         func() string { p, _, _ := middleware.ClientMetadataFromContext(r.Context()); return p }(),
-		BroadcastPayload: func(issue db.Issue, atts []db.Attachment) map[string]any {
+		BroadcastPayload: func(issue db.Issue, atts []db.Attachment, labels []db.IssueLabel) map[string]any {
 			payload := issueToResponse(issue, h.getIssuePrefixForIssue(r.Context(), issue.WorkspaceID, issue.ProjectID))
 			payload.Attachments = buildAttachmentResponses(atts)
 			// Carry the authoritative label snapshot so every online client

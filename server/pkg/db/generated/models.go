@@ -347,6 +347,22 @@ type ChannelInstallation struct {
 	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
 }
 
+type ChannelMediaPendingObject struct {
+	StorageKey     string             `json:"storage_key"`
+	WorkspaceID    pgtype.UUID        `json:"workspace_id"`
+	ChatMessageID  pgtype.UUID        `json:"chat_message_id"`
+	StorageUrl     string             `json:"storage_url"`
+	InstallationID pgtype.UUID        `json:"installation_id"`
+	State          string             `json:"state"`
+	LeaseToken     pgtype.UUID        `json:"lease_token"`
+	LeaseExpiresAt pgtype.Timestamptz `json:"lease_expires_at"`
+	Attempt        int32              `json:"attempt"`
+	NextAttemptAt  pgtype.Timestamptz `json:"next_attempt_at"`
+	LastError      pgtype.Text        `json:"last_error"`
+	TombstonePass  int32              `json:"tombstone_pass"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+}
+
 type ChannelMember struct {
 	ChannelID pgtype.UUID        `json:"channel_id"`
 	MemberID  pgtype.UUID        `json:"member_id"`
@@ -478,6 +494,7 @@ type Comment struct {
 	ReviewPageIndex pgtype.Int4        `json:"review_page_index"`
 	ReviewStartTime pgtype.Float4      `json:"review_start_time"`
 	ReviewEndTime   pgtype.Float4      `json:"review_end_time"`
+	QuickActionID   pgtype.UUID        `json:"quick_action_id"`
 }
 
 type CommentReaction struct {
@@ -688,6 +705,7 @@ type Issue struct {
 	Stage              pgtype.Int4        `json:"stage"`
 	IssueTypeID        pgtype.UUID        `json:"issue_type_id"`
 	MilestoneID        pgtype.UUID        `json:"milestone_id"`
+	Properties         []byte             `json:"properties"`
 }
 
 type IssueAssignee struct {
@@ -712,6 +730,7 @@ type IssueLabel struct {
 	Color        string             `json:"color"`
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+	ProjectID    pgtype.UUID        `json:"project_id"`
 	ResourceType string             `json:"resource_type"`
 	Description  string             `json:"description"`
 }
@@ -727,7 +746,7 @@ type IssueProperty struct {
 	ArchivedAt  pgtype.Timestamptz `json:"archived_at"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
-	ProjectID   pgtype.UUID        `json:"project_id"`
+	Icon        string             `json:"icon"`
 }
 
 type IssuePullRequest struct {
@@ -775,6 +794,16 @@ type IssueType struct {
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
 	ProjectID   pgtype.UUID        `json:"project_id"`
+}
+
+type IssueVcsPullRequest struct {
+	IssueID       pgtype.UUID        `json:"issue_id"`
+	PullRequestID pgtype.UUID        `json:"pull_request_id"`
+	CloseIntent   bool               `json:"close_intent"`
+	ReferenceOnly bool               `json:"reference_only"`
+	LinkedByType  pgtype.Text        `json:"linked_by_type"`
+	LinkedByID    pgtype.UUID        `json:"linked_by_id"`
+	LinkedAt      pgtype.Timestamptz `json:"linked_at"`
 }
 
 type LarkBindingToken struct {
@@ -927,6 +956,8 @@ type Project struct {
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
 	Priority    string             `json:"priority"`
+	StartDate   pgtype.Date        `json:"start_date"`
+	DueDate     pgtype.Date        `json:"due_date"`
 	Prefix      pgtype.Text        `json:"prefix"`
 }
 
@@ -961,6 +992,24 @@ type ProjectResource struct {
 	Position     int32              `json:"position"`
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 	CreatedBy    pgtype.UUID        `json:"created_by"`
+}
+
+type QuickAction struct {
+	ID            pgtype.UUID        `json:"id"`
+	WorkspaceID   pgtype.UUID        `json:"workspace_id"`
+	Name          string             `json:"name"`
+	Description   string             `json:"description"`
+	AssigneeType  string             `json:"assignee_type"`
+	AssigneeID    pgtype.UUID        `json:"assignee_id"`
+	Prompt        string             `json:"prompt"`
+	Visibility    string             `json:"visibility"`
+	Status        string             `json:"status"`
+	LastUsedAt    pgtype.Timestamptz `json:"last_used_at"`
+	UseCount      int64              `json:"use_count"`
+	CreatedByType string             `json:"created_by_type"`
+	CreatedByID   pgtype.UUID        `json:"created_by_id"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
 }
 
 type ReviewAsset struct {
@@ -1215,6 +1264,55 @@ type UserDeviceToken struct {
 	Platform  string             `json:"platform"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+type VcsCommitStatus struct {
+	ConnectionID pgtype.UUID        `json:"connection_id"`
+	Sha          string             `json:"sha"`
+	Context      string             `json:"context"`
+	State        string             `json:"state"`
+	TargetUrl    pgtype.Text        `json:"target_url"`
+	Description  pgtype.Text        `json:"description"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+}
+
+type VcsConnection struct {
+	ID                     pgtype.UUID        `json:"id"`
+	WorkspaceID            pgtype.UUID        `json:"workspace_id"`
+	Provider               string             `json:"provider"`
+	InstanceUrl            string             `json:"instance_url"`
+	AccountLogin           string             `json:"account_login"`
+	AccessTokenEncrypted   string             `json:"access_token_encrypted"`
+	WebhookSecretEncrypted string             `json:"webhook_secret_encrypted"`
+	ConnectedByID          pgtype.UUID        `json:"connected_by_id"`
+	CreatedAt              pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt              pgtype.Timestamptz `json:"updated_at"`
+}
+
+type VcsPullRequest struct {
+	ID              pgtype.UUID        `json:"id"`
+	WorkspaceID     pgtype.UUID        `json:"workspace_id"`
+	ConnectionID    pgtype.UUID        `json:"connection_id"`
+	Provider        string             `json:"provider"`
+	RepoOwner       string             `json:"repo_owner"`
+	RepoName        string             `json:"repo_name"`
+	PrNumber        int32              `json:"pr_number"`
+	Title           string             `json:"title"`
+	State           string             `json:"state"`
+	HtmlUrl         string             `json:"html_url"`
+	Branch          pgtype.Text        `json:"branch"`
+	HeadSha         string             `json:"head_sha"`
+	AuthorLogin     pgtype.Text        `json:"author_login"`
+	AuthorAvatarUrl pgtype.Text        `json:"author_avatar_url"`
+	MergedAt        pgtype.Timestamptz `json:"merged_at"`
+	ClosedAt        pgtype.Timestamptz `json:"closed_at"`
+	PrCreatedAt     pgtype.Timestamptz `json:"pr_created_at"`
+	PrUpdatedAt     pgtype.Timestamptz `json:"pr_updated_at"`
+	Additions       int32              `json:"additions"`
+	Deletions       int32              `json:"deletions"`
+	ChangedFiles    int32              `json:"changed_files"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
 }
 
 type VerificationCode struct {

@@ -22,6 +22,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	obsmetrics "github.com/kiyors/multica/server/internal/metrics"
 	"github.com/kiyors/multica/server/internal/middleware"
 	db "github.com/kiyors/multica/server/pkg/db/generated"
 )

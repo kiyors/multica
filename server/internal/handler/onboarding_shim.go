@@ -308,7 +308,6 @@ func (h *Handler) BootstrapOnboardingRuntime(w http.ResponseWriter, r *http.Requ
 		}
 	}
 
-
 	firstCompletion := !before.OnboardedAt.Valid
 	updatedUser, err := qtx.MarkUserOnboarded(r.Context(), parseUUID(userID))
 	if err != nil {

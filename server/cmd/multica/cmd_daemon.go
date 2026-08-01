@@ -21,8 +21,8 @@ import (
 
 	"github.com/kiyors/multica/server/internal/cli"
 	"github.com/kiyors/multica/server/internal/daemon"
-	"github.com/kiyors/multica/server/internal/daemon/execenv"
 	logger_pkg "github.com/kiyors/multica/server/internal/logger"
+	"github.com/kiyors/multica/server/internal/selfexec"
 	"github.com/kiyors/multica/server/internal/util"
 )
 

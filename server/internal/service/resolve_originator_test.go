@@ -10,6 +10,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/kiyors/multica/server/internal/attribution"
 	"github.com/kiyors/multica/server/internal/events"
 	"github.com/kiyors/multica/server/internal/featureflags"
 	"github.com/kiyors/multica/server/internal/runtimeapps"

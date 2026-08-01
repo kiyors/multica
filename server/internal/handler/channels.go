@@ -183,10 +183,10 @@ func (h *Handler) DeleteChannel(w http.ResponseWriter, r *http.Request) {
 // Channel Members
 
 type ChannelMemberResponse struct {
-	ID        string `json:"id"`
-	UserID    string `json:"user_id"`
-	Role      string `json:"role"`
-	JoinedAt  string `json:"joined_at"`
+	ID       string `json:"id"`
+	UserID   string `json:"user_id"`
+	Role     string `json:"role"`
+	JoinedAt string `json:"joined_at"`
 }
 
 func (h *Handler) ListChannelMembers(w http.ResponseWriter, r *http.Request) {

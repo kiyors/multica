@@ -135,7 +135,7 @@ func (h *Handler) ListLabels(w http.ResponseWriter, r *http.Request) {
 	}
 	resp := make([]LabelResponse, len(labels))
 	for i, label := range labels {
-		resp[i] = labelListRowToResponse(label)
+		resp[i] = labelToResponse(label)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"labels": resp, "total": len(resp)})
 }
@@ -178,11 +178,6 @@ func (h *Handler) CreateLabel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	color, err := normalizeColor(req.Color)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-	resourceType, err := parseLabelResourceType(req.ResourceType)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
@@ -254,9 +249,6 @@ func (h *Handler) UpdateLabel(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		params.Name = pgtype.Text{String: name, Valid: true}
-	}
-	if req.Description != nil {
-		params.Description = pgtype.Text{String: sanitizeNullBytes(strings.TrimSpace(*req.Description)), Valid: true}
 	}
 	if req.Color != nil {
 		color, err := normalizeColor(*req.Color)

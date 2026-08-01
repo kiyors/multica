@@ -17,6 +17,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/kiyors/multica/server/internal/analytics"
+	"github.com/kiyors/multica/server/internal/attribution"
 	"github.com/kiyors/multica/server/internal/events"
 	"github.com/kiyors/multica/server/internal/featureflags"
 	obsmetrics "github.com/kiyors/multica/server/internal/metrics"

@@ -23,9 +23,9 @@ import (
 	"github.com/kiyors/multica/server/internal/cloudruntime"
 	"github.com/kiyors/multica/server/internal/daemonws"
 	"github.com/kiyors/multica/server/internal/events"
-	"github.com/kiyors/multica/server/internal/featureflagdispatch"
 	"github.com/kiyors/multica/server/internal/integrations/channel/engine"
 	composio "github.com/kiyors/multica/server/internal/integrations/composio"
+	"github.com/kiyors/multica/server/internal/integrations/ghsnapshot"
 	"github.com/kiyors/multica/server/internal/integrations/lark"
 	"github.com/kiyors/multica/server/internal/integrations/slack"
 	obsmetrics "github.com/kiyors/multica/server/internal/metrics"
@@ -34,8 +34,10 @@ import (
 	"github.com/kiyors/multica/server/internal/service"
 	"github.com/kiyors/multica/server/internal/storage"
 	"github.com/kiyors/multica/server/internal/util"
+	"github.com/kiyors/multica/server/internal/util/secretbox"
 	db "github.com/kiyors/multica/server/pkg/db/generated"
 	"github.com/kiyors/multica/server/pkg/featureflag"
+	"github.com/kiyors/multica/server/pkg/llm"
 )
 
 // randomID returns a random 16-byte hex string used as a request ID for
@@ -157,9 +159,10 @@ type Handler struct {
 	DB                    dbExecutor
 	TxStarter             txStarter
 	Hub                   *realtime.Hub
-	DaemonHub             *daemonws.Hub
-	DaemonProfileRefresh  RuntimeProfileRefreshNotifier
-	Bus                   *events.Bus
+	DaemonHub              *daemonws.Hub
+	DaemonProfileRefresh   RuntimeProfileRefreshNotifier
+	DaemonWorkspaceRefresh WorkspaceSetRefreshNotifier
+	Bus                    *events.Bus
 	TaskService           *service.TaskService
 	IssueService          *service.IssueService
 	AutopilotService      *service.AutopilotService
@@ -170,7 +173,8 @@ type Handler struct {
 	LocalSkillListStore   LocalSkillListStore
 	LocalSkillImportStore LocalSkillImportStore
 	FeatureFlags          *featureflag.Service
-	DaemonFeatureFlags    *featureflagdispatch.Evaluator
+	DaemonPendingWork     DaemonPendingWorkNotifier
+	ModelCatalogCache     ModelCatalogCache
 	LivenessStore         LivenessStore
 	HeartbeatScheduler    HeartbeatScheduler
 	Storage               storage.Storage
@@ -314,30 +318,31 @@ func New(queries *db.Queries, txStarter txStarter, hub *realtime.Hub, bus *event
 
 	taskSvc := service.NewTaskService(queries, txStarter, hub, bus, daemonHub)
 	taskSvc.Analytics = analyticsClient
-	return &Handler{
-		Queries:               queries,
-		DB:                    executor,
-		TxStarter:             txStarter,
-		Hub:                   hub,
-		DaemonHub:             daemonHub,
-		DaemonProfileRefresh:  daemonProfileRefresh,
-		Bus:                   bus,
-		TaskService:           taskSvc,
-		IssueService:          service.NewIssueService(queries, txStarter, bus, analyticsClient, taskSvc),
-		AutopilotService:      service.NewAutopilotService(queries, txStarter, bus, taskSvc),
-		EmailService:          emailService,
-		PushService:           pushService,
-		UpdateStore:           NewInMemoryUpdateStore(),
-		ModelListStore:        NewInMemoryModelListStore(),
-		LocalSkillListStore:   NewInMemoryLocalSkillListStore(),
-		LocalSkillImportStore: NewInMemoryLocalSkillImportStore(),
-		LivenessStore:         NewNoopLivenessStore(),
-		HeartbeatScheduler:    NewPassthroughHeartbeatScheduler(queries),
-		Storage:               store,
-		CFSigner:              cfSigner,
-		Analytics:             analyticsClient,
-		WebhookRateLimiter:    NewMemoryWebhookRateLimiter(DefaultWebhookRateLimit()),
-		WebhookIPRateLimiter:  NewMemoryWebhookIPRateLimiter(DefaultWebhookIPRateLimit()),
+	h := &Handler{
+		Queries:                queries,
+		DB:                     executor,
+		TxStarter:              txStarter,
+		Hub:                    hub,
+		DaemonHub:              daemonHub,
+		DaemonProfileRefresh:   daemonProfileRefresh,
+		DaemonWorkspaceRefresh: daemonWorkspaceRefresh,
+		Bus:                    bus,
+		TaskService:            taskSvc,
+		IssueService:           service.NewIssueService(queries, txStarter, bus, analyticsClient, taskSvc),
+		AutopilotService:       service.NewAutopilotService(queries, txStarter, bus, taskSvc),
+		EmailService:           emailService,
+		PushService:            pushService,
+		UpdateStore:            NewInMemoryUpdateStore(),
+		ModelListStore:         NewInMemoryModelListStore(),
+		LocalSkillListStore:    NewInMemoryLocalSkillListStore(),
+		LocalSkillImportStore:  NewInMemoryLocalSkillImportStore(),
+		LivenessStore:          NewNoopLivenessStore(),
+		HeartbeatScheduler:     NewPassthroughHeartbeatScheduler(queries),
+		Storage:                store,
+		CFSigner:               cfSigner,
+		Analytics:              analyticsClient,
+		WebhookRateLimiter:     NewMemoryWebhookRateLimiter(DefaultWebhookRateLimit()),
+		WebhookIPRateLimiter:   NewMemoryWebhookIPRateLimiter(DefaultWebhookIPRateLimit()),
 		CloudRuntime: cloudruntime.NewClient(cloudruntime.Config{
 			BaseURL: cfg.CloudRuntimeFleetURL,
 			Timeout: cfg.CloudRuntimeFleetTimeout,

@@ -290,3 +290,15 @@ An iOS mobile client lives in [`apps/mobile/`](apps/mobile/) — see its [README
 - Unless the producer has granted a written branding waiver, the Multica LOGO, product name, and copyright information may not be removed or modified in a Multica user interface. The user interface is defined by derivation — including `apps/web/`, `apps/desktop/`, `apps/mobile/`, `packages/views/`, and `packages/ui/` — and covers raw source, the frontend container image, and compiled desktop and mobile binaries (condition 1b).
 - Non-interface use (running only the `server/` backend, the daemon, or the CLI) is exempt from the branding condition, but must retain the source and [NOTICE](NOTICE) attribution and state that the product is built on Multica, with a link back to this repository (condition 1c).
 - A branding waiver and a commercial license are separate grants; neither implies the other (condition 1d).
+
+## Gemini Web Connection
+
+To connect Gemini with the Multica MCP, you need to set up a custom connected app inside your Gemini extensions settings.
+
+Add a custom app link: `https://tasks-api.indiefluence.in/mcp`
+
+Under **Advanced Settings**, configure:
+- **Client ID**: (Your OAuth Client ID)
+- **Client secret**: (Your OAuth client secret)
+
+> **Note on Custom Connected Apps**: By adding this link, you're allowing Gemini to send info to a custom connected app that hasn't been reviewed by Google. Make sure you trust this service before connecting. Learn more about connecting custom apps in Gemini's documentation.

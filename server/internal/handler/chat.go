@@ -16,6 +16,7 @@ import (
 	"github.com/kiyors/multica/server/internal/analytics"
 	obsmetrics "github.com/kiyors/multica/server/internal/metrics"
 	"github.com/kiyors/multica/server/internal/middleware"
+	"github.com/kiyors/multica/server/internal/service"
 	"github.com/kiyors/multica/server/internal/util"
 	db "github.com/kiyors/multica/server/pkg/db/generated"
 	"github.com/kiyors/multica/server/pkg/protocol"

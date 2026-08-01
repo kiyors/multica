@@ -135,6 +135,7 @@ func (h *Handler) notifyParentOfChildDone(ctx context.Context, prev, issue db.Is
 	h.postChildDoneComment(ctx, parent, issue, children, staged, closedStage, false)
 }
 
+func (h *Handler) postChildDoneComment(ctx context.Context, parent, issue db.Issue, children []db.Issue, staged bool, closedStage int32, batch bool) {
 	prefix := h.getIssuePrefixForIssue(ctx, issue.WorkspaceID, issue.ProjectID)
 	identifier := prefix + "-" + strconv.Itoa(int(issue.Number))
 	childID := uuidToString(issue.ID)
@@ -569,5 +570,115 @@ func (h *Handler) triggerChildDoneSquad(ctx context.Context, parent db.Issue, tr
 			"parent_id", uuidToString(parent.ID),
 			"squad_id", uuidToString(squad.ID),
 			"leader_id", uuidToString(squad.LeaderID))
+	}
+}
+
+// notifyParentsOfBatchChildDone emits child-done parent notifications for a
+// whole batch AFTER every status write has committed. `completed` is the set of
+// children that transitioned non-terminal -> terminal during the batch.
+//
+// Evaluating the stage barrier per-child inside the batch loop used the
+// mid-batch sibling snapshot, so a batch that closed several stages at once
+// fired one comment per intermediate stage: the first (stale) comment pinned the
+// parent assignee's wake to an already-superseded "advance Stage N+1"
+// instruction while the accurate final wake was swallowed by the pending-task
+// dedup, and the outcome depended on issue_ids order (MUL-4155). Aggregating
+// here makes the result order-independent — each affected parent gets at most
+// one comment built from the final state, plus one wake pinned to that comment.
+//
+// Best-effort, mirroring notifyParentOfChildDone: a failure on one parent is
+// logged and skipped; it never rolls back the committed batch.
+func (h *Handler) notifyParentsOfBatchChildDone(ctx context.Context, completed []db.Issue) {
+	if len(completed) == 0 {
+		return
+	}
+
+	// Group the completed children by parent, preserving first-seen order so the
+	// emitted comments (and any test assertions) are deterministic.
+	type parentGroup struct {
+		parentID pgtype.UUID
+		children []db.Issue
+	}
+	var groups []*parentGroup
+	index := map[string]*parentGroup{}
+	for _, c := range completed {
+		if !c.ParentIssueID.Valid {
+			continue
+		}
+		key := uuidToString(c.ParentIssueID)
+		g, ok := index[key]
+		if !ok {
+			g = &parentGroup{parentID: c.ParentIssueID}
+			index[key] = g
+			groups = append(groups, g)
+		}
+		g.children = append(g.children, c)
+	}
+
+	for _, g := range groups {
+		parent, err := h.Queries.GetIssue(ctx, g.parentID)
+		if err != nil {
+			slog.Warn("batch child done: failed to load parent",
+				"error", err, "parent_id", uuidToString(g.parentID))
+			continue
+		}
+		// Same parent guards as the single path (see notifyParentOfChildDone).
+		if parent.Status == "done" || parent.Status == "cancelled" {
+			continue
+		}
+		if parent.Status == "backlog" {
+			continue
+		}
+		if parent.AssigneeType.Valid && parent.AssigneeType.String == "member" {
+			continue
+		}
+
+		children, err := h.Queries.ListChildIssues(ctx, parent.ID)
+		if err != nil {
+			slog.Warn("batch child done: failed to list siblings for stage barrier",
+				"error", err, "parent_id", uuidToString(parent.ID))
+			continue
+		}
+
+		batch := len(g.children) > 1
+		if !siblingsAreStaged(children) {
+			// Unstaged: one implicit stage. Fire once iff every child is terminal
+			// in the final state. stageBarrierClosed ignores `completed` on the
+			// unstaged path, so any completed child stands in for the barrier check.
+			if !stageBarrierClosed(children, g.children[0]) {
+				continue
+			}
+			h.postChildDoneComment(ctx, parent, g.children[0], children, false, 0, batch)
+			continue
+		}
+
+		// Staged: announce the HIGHEST stage among this batch's completed children
+		// whose barrier is closed in the final state. This is what makes the
+		// result order-independent — whether the caller sent [stage1, stage2] or
+		// [stage2, stage1], the final committed state is identical, so the same
+		// top stage wins and stageProgressSummary's "Stage N is next" reflects
+		// reality rather than a mid-batch snapshot. A lower closed stage would
+		// re-introduce the stale "advance the next stage" instruction the bug was
+		// about.
+		var rep db.Issue
+		var bestStage int32
+		found := false
+		for _, c := range g.children {
+			if !c.Stage.Valid {
+				continue // an unstaged child in a staged set closes no stage
+			}
+			if !stageBarrierClosed(children, c) {
+				continue
+			}
+			if !found || c.Stage.Int32 > bestStage {
+				found = true
+				bestStage = c.Stage.Int32
+				rep = c
+			}
+		}
+		if !found {
+			continue
+		}
+		h.postChildDoneComment(ctx, parent, rep, children, true, bestStage, batch)
 	}
 }
