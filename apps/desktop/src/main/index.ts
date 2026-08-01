@@ -662,9 +662,9 @@ if (!gotTheLock) {
   // queued because desktopInitialized remains false until runtime config and
   // IPC handlers are ready.
   const coldStartDeepLink = process.argv.find((arg) =>
-    arg.startsWith(`${PROTOCOL}://`),
+    arg.replace(/^"|"$/g, "").startsWith(`${PROTOCOL}://`),
   );
-  if (coldStartDeepLink) handleDeepLink(coldStartDeepLink);
+  if (coldStartDeepLink) handleDeepLink(coldStartDeepLink.replace(/^"|"$/g, ""));
 
   app.whenReady().then(async () => {
     const viteEnv = import.meta.env as ImportMetaEnv & {

@@ -258,6 +258,7 @@ export function AvatarUploadControl({
           src={resolved ?? undefined}
           alt={name}
           className="h-full w-full object-cover"
+          referrerPolicy="no-referrer"
           onError={() => setPreviewError(true)}
         />
       ) : (

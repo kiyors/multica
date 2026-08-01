@@ -442,6 +442,15 @@ func (h *Handler) AcceptInvitation(w http.ResponseWriter, r *http.Request) {
 	if accepted.InitialProjects != nil && len(accepted.InitialProjects) > 0 {
 		var initialProjects []InitialProjectAssignment
 		if err := json.Unmarshal(accepted.InitialProjects, &initialProjects); err == nil {
+			inviterMember, err := qtx.GetMemberByUserAndWorkspace(r.Context(), db.GetMemberByUserAndWorkspaceParams{
+				WorkspaceID: accepted.WorkspaceID,
+				UserID:      inv.InviterID,
+			})
+			var invitedBy pgtype.UUID
+			if err == nil {
+				invitedBy = inviterMember.ID
+			}
+
 			for _, p := range initialProjects {
 				projectUUID, err := util.ParseUUID(p.ProjectID)
 				if err != nil {
@@ -451,12 +460,17 @@ func (h *Handler) AcceptInvitation(w http.ResponseWriter, r *http.Request) {
 				if role == "" {
 					role = "viewer" // default
 				}
-				_, _ = qtx.AddProjectMember(r.Context(), db.AddProjectMemberParams{
+				_, err = qtx.AddProjectMember(r.Context(), db.AddProjectMemberParams{
 					ProjectID:   projectUUID,
 					MemberID:    member.ID,
 					Role:        role,
-					InvitedBy:   user.ID,
+					InvitedBy:   invitedBy,
 				})
+				if err != nil {
+					slog.Warn("failed to add initial project member", append(logger.RequestAttrs(r), "error", err, "project_id", p.ProjectID, "member_id", uuidToString(member.ID))...)
+					writeError(w, http.StatusInternalServerError, "failed to assign initial projects")
+					return
+				}
 			}
 		}
 	}

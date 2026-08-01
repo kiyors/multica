@@ -824,6 +824,11 @@ func (h *Handler) loadIssueForUser(w http.ResponseWriter, r *http.Request, issue
 			if err != nil {
 				isCreator := issue.CreatorID == member.ID
 				isAssignee := issue.AssigneeID.Valid && issue.AssigneeID.Bytes == member.ID.Bytes
+				if !isAssignee {
+					var inAssignees bool
+					_ = h.DB.QueryRow(r.Context(), "SELECT EXISTS(SELECT 1 FROM issue_assignees WHERE issue_id = $1 AND assignee_type = 'member' AND assignee_id = $2)", issue.ID, member.ID).Scan(&inAssignees)
+					isAssignee = inAssignees
+				}
 				isSubscribed, _ := h.Queries.IsIssueSubscriber(r.Context(), db.IsIssueSubscriberParams{
 					IssueID:  issue.ID,
 					UserType: "member",

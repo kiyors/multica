@@ -1643,4 +1643,53 @@ export function useRealtimeSync(
     logger.info("new WSClient instance detected, invalidating workspace queries");
     invalidateWorkspaceScopedQueries(qc);
   }, [ws, qc]);
+
+  // Visibility-change recovery: when the user returns to the tab after being
+  // away for more than 30 seconds, invalidate issue lists and inbox to catch
+  // any WS events that might have been missed. Browser-backgrounded tabs can
+  // throttle or silently drop WebSocket frames, and a brief network blip that
+  // doesn't trigger a full WS reconnect can also lose events. With
+  // staleTime: Infinity and refetchOnWindowFocus: false, the data stays stale
+  // forever unless explicitly invalidated. This safety net ensures users see
+  // fresh state after tabbing back to the app.
+  const hiddenAtRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+
+    const STALE_THRESHOLD_MS = 30_000;
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        hiddenAtRef.current = Date.now();
+        return;
+      }
+      // Becoming visible again.
+      const hiddenAt = hiddenAtRef.current;
+      hiddenAtRef.current = null;
+      if (!hiddenAt || Date.now() - hiddenAt < STALE_THRESHOLD_MS) return;
+
+      const wsId = getCurrentWsId();
+      if (!wsId) return;
+
+      logger.info(
+        `tab refocused after ${Math.round((Date.now() - hiddenAt) / 1000)}s, refreshing issue & inbox caches`,
+      );
+      qc.invalidateQueries({ queryKey: issueKeys.list(wsId) });
+      qc.invalidateQueries({ queryKey: issueKeys.myAll(wsId) });
+      qc.invalidateQueries({ queryKey: issueKeys.flatAll(wsId) });
+      qc.invalidateQueries({ queryKey: issueKeys.tableAll(wsId) });
+      qc.invalidateQueries({ queryKey: issueKeys.assigneeGroupsAll(wsId) });
+      qc.invalidateQueries({ queryKey: issueKeys.myAssigneeGroupsAll(wsId) });
+      qc.invalidateQueries({ queryKey: issueKeys.projectGanttAll(wsId) });
+      qc.invalidateQueries({ queryKey: issueKeys.childrenAll(wsId) });
+      qc.invalidateQueries({ queryKey: issueKeys.childProgress(wsId) });
+      qc.invalidateQueries({ queryKey: inboxKeys.all(wsId) });
+      onInboxSummaryInvalidate(qc);
+    };
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [qc]);
 }

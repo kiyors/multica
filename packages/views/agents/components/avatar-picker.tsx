@@ -90,6 +90,7 @@ export function AvatarPicker({ value, onChange, size = 56 }: AvatarPickerProps) 
             alt=""
             className="h-full w-full object-cover"
             onError={() => setPreviewError(true)}
+            referrerPolicy="no-referrer"
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-muted-foreground">

@@ -12,8 +12,8 @@ FROM issue i
 WHERE i.workspace_id = $1
   AND (sqlc.narg('status')::text IS NULL OR i.status = sqlc.narg('status'))
   AND (sqlc.narg('priority')::text IS NULL OR i.priority = sqlc.narg('priority'))
-  AND (sqlc.narg('assignee_id')::uuid IS NULL OR i.assignee_id = sqlc.narg('assignee_id'))
-  AND (sqlc.narg('assignee_ids')::uuid[] IS NULL OR i.assignee_id = ANY(sqlc.narg('assignee_ids')::uuid[]))
+  AND (sqlc.narg('assignee_id')::uuid IS NULL OR i.assignee_id = sqlc.narg('assignee_id') OR EXISTS (SELECT 1 FROM issue_assignees ia WHERE ia.issue_id = i.id AND ia.assignee_id = sqlc.narg('assignee_id')))
+  AND (sqlc.narg('assignee_ids')::uuid[] IS NULL OR i.assignee_id = ANY(sqlc.narg('assignee_ids')::uuid[]) OR EXISTS (SELECT 1 FROM issue_assignees ia WHERE ia.issue_id = i.id AND ia.assignee_id = ANY(sqlc.narg('assignee_ids')::uuid[])))
   AND (sqlc.narg('creator_id')::uuid IS NULL OR i.creator_id = sqlc.narg('creator_id'))
   AND (sqlc.narg('project_id')::uuid IS NULL OR i.project_id = sqlc.narg('project_id'))
   AND (sqlc.narg('scheduled')::bool IS NULL OR (i.start_date IS NOT NULL OR i.due_date IS NOT NULL))
@@ -27,6 +27,10 @@ WHERE i.workspace_id = $1
     )
     OR i.creator_id = sqlc.arg('member_id')
     OR i.assignee_id = sqlc.arg('member_id')
+    OR EXISTS (
+      SELECT 1 FROM issue_assignees ia
+      WHERE ia.issue_id = i.id AND ia.assignee_type = 'member' AND ia.assignee_id = sqlc.arg('member_id')
+    )
     OR EXISTS (
       SELECT 1 FROM issue_subscriber sub
       WHERE sub.issue_id = i.id AND sub.user_id = sqlc.arg('member_id')
@@ -58,6 +62,14 @@ WHERE i.workspace_id = $1
            WHERE a.workspace_id = $1
              AND a.owner_id     = sqlc.narg('involves_user_id')::uuid
     ))
+    OR EXISTS (
+      SELECT 1 FROM issue_assignees ia
+      WHERE ia.issue_id = i.id AND ia.assignee_type = 'agent' AND ia.assignee_id IN (
+          SELECT a.id FROM agent a
+           WHERE a.workspace_id = $1
+             AND a.owner_id     = sqlc.narg('involves_user_id')::uuid
+      )
+    )
     -- (2)(3)(4) assignee is a squad related to the user — three relations
     OR (i.assignee_type = 'squad' AND i.assignee_id IN (
           -- (2) the user is a human member of the squad
@@ -89,6 +101,33 @@ WHERE i.workspace_id = $1
              AND a.workspace_id = $1
              AND a.owner_id     = sqlc.narg('involves_user_id')::uuid
     ))
+    OR EXISTS (
+      SELECT 1 FROM issue_assignees ia
+      WHERE ia.issue_id = i.id AND ia.assignee_type = 'squad' AND ia.assignee_id IN (
+          SELECT sm.squad_id
+            FROM squad_member sm
+            JOIN squad s ON s.id = sm.squad_id
+           WHERE s.workspace_id = $1
+             AND sm.member_type = 'member'
+             AND sm.member_id   = sqlc.narg('involves_user_id')::uuid
+          UNION
+          SELECT s.id
+            FROM squad s
+            JOIN agent a ON a.id = s.leader_id
+           WHERE s.workspace_id = $1
+             AND a.workspace_id = $1
+             AND a.owner_id     = sqlc.narg('involves_user_id')::uuid
+          UNION
+          SELECT sm.squad_id
+            FROM squad_member sm
+            JOIN squad s ON s.id = sm.squad_id
+            JOIN agent a ON a.id = sm.member_id
+           WHERE s.workspace_id = $1
+             AND sm.member_type = 'agent'
+             AND a.workspace_id = $1
+             AND a.owner_id     = sqlc.narg('involves_user_id')::uuid
+      )
+    )
   )
 ORDER BY i.position ASC, i.created_at DESC
 LIMIT $2 OFFSET $3;
@@ -231,8 +270,8 @@ FROM issue i
 WHERE i.workspace_id = $1
   AND i.status NOT IN ('done', 'cancelled')
   AND (sqlc.narg('priority')::text IS NULL OR i.priority = sqlc.narg('priority'))
-  AND (sqlc.narg('assignee_id')::uuid IS NULL OR i.assignee_id = sqlc.narg('assignee_id'))
-  AND (sqlc.narg('assignee_ids')::uuid[] IS NULL OR i.assignee_id = ANY(sqlc.narg('assignee_ids')::uuid[]))
+  AND (sqlc.narg('assignee_id')::uuid IS NULL OR i.assignee_id = sqlc.narg('assignee_id') OR EXISTS (SELECT 1 FROM issue_assignees ia WHERE ia.issue_id = i.id AND ia.assignee_id = sqlc.narg('assignee_id')))
+  AND (sqlc.narg('assignee_ids')::uuid[] IS NULL OR i.assignee_id = ANY(sqlc.narg('assignee_ids')::uuid[]) OR EXISTS (SELECT 1 FROM issue_assignees ia WHERE ia.issue_id = i.id AND ia.assignee_id = ANY(sqlc.narg('assignee_ids')::uuid[])))
   AND (sqlc.narg('creator_id')::uuid IS NULL OR i.creator_id = sqlc.narg('creator_id'))
   AND (sqlc.narg('project_id')::uuid IS NULL OR i.project_id = sqlc.narg('project_id'))
   AND (sqlc.narg('metadata_filter')::jsonb IS NULL OR i.metadata @> sqlc.narg('metadata_filter')::jsonb)
@@ -263,6 +302,10 @@ WHERE i.workspace_id = $1
     OR i.creator_id = sqlc.arg('member_id')
     OR i.assignee_id = sqlc.arg('member_id')
     OR EXISTS (
+      SELECT 1 FROM issue_assignees ia
+      WHERE ia.issue_id = i.id AND ia.assignee_type = 'member' AND ia.assignee_id = sqlc.arg('member_id')
+    )
+    OR EXISTS (
       SELECT 1 FROM issue_subscriber sub
       WHERE sub.issue_id = i.id AND sub.user_id = sqlc.arg('member_id')
     )
@@ -292,6 +335,14 @@ WHERE i.workspace_id = $1
            WHERE a.workspace_id = $1
              AND a.owner_id     = sqlc.narg('involves_user_id')::uuid
     ))
+    OR EXISTS (
+      SELECT 1 FROM issue_assignees ia
+      WHERE ia.issue_id = i.id AND ia.assignee_type = 'agent' AND ia.assignee_id IN (
+          SELECT a.id FROM agent a
+           WHERE a.workspace_id = $1
+             AND a.owner_id     = sqlc.narg('involves_user_id')::uuid
+      )
+    )
     OR (i.assignee_type = 'squad' AND i.assignee_id IN (
           SELECT sm.squad_id
             FROM squad_member sm
@@ -316,6 +367,33 @@ WHERE i.workspace_id = $1
              AND a.workspace_id = $1
              AND a.owner_id     = sqlc.narg('involves_user_id')::uuid
     ))
+    OR EXISTS (
+      SELECT 1 FROM issue_assignees ia
+      WHERE ia.issue_id = i.id AND ia.assignee_type = 'squad' AND ia.assignee_id IN (
+          SELECT sm.squad_id
+            FROM squad_member sm
+            JOIN squad s ON s.id = sm.squad_id
+           WHERE s.workspace_id = $1
+             AND sm.member_type = 'member'
+             AND sm.member_id   = sqlc.narg('involves_user_id')::uuid
+          UNION
+          SELECT s.id
+            FROM squad s
+            JOIN agent a ON a.id = s.leader_id
+           WHERE s.workspace_id = $1
+             AND a.workspace_id = $1
+             AND a.owner_id     = sqlc.narg('involves_user_id')::uuid
+          UNION
+          SELECT sm.squad_id
+            FROM squad_member sm
+            JOIN squad s ON s.id = sm.squad_id
+            JOIN agent a ON a.id = sm.member_id
+           WHERE s.workspace_id = $1
+             AND sm.member_type = 'agent'
+             AND a.workspace_id = $1
+             AND a.owner_id     = sqlc.narg('involves_user_id')::uuid
+      )
+    )
   )
 ORDER BY i.position ASC, i.created_at DESC;
 
@@ -325,8 +403,8 @@ SELECT count(*) FROM issue i
 WHERE i.workspace_id = $1
   AND (sqlc.narg('status')::text IS NULL OR i.status = sqlc.narg('status'))
   AND (sqlc.narg('priority')::text IS NULL OR i.priority = sqlc.narg('priority'))
-  AND (sqlc.narg('assignee_id')::uuid IS NULL OR i.assignee_id = sqlc.narg('assignee_id'))
-  AND (sqlc.narg('assignee_ids')::uuid[] IS NULL OR i.assignee_id = ANY(sqlc.narg('assignee_ids')::uuid[]))
+  AND (sqlc.narg('assignee_id')::uuid IS NULL OR i.assignee_id = sqlc.narg('assignee_id') OR EXISTS (SELECT 1 FROM issue_assignees ia WHERE ia.issue_id = i.id AND ia.assignee_id = sqlc.narg('assignee_id')))
+  AND (sqlc.narg('assignee_ids')::uuid[] IS NULL OR i.assignee_id = ANY(sqlc.narg('assignee_ids')::uuid[]) OR EXISTS (SELECT 1 FROM issue_assignees ia WHERE ia.issue_id = i.id AND ia.assignee_id = ANY(sqlc.narg('assignee_ids')::uuid[])))
   AND (sqlc.narg('creator_id')::uuid IS NULL OR i.creator_id = sqlc.narg('creator_id'))
   AND (sqlc.narg('project_id')::uuid IS NULL OR i.project_id = sqlc.narg('project_id'))
   AND (sqlc.narg('scheduled')::bool IS NULL OR (i.start_date IS NOT NULL OR i.due_date IS NOT NULL))
@@ -347,6 +425,14 @@ WHERE i.workspace_id = $1
            WHERE a.workspace_id = $1
              AND a.owner_id     = sqlc.narg('involves_user_id')::uuid
     ))
+    OR EXISTS (
+      SELECT 1 FROM issue_assignees ia
+      WHERE ia.issue_id = i.id AND ia.assignee_type = 'agent' AND ia.assignee_id IN (
+          SELECT a.id FROM agent a
+           WHERE a.workspace_id = $1
+             AND a.owner_id     = sqlc.narg('involves_user_id')::uuid
+      )
+    )
     OR (i.assignee_type = 'squad' AND i.assignee_id IN (
           SELECT sm.squad_id
             FROM squad_member sm
@@ -371,6 +457,33 @@ WHERE i.workspace_id = $1
              AND a.workspace_id = $1
              AND a.owner_id     = sqlc.narg('involves_user_id')::uuid
     ))
+    OR EXISTS (
+      SELECT 1 FROM issue_assignees ia
+      WHERE ia.issue_id = i.id AND ia.assignee_type = 'squad' AND ia.assignee_id IN (
+          SELECT sm.squad_id
+            FROM squad_member sm
+            JOIN squad s ON s.id = sm.squad_id
+           WHERE s.workspace_id = $1
+             AND sm.member_type = 'member'
+             AND sm.member_id   = sqlc.narg('involves_user_id')::uuid
+          UNION
+          SELECT s.id
+            FROM squad s
+            JOIN agent a ON a.id = s.leader_id
+           WHERE s.workspace_id = $1
+             AND a.workspace_id = $1
+             AND a.owner_id     = sqlc.narg('involves_user_id')::uuid
+          UNION
+          SELECT sm.squad_id
+            FROM squad_member sm
+            JOIN squad s ON s.id = sm.squad_id
+            JOIN agent a ON a.id = sm.member_id
+           WHERE s.workspace_id = $1
+             AND sm.member_type = 'agent'
+             AND a.workspace_id = $1
+             AND a.owner_id     = sqlc.narg('involves_user_id')::uuid
+      )
+    )
   );
 
 -- name: ListChildIssues :many

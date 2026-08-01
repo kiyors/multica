@@ -523,6 +523,7 @@ function ImagePreview({
             ? "block size-full"
             : "max-h-full max-w-full rounded-lg object-contain",
         )}
+        referrerPolicy="no-referrer"
         // Native image dragging would hijack the pan gesture.
         draggable={false}
       />

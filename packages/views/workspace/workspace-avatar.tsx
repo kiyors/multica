@@ -22,6 +22,7 @@ function WorkspaceAvatar({ name, avatarUrl, size = "sm", className }: WorkspaceA
         src={resolvedUrl}
         alt={name}
         className={cn("inline-block shrink-0 border object-cover", sizeMap[size], className)}
+        referrerPolicy="no-referrer"
       />
     );
   }

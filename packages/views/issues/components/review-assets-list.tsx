@@ -178,11 +178,11 @@ export function ReviewAssetsList({ workspaceId, issueId, onOpenAsset }: ReviewAs
             </button>
             <div className="relative aspect-video bg-muted rounded flex items-center justify-center overflow-hidden">
               {asset.asset_type === "image" ? (
-                <img src={asset.thumbnail_url || asset.src_url} alt={asset.name} className="object-cover w-full h-full" />
+                <img src={asset.thumbnail_url || asset.src_url} alt={asset.name} className="object-cover w-full h-full" referrerPolicy="no-referrer" />
               ) : asset.asset_type === "pdf" ? (
                 <FileText className="h-10 w-10 text-muted-foreground" />
               ) : asset.thumbnail_url ? (
-                <img src={asset.thumbnail_url} alt={asset.name} className="object-cover w-full h-full" />
+                <img src={asset.thumbnail_url} alt={asset.name} className="object-cover w-full h-full" referrerPolicy="no-referrer" />
               ) : asset.src_url ? (
                 // ponytail: no server-side thumbnails yet; preload the first frame instead
                 <video src={`${asset.src_url}#t=0.1`} preload="metadata" muted playsInline className="object-cover w-full h-full pointer-events-none" />

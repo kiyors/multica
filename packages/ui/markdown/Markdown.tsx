@@ -145,6 +145,7 @@ function createComponents(
           alt={alt ?? ""}
           className="max-w-full h-auto rounded-md my-2"
           loading="lazy"
+          referrerPolicy="no-referrer"
         />
       )
     },

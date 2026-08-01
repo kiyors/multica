@@ -2,7 +2,6 @@
 import React, { useRef, useEffect, useState, useCallback, useImperativeHandle, forwardRef } from "react";
 import { Play, Pause, Maximize2, SkipBack, SkipForward, Clock, Repeat } from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@multica/ui/components/ui/tooltip";
-import { Select } from "@multica/ui/components/ui/select";
 import Hls from "hls.js";
 import type { ReviewAsset, ReviewComment } from "@multica/core/types";
 import { MediaScrubber, formatTimecode, formatTime, formatFrames } from "./media-scrubber";
@@ -325,6 +324,7 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
           alt={asset.name}
           className="absolute inset-0 w-full h-full object-contain"
           onLoad={calculateTrueLayout}
+          referrerPolicy="no-referrer"
         />
       )}
 
@@ -430,7 +430,7 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
             onClick={() => {
               const speeds = [0.5, 1, 1.25, 1.5, 2];
               const idx = speeds.indexOf(playbackRate);
-              const nextSpeed = speeds[(idx + 1) % speeds.length];
+              const nextSpeed = speeds[(idx + 1) % speeds.length] ?? 1;
               const video = mediaRef.current as HTMLVideoElement;
               if (video) video.playbackRate = nextSpeed;
               setPlaybackRate(nextSpeed);

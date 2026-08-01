@@ -749,14 +749,86 @@ func (h *Handler) loadAttachmentForDownload(w http.ResponseWriter, r *http.Reque
 		writeError(w, http.StatusNotFound, "attachment not found")
 		return db.Attachment{}, false
 	}
+
+	var hasAccess bool
+	var isWorkspaceMember bool
+
 	if h.MembershipCache.Get(r.Context(), userID, workspaceID) {
-		return att, true
+		isWorkspaceMember = true
 	}
-	if _, err := h.getWorkspaceMember(r.Context(), userID, workspaceID); err != nil {
+	
+	wm, err := h.getWorkspaceMember(r.Context(), userID, workspaceID)
+	if err == nil {
+		isWorkspaceMember = true
+		h.MembershipCache.Set(r.Context(), userID, workspaceID)
+		if isWorkspaceManagerRole(wm.Role) {
+			hasAccess = true
+		}
+	}
+
+	if !hasAccess && att.UploaderType == "member" && att.UploaderID.Valid && att.UploaderID.Bytes == userID.Bytes {
+		hasAccess = true
+	}
+
+	if !hasAccess && att.IssueID.Valid {
+		issue, err := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{
+			ID:          att.IssueID,
+			WorkspaceID: att.WorkspaceID,
+		})
+		if err == nil {
+			if !issue.ProjectID.Valid {
+				if isWorkspaceMember {
+					hasAccess = true
+				}
+			} else {
+				_, err := h.Queries.GetProjectMember(r.Context(), db.GetProjectMemberParams{
+					ProjectID: issue.ProjectID,
+					MemberID:  userID,
+				})
+				if err == nil {
+					hasAccess = true
+				} else {
+					isAssignee := issue.AssigneeID.Valid && issue.AssigneeID.Bytes == userID.Bytes
+					if !isAssignee {
+						var inAssignees bool
+						_ = h.DB.QueryRow(r.Context(), "SELECT EXISTS(SELECT 1 FROM issue_assignees WHERE issue_id = $1 AND assignee_type = 'member' AND assignee_id = $2)", issue.ID, userID).Scan(&inAssignees)
+						isAssignee = inAssignees
+					}
+					isSubscribed, _ := h.Queries.IsIssueSubscriber(r.Context(), db.IsIssueSubscriberParams{
+						IssueID:  issue.ID,
+						UserType: "member",
+						UserID:   userID,
+					})
+					if isAssignee || issue.CreatorID == userID || isSubscribed {
+						hasAccess = true
+					} else {
+						var inCommentOrAsset bool
+						memIDStr := uuidToString(userID)
+						_ = h.DB.QueryRow(r.Context(), `
+							SELECT EXISTS (
+								SELECT 1 FROM comment WHERE issue_id = $1 AND (author_id = $2 OR content LIKE '%' || $3 || '%')
+								UNION ALL
+								SELECT 1 FROM review_assets WHERE issue_id = $1 AND uploaded_by = $2
+							)
+						`, issue.ID, userID, memIDStr).Scan(&inCommentOrAsset)
+						if inCommentOrAsset {
+							hasAccess = true
+						}
+					}
+				}
+			}
+		}
+	} else if !hasAccess && !att.IssueID.Valid {
+		if isWorkspaceMember {
+			hasAccess = true
+		}
+	}
+
+	if !hasAccess {
 		writeError(w, http.StatusNotFound, "attachment not found")
 		return db.Attachment{}, false
 	}
-	h.MembershipCache.Set(r.Context(), userID, workspaceID)
+
 	return att, true
 }
 

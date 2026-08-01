@@ -70,6 +70,7 @@ function ActorAvatar({
           src={avatarUrl}
           alt={name}
           className="h-full w-full object-cover"
+          referrerPolicy="no-referrer"
           onError={() => setImgError(true)}
         />
       ) : isSystem ? (

@@ -120,17 +120,17 @@
 
 ## Fixes
 
-### 1. Windows Desktop App Login Fix
+### 1. ~~Windows Desktop App Login Fix~~ (Completed)
 
 **Context:** The deep linking authentication flow (via OTP) fails on Windows. Instead of redirecting into the workspace, the app fails to parse the token.
 
 **Implementation Steps:**
-1. **Normalize Pathnames:** Windows often appends a trailing slash to custom protocol URLs (e.g., `multica://auth/callback/`). Update `handleDeepLink()` in `apps/desktop/src/main/index.ts` to strip trailing slashes using `pathname.replace(/\/$/, "")`.
-2. **Argument Parsing:** Ensure the URL extraction in the `second-instance` event correctly trims surrounding quotes from `process.argv` before passing it to `handleDeepLink`.
+- [x] **Normalize Pathnames:** Windows often appends a trailing slash to custom protocol URLs (e.g., `multica://auth/callback/`). Update `handleDeepLink()` in `apps/desktop/src/main/index.ts` to strip trailing slashes using `pathname.replace(/\/$/, "")`.
+- [x] **Argument Parsing:** Ensure the URL extraction in the `second-instance` event correctly trims surrounding quotes from `process.argv` before passing it to `handleDeepLink`.
 
 ---
 
-### 2. Task Visibility Issue
+### 2. ~~Task Visibility Issue~~ (Completed)
 
 **Context:** Certain tasks don't show up for some people even if they are correctly added as members of that specific project.
 
@@ -141,7 +141,7 @@
 
 ---
 
-### 3. Media (Attachment) Visibility Issue
+### 3. ~~Media (Attachment) Visibility Issue~~ (Completed)
 
 **Context:** Images and media attached to tasks are failing to load (returning 403 or 404) for some users who otherwise have access to the task.
 
@@ -151,7 +151,7 @@
 
 ---
 
-### 4. Inviting Members with Project Access Crash
+### 4. ~~Inviting Members with Project Access Crash~~ (Completed)
 
 **Context:** When an admin invites a new user and grants them access to specific projects during the invitation flow, the system crashes. The system incorrectly treats the project IDs as individual workspace invites.
 
@@ -164,7 +164,7 @@
 
 ---
 
-### 5. Desktop Auto-Updater Fails to Install
+### 5. ~~Desktop Auto-Updater Fails to Install~~ (Completed)
 
 **Context:** The GitHub response for desktop updates is fast, and the package downloads successfully. However, clicking "refresh" or restarting the application does not install the update, leaving the user on the old version.
 
@@ -178,14 +178,27 @@
 
 ---
 
-### 6. Real-time Task Sync & Media Visibility Issue
+### 6. ~~Real-time Task Sync & Media Visibility Issue~~ (Completed)
 
 **Context:** Some tasks are not syncing state properly across clients in real-time. A task marked as "done" by one user still appears as "in progress" to another user until a manual refresh. Additionally, media inside the task is failing to render for some users.
 
 **Root Cause Analysis & Fix:**
-1. **Audit WebSocket/Realtime Events (`server/internal/realtime`):** Verify that issue state changes (like status updates) correctly broadcast WebSocket invalidate/update events to all active clients in the workspace.
-2. **Audit React Query Cache Invalidation:** Check the frontend `useUpdateIssue` mutation and related hooks to ensure the local cache correctly updates and subscribes to the realtime server events for that specific issue.
-3. **Media Visibility:** Investigate if the media visibility issue is a side effect of the same caching issue or related to the permissions bug (Bug #3). Ensure media URLs and permissions are correctly synchronized along with the task state.
+1. **Audit Result:** The full WebSocket event pipeline was audited end-to-end: `handler.publish` → `events.Bus` → `listeners.go` (SubscribeAll) → `projectOutbound` payload sanitization → `realtime.Hub.BroadcastToWorkspace` → client `WSClient.on("issue:updated")` → `onIssueUpdated` → `applyIssueChange` (cache-coordinator). The server-side broadcast is correct: events fire unconditionally after every `UpdateIssue`/`BatchUpdateIssues`, `projectOutbound` only strips internal-only keys (`prev_description`, `prev_title`), and all `*_changed` flags reach the client intact.
+2. **Root Cause:** The global React Query configuration uses `staleTime: Infinity` and `refetchOnWindowFocus: false`, making the system entirely dependent on WebSocket events for cache freshness. When a WS event is missed — due to a brief network blip that doesn't trigger a full WS reconnect, browser tab throttling of WS frames, or a race during workspace switches — the stale data persists indefinitely with no recovery mechanism.
+3. **Fix Applied:** Added a `visibilitychange` listener in `use-realtime-sync.ts` that invalidates issue lists, table caches, and inbox when the user returns to the tab after being away for more than 30 seconds. This acts as a safety net that recovers from missed WS events without requiring a full page reload. The fix covers both web and desktop (Electron BrowserWindow).
+4. **Media Visibility:** Confirmed to be a side effect of the same stale-cache issue — stale issue data meant stale attachment lists. The visibility-change recovery invalidates issue caches broadly, which includes attachment data.
+
+---
+
+### 7. ~~Desktop App Uploaded Images Not Showing~~ (Completed)
+
+**Context:** For both Mac and Windows desktop applications, the custom images that we upload are not rendering properly (though they show correctly on the web version). This includes:
+- Uploaded user profile images
+- Uploaded workspace images
+
+**Implementation Steps:**
+- [x] **Investigate Asset Loading:** Check the Electron asset loading paths, CSP (Content Security Policy) headers, or cross-origin restrictions that might be blocking image resources in the desktop environment.
+- [x] **Path Normalization:** Ensure that image URLs are properly formatted for the desktop app context (e.g., using absolute URLs or proper protocol handlers instead of relative paths).
 
 ---
 # Multica — Master Improvement Plan

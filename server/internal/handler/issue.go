@@ -526,7 +526,11 @@ func buildSearchQuery(phrase string, terms []string, queryNum int, hasNum bool, 
 		)
 		OR i.creator_id = %s
 		OR i.assignee_id = %s
-	)`, isAdminParam, memberIDParam, memberIDParam, memberIDParam)
+		OR EXISTS (
+			SELECT 1 FROM issue_assignees ia
+			WHERE ia.issue_id = i.id AND ia.assignee_type = 'member' AND ia.assignee_id = %s
+		)
+	)`, isAdminParam, memberIDParam, memberIDParam, memberIDParam, memberIDParam)
 
 	// --- ORDER BY clause ---
 	// Build ranking CASE with fine-grained tiers.
@@ -1099,13 +1103,13 @@ func (h *Handler) ListIssues(w http.ResponseWriter, r *http.Request) {
 		where = append(where, fmt.Sprintf("i.priority = ANY(%s::text[])", addArg(prioritiesFilter)))
 	}
 	if assigneeFilter.Valid {
-		where = append(where, fmt.Sprintf("i.assignee_id = %s::uuid", addArg(assigneeFilter)))
+		where = append(where, fmt.Sprintf("(i.assignee_id = %[1]s::uuid OR EXISTS (SELECT 1 FROM issue_assignees ia WHERE ia.issue_id = i.id AND ia.assignee_id = %[1]s::uuid))", addArg(assigneeFilter)))
 	}
 	if len(assigneeIdsFilter) > 0 {
-		where = append(where, fmt.Sprintf("i.assignee_id = ANY(%s::uuid[])", addArg(assigneeIdsFilter)))
+		where = append(where, fmt.Sprintf("(i.assignee_id = ANY(%[1]s::uuid[]) OR EXISTS (SELECT 1 FROM issue_assignees ia WHERE ia.issue_id = i.id AND ia.assignee_id = ANY(%[1]s::uuid[])))", addArg(assigneeIdsFilter)))
 	}
 	if len(assigneeTypesFilter) > 0 {
-		where = append(where, fmt.Sprintf("i.assignee_type = ANY(%s::text[])", addArg(assigneeTypesFilter)))
+		where = append(where, fmt.Sprintf("(i.assignee_type = ANY(%[1]s::text[]) OR EXISTS (SELECT 1 FROM issue_assignees ia WHERE ia.issue_id = i.id AND ia.assignee_type = ANY(%[1]s::text[])))", addArg(assigneeTypesFilter)))
 	}
 	if creatorFilter.Valid {
 		where = append(where, fmt.Sprintf("i.creator_id = %s::uuid", addArg(creatorFilter)))
@@ -1124,6 +1128,10 @@ func (h *Handler) ListIssues(w http.ResponseWriter, r *http.Request) {
 			)
 			OR i.creator_id = %[1]s::uuid
 			OR i.assignee_id = %[1]s::uuid
+			OR EXISTS (
+				SELECT 1 FROM issue_assignees ia
+				WHERE ia.issue_id = i.id AND ia.assignee_type = 'member' AND ia.assignee_id = %[1]s::uuid
+			)
 			OR EXISTS (
 				SELECT 1 FROM issue_subscriber sub
 				WHERE sub.issue_id = i.id AND sub.user_id = %[1]s::uuid
@@ -1167,6 +1175,14 @@ func (h *Handler) ListIssues(w http.ResponseWriter, r *http.Request) {
         WHERE a.workspace_id = $1
           AND a.owner_id     = %[1]s::uuid
     ))
+    OR EXISTS (
+      SELECT 1 FROM issue_assignees ia
+      WHERE ia.issue_id = i.id AND ia.assignee_type = 'agent' AND ia.assignee_id IN (
+          SELECT a.id FROM agent a
+           WHERE a.workspace_id = $1
+             AND a.owner_id     = %[1]s::uuid
+      )
+    )
     OR (i.assignee_type = 'squad' AND i.assignee_id IN (
        SELECT sm.squad_id
          FROM squad_member sm
@@ -1191,6 +1207,33 @@ func (h *Handler) ListIssues(w http.ResponseWriter, r *http.Request) {
           AND a.workspace_id = $1
           AND a.owner_id     = %[1]s::uuid
     ))
+    OR EXISTS (
+      SELECT 1 FROM issue_assignees ia
+      WHERE ia.issue_id = i.id AND ia.assignee_type = 'squad' AND ia.assignee_id IN (
+          SELECT sm.squad_id
+            FROM squad_member sm
+            JOIN squad s ON s.id = sm.squad_id
+           WHERE s.workspace_id = $1
+             AND sm.member_type = 'member'
+             AND sm.member_id   = %[1]s::uuid
+          UNION
+          SELECT s.id
+            FROM squad s
+            JOIN agent a ON a.id = s.leader_id
+           WHERE s.workspace_id = $1
+             AND a.workspace_id = $1
+             AND a.owner_id     = %[1]s::uuid
+          UNION
+          SELECT sm.squad_id
+            FROM squad_member sm
+            JOIN squad s ON s.id = sm.squad_id
+            JOIN agent a ON a.id = sm.member_id
+           WHERE s.workspace_id = $1
+             AND sm.member_type = 'agent'
+             AND a.workspace_id = $1
+             AND a.owner_id     = %[1]s::uuid
+      )
+    )
 )`, ref))
 	}
 

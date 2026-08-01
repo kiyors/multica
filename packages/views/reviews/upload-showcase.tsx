@@ -127,6 +127,7 @@ export function UploadShowcase({
               src={previewUrl}
               alt={file.name}
               className="w-full h-full object-contain"
+              referrerPolicy="no-referrer"
             />
           ) : (
             <video

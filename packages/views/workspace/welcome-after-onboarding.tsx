@@ -565,6 +565,7 @@ function RuntimeWelcome({
             alt=""
             aria-hidden
             className="h-14 w-14 rounded-xl ring-1 ring-foreground/10"
+            referrerPolicy="no-referrer"
           />
           <DialogTitle className="text-center text-title-lg font-semibold">
             {t(($) => $.welcome_after_onboarding.runtime.greeting)}

@@ -305,7 +305,7 @@ export function MediaReviewLayout({ workspaceId, asset, onAssetChange, onClose, 
                      className={`w-full h-16 rounded cursor-pointer border-2 overflow-hidden relative ${a.asset_group_id === asset.asset_group_id ? 'border-primary' : 'border-transparent hover:border-border'}`}
                    >
                      {a.thumbnail_url ? (
-                       <img src={a.thumbnail_url} className="w-full h-full object-cover" />
+                       <img src={a.thumbnail_url} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                      ) : (
                        <div className="w-full h-full bg-muted flex items-center justify-center text-micro text-muted-foreground uppercase">{a.asset_type}</div>
                      )}

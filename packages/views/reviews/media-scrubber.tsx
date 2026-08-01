@@ -374,7 +374,7 @@ export function MediaScrubber({
         <div className="absolute -top-2 z-30 pointer-events-none" style={{ left: hoverX, transform: "translateX(-50%) translateY(-100%)" }}>
           {previewImage && (
             <div className="mb-1 rounded-md overflow-hidden border border-border shadow-2xl bg-black">
-              <img src={previewImage} alt="preview" className="w-40 object-contain" />
+              <img src={previewImage} alt="preview" className="w-40 object-contain" referrerPolicy="no-referrer" />
             </div>
           )}
           <div className="flex justify-center">

@@ -642,6 +642,7 @@ function ImageAttachmentView({
           height={height}
           className={cn("image-content", uploading && "image-uploading")}
           draggable={false}
+          referrerPolicy="no-referrer"
         />
         {!uploading && src && (
           <span

@@ -205,8 +205,11 @@ export function setupAutoUpdater(getMainWindow: () => BrowserWindow | null): voi
     // Return immediately to resolve the IPC call, then wait briefly
     // before actually triggering the quit-and-install lifecycle.
     setTimeout(() => {
-      // By default, quitAndInstall() performs a safe restart.
-      autoUpdater.quitAndInstall(false, true);
+      try {
+        autoUpdater.quitAndInstall(true, true);
+      } catch (err) {
+        console.error("updater:install failed to quit and install", err);
+      }
     }, 300);
     return true;
   });
