@@ -13,8 +13,8 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/multica-ai/multica/server/internal/integrations/channel"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
+	"github.com/kiyors/multica/server/internal/integrations/channel"
+	db "github.com/kiyors/multica/server/pkg/db/generated"
 )
 
 func sessionPersistenceTestDB(t *testing.T) *pgxpool.Pool {

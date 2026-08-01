@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/multica-ai/multica/server/internal/daemon/execenv"
+	"github.com/kiyors/multica/server/internal/daemon/execenv"
 )
 
 // TestBuildQuickCreatePromptRules locks in the rules that govern how the

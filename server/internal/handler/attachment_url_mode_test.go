@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
+	db "github.com/kiyors/multica/server/pkg/db/generated"
 )
 
 // Phase 1 of MUL-5372 / GitHub #5999: bulk responses stop pre-signing

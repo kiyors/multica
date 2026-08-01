@@ -93,6 +93,8 @@ func init() {
 	rootCmd.AddCommand(configCmd)
 	rootCmd.AddCommand(updateCmd)
 	rootCmd.AddCommand(versionCmd)
+	mcpCmd.GroupID = groupCore
+	rootCmd.AddCommand(mcpCmd)
 
 	initHelp(rootCmd)
 }

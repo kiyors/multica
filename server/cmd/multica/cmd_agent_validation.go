@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/multica-ai/multica/server/internal/agentconfig"
+	"github.com/kiyors/multica/server/internal/agentconfig"
 )
 
 func validateAgentMaxConcurrentTasksFlag(value int32) error {

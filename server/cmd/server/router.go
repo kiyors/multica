@@ -19,12 +19,15 @@ import (
 
 	"github.com/kiyors/multica/server/internal/analytics"
 	"github.com/kiyors/multica/server/internal/auth"
+	"github.com/kiyors/multica/server/internal/cli"
 	"github.com/kiyors/multica/server/internal/cloudruntime"
 	"github.com/kiyors/multica/server/internal/daemonws"
 	"github.com/kiyors/multica/server/internal/events"
 	"github.com/kiyors/multica/server/internal/featureflagdispatch"
 	"github.com/kiyors/multica/server/internal/featureflags"
 	"github.com/kiyors/multica/server/internal/handler"
+	"github.com/kiyors/multica/server/internal/mcpserver"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/kiyors/multica/server/internal/integrations/channel"
 	"github.com/kiyors/multica/server/internal/integrations/channel/engine"
 	composiointeg "github.com/kiyors/multica/server/internal/integrations/composio"
@@ -896,6 +899,12 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 		r.Post("/tasks/{taskId}/session", h.PinTaskSession)
 	})
 
+	// MCP OAuth 2.0 Mock Endpoints (Public)
+	// These allow Gemini and other strictly-OAuth2 clients to connect using a PAT
+	// provided as the Client Secret.
+	r.Get("/api/mcp/oauth/authorize", mcpserver.HandleOAuthAuthorize)
+	r.Post("/api/mcp/oauth/token", mcpserver.HandleOAuthToken)
+
 	// Protected API routes
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.Auth(queries, patCache, cloudPATVerifier))
@@ -1161,6 +1170,29 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 				r.Put("/", h.UpdateChannelMessage)
 				r.Delete("/", h.DeleteChannelMessage)
 			})
+
+			// MCP
+			port := os.Getenv("PORT")
+			if port == "" {
+				port = "8080"
+			}
+			baseURL := "http://127.0.0.1:" + port
+
+			sseHandler := mcp.NewSSEHandler(func(request *http.Request) *mcp.Server {
+				authHeader := request.Header.Get("Authorization")
+				token := strings.TrimPrefix(authHeader, "Bearer ")
+				
+				workspaceID := request.Header.Get("X-Workspace-ID")
+				if workspaceID == "" {
+					workspaceID = request.URL.Query().Get("workspace_id")
+				}
+				
+				client := cli.NewAPIClient(baseURL, workspaceID, token)
+				return mcpserver.NewServer(client)
+			}, nil)
+			
+			r.Handle("/api/mcp", sseHandler)
+			r.Handle("/api/mcp/", sseHandler)
 
 			// Issues
 			r.Route("/api/issues", func(r chi.Router) {

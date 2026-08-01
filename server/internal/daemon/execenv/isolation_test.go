@@ -64,7 +64,7 @@ func TestPreparationHelperRoundTripsReuse(t *testing.T) {
 				{
 					ID:           "resource-helper-reuse",
 					ResourceType: "github_repo",
-					ResourceRef:  json.RawMessage(`{"url":"https://github.com/multica-ai/multica"}`),
+					ResourceRef:  json.RawMessage(`{"url":"https://github.com/kiyors/multica"}`),
 				},
 			},
 		},
@@ -93,7 +93,7 @@ func TestPreparationHelperRoundTripsProjectResources(t *testing.T) {
 				{
 					ID:           "resource-helper-project-resource",
 					ResourceType: "github_repo",
-					ResourceRef:  json.RawMessage(`{"url":"https://github.com/multica-ai/multica"}`),
+					ResourceRef:  json.RawMessage(`{"url":"https://github.com/kiyors/multica"}`),
 					Label:        "Multica",
 				},
 			},
@@ -126,7 +126,7 @@ func TestPreparationHelperRoundTripsProjectResources(t *testing.T) {
 	}
 	if resource.ID != "resource-helper-project-resource" ||
 		resource.ResourceType != "github_repo" ||
-		ref.URL != "https://github.com/multica-ai/multica" ||
+		ref.URL != "https://github.com/kiyors/multica" ||
 		resource.Label != "Multica" {
 		t.Fatalf("project resource = %#v, want all fields preserved", resource)
 	}

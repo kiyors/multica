@@ -61,6 +61,62 @@ Multica manages the full agent lifecycle: from task assignment to execution moni
 - **Unified Runtimes** — one dashboard for all your compute. Local daemons and cloud runtimes, auto-detection of available CLIs, real-time monitoring.
 - **Multi-Workspace** — organize work across teams with workspace-level isolation. Each workspace has its own agents, issues, and settings.
 
+## MCP Server Integration
+
+Multica natively supports the Model Context Protocol (MCP), allowing external AI tools (like Cursor, Claude Desktop, or custom cloud agents) to interact with your workspace directly.
+
+### 1. Local AI Apps (Cursor / Claude Desktop)
+Local AI coding tools use the standard `stdio` command-line version of MCP. You can configure them to spawn the Multica CLI.
+
+**For Claude Desktop**, add this to your `claude_desktop_config.json`:
+```json
+{
+  "mcpServers": {
+    "multica": {
+      "command": "multica",
+      "args": [
+        "mcp", 
+        "--server-url", "https://api.your-multica-domain.com", 
+        "--token", "<YOUR_API_TOKEN>", 
+        "--workspace-id", "<YOUR_WORKSPACE_ID>"
+      ]
+    }
+  }
+}
+```
+
+**For Cursor**, go to Cursor Settings > Features > MCP, click "+ Add New MCP Server", choose type `command`, and enter:
+```bash
+multica mcp --server-url https://api.your-multica-domain.com --token <YOUR_API_TOKEN> --workspace-id <YOUR_WORKSPACE_ID>
+```
+
+### 2. Web / Remote AI Agents (SSE)
+For external web apps, custom AI agents, or online platforms (like LangChain) that support remote MCP connections, Multica exposes a Backend SSE Endpoint.
+
+*   **SSE URL**: `https://api.your-multica-domain.com/api/mcp`
+*   **Authentication**: Pass your credentials in the standard HTTP request headers:
+    ```http
+    Authorization: Bearer <YOUR_API_TOKEN>
+    X-Workspace-ID: <YOUR_WORKSPACE_ID>
+    ```
+
+### 3. Google Gemini Web & Custom Connected Apps (OAuth2)
+Gemini Web strictly requires an OAuth2 flow for custom connected apps. Multica provides a built-in proxy to seamlessly bridge this without requiring a real OAuth2 application.
+
+When setting up the Gemini Custom Connected App:
+*   **Client ID**: `multica-gemini` (or any value)
+*   **Client Secret**: `<YOUR_API_TOKEN>` *(Paste your Multica Personal Access Token here)*
+*   **Authorization URI**: `https://api.your-multica-domain.com/api/mcp/oauth/authorize`
+*   **Token URI**: `https://api.your-multica-domain.com/api/mcp/oauth/token`
+
+**How it works securely:**
+1. Gemini redirects you to the Authorization URI.
+2. The Multica server displays a safe "Authorize Connection" screen and redirects you back.
+3. Gemini securely contacts the Token URI with the Client Secret you pasted.
+4. Multica validates and echoes that secret back as an OAuth Bearer token, connecting Gemini instantly to your MCP.
+
+*Note: You can generate an API Token in your Account Settings. You can get your Workspace ID via `multica workspace list` or by checking your workspace URL.*
+
 ---
 
 ## Quick Install

@@ -217,7 +217,7 @@ INSERT INTO github_pull_request (
 	title, state, html_url, pr_created_at, pr_updated_at, head_sha
 )
 VALUES ($1, 123456789, 'multica-ai', 'multica', 5265,
-	'Workspace cleanup snapshot', 'open', 'https://github.com/multica-ai/multica/pull/5265',
+	'Workspace cleanup snapshot', 'open', 'https://github.com/kiyors/multica/pull/5265',
 	now(), now(), 'head-a')
 RETURNING id
 `, wsID).Scan(&githubPRID); err != nil {

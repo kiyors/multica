@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/multica-ai/multica/server/pkg/taskfailure"
+	"github.com/kiyors/multica/server/pkg/taskfailure"
 )
 
 func TestSkillBundleResolveTimeout(t *testing.T) {

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/multica-ai/multica/server/pkg/protocol"
+	"github.com/kiyors/multica/server/pkg/protocol"
 )
 
 // CancelTaskByUser (POST /api/tasks/{taskId}/cancel) used to key cancellation
