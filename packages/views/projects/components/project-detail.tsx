@@ -71,6 +71,7 @@ import {
 import { useT } from "../../i18n";
 import { useProjectStatusLabels, useProjectPriorityLabels } from "./labels";
 import { matchesPinyin } from "../../editor/extensions/pinyin-match";
+import { AppLink } from "../../navigation";
 
 // ---------------------------------------------------------------------------
 // Property row — sidebar property display
@@ -97,7 +98,15 @@ function PropRow({
 // ProjectDetail
 // ---------------------------------------------------------------------------
 
-export function ProjectDetail({ projectId }: { projectId: string }) {
+export function ProjectDetail({ 
+  projectId, 
+  activeTab = "board", 
+  children 
+}: { 
+  projectId: string; 
+  activeTab?: string;
+  children?: React.ReactNode;
+}) {
   const { t } = useT("projects");
   const statusLabels = useProjectStatusLabels();
   const priorityLabels = useProjectPriorityLabels();
@@ -542,10 +551,22 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
             }
           />
 
-          <IssueSurface
-            scope={issueScope}
-            modes={["board", "list", "table", "swimlane", "gantt"]}
-          />
+          <div className="flex flex-col flex-1 min-h-0">
+            <div className="border-b px-4 py-2 flex gap-4">
+              <AppLink href={wsPaths.projectDetail(projectId) + "/board"} className={cn("text-sm font-medium border-b-2 px-1 pb-2 -mb-[9px]", activeTab === "board" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>Tasks</AppLink>
+              <AppLink href={wsPaths.projectDetail(projectId) + "/docs"} className={cn("text-sm font-medium border-b-2 px-1 pb-2 -mb-[9px]", activeTab === "docs" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>Documents</AppLink>
+              <AppLink href={wsPaths.projectDetail(projectId) + "/milestones"} className={cn("text-sm font-medium border-b-2 px-1 pb-2 -mb-[9px]", activeTab === "milestones" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>Milestones</AppLink>
+              <AppLink href={wsPaths.projectDetail(projectId) + "/settings"} className={cn("text-sm font-medium border-b-2 px-1 pb-2 -mb-[9px]", activeTab === "settings" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>Settings</AppLink>
+            </div>
+            <div className="flex-1 min-h-0 flex flex-col">
+              {children || (
+                <IssueSurface
+                  scope={issueScope}
+                  modes={["board", "list", "table", "swimlane", "gantt"]}
+                />
+              )}
+            </div>
+          </div>
           </div>
         </ResizablePanel>
         {!isMobile && <ResizableHandle />}

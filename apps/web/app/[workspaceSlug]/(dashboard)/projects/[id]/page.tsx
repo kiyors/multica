@@ -1,13 +1,10 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { use } from "react";
-import { ProjectDetail } from "@multica/views/projects/components";
-
-export default function ProjectDetailPage({
+export default async function ProjectRedirectPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ workspaceSlug: string; id: string }>;
 }) {
-  const { id } = use(params);
-  return <ProjectDetail projectId={id} />;
+  const { workspaceSlug, id } = await params;
+  redirect(`/${workspaceSlug}/projects/${id}/board`);
 }

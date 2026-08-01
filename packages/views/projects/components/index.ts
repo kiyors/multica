@@ -4,3 +4,7 @@ export { ProjectPicker } from "./project-picker";
 export { ProjectChip } from "./project-chip";
 export { ProjectMentionCard } from "./project-mention-card";
 export { LocalDirectoryHint } from "./local-directory-hint";
+export { ProjectBoardTab } from "./project-board-tab";
+export { ProjectDocsTab } from "./project-docs-tab";
+export { ProjectMilestonesTab } from "./project-milestones-tab";
+export { ProjectSettingsTab } from "./project-settings-tab";
