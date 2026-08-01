@@ -1,7 +1,9 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { cn } from "@multica/ui/lib/utils";
 import { SidebarProvider, SidebarInset } from "@multica/ui/components/ui/sidebar";
+import { useSidebarPreferenceStore } from "@multica/core/config";
 import { ModalRegistry } from "../modals/registry";
 import { SourceBackfillModal } from "../onboarding";
 import { AppSidebar } from "./app-sidebar";
@@ -26,6 +28,8 @@ export function DashboardLayout({
   searchSlot,
   loadingIndicator,
 }: DashboardLayoutProps) {
+  const position = useSidebarPreferenceStore((s) => s.position);
+
   return (
     <DashboardGuard
       loadingFallback={
@@ -34,7 +38,7 @@ export function DashboardLayout({
         </div>
       }
     >
-      <SidebarProvider className="h-svh bg-app-shell">
+      <SidebarProvider className={cn("h-svh bg-app-shell", position === "right" && "flex-row-reverse")}>
         <GlobalShortcuts />
         <WorkspacePresencePrefetch />
         <AppSidebar searchSlot={searchSlot} />

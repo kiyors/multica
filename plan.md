@@ -45,7 +45,7 @@
 
 ---
 
-### 3. Sidebar (Tabs) Position Preference
+### 3. Sidebar (Tabs) Position Preference (Completed)
 
 **Context:** Users have requested the ability to move the main navigation sidebar (tabs) from the left side of the screen to the right side based on personal preference.
 

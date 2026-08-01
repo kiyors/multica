@@ -22,7 +22,8 @@ import {
   useCommentComposerStore,
   useIssueLinkStore,
 } from "@multica/core/issues/stores";
-import { useSidebarPreferenceStore, type SidebarPosition } from "@multica/core/config";
+import { useSidebarPreferenceStore, useDesktopTabPreferenceStore, type SidebarPosition } from "@multica/core/config";
+import type { DesktopTabPosition } from "@multica/core/config/desktop-tab-preference-store";
 import { api } from "@multica/core/api";
 import { browserTimezone, timezoneOptions } from "../../common/timezone-select";
 import { useT } from "../../i18n";
@@ -165,6 +166,7 @@ export function PreferencesTab() {
           </SettingsRow>
 
           <SidebarPositionRow />
+          {window.desktopAPI && <DesktopTabPositionRow />}
           <TimezoneRow />
 
           <StickyCommentBarRow />
@@ -207,6 +209,57 @@ function SidebarPositionRow() {
           size="sm"
           className="w-full"
           aria-label={t(($) => $.preferences.sidebar.title)}
+        >
+          <SelectValue>
+            {options.find((option) => option.value === position)?.label}
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent align="end">
+          {options.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </SettingsRow>
+  );
+}
+
+function DesktopTabPositionRow() {
+  const { t } = useT("settings");
+  const position = useDesktopTabPreferenceStore((s) => s.position);
+  const setPosition = useDesktopTabPreferenceStore((s) => s.setPosition);
+
+  // You can choose to add translations to the i18n store or hardcode them if not available.
+  const options: { value: DesktopTabPosition; label: string }[] = [
+    { value: "top", label: "Top" },
+    { value: "bottom", label: "Bottom" },
+    { value: "left", label: "Left" },
+    { value: "right", label: "Right" },
+  ];
+
+  return (
+    <SettingsRow
+      label="Desktop Tabs Position"
+      size="select"
+    >
+      <Select
+        items={options}
+        value={position}
+        onValueChange={(next) => {
+          if (next) {
+            setPosition(next as DesktopTabPosition);
+            toast.success(t(($) => $.auto_save.toast_saved), {
+              id: "settings-auto-save",
+            });
+          }
+        }}
+      >
+        <SelectTrigger
+          size="sm"
+          className="w-full"
+          aria-label="Desktop Tabs Position"
         >
           <SelectValue>
             {options.find((option) => option.value === position)?.label}

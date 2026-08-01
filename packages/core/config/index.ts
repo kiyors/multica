@@ -85,3 +85,4 @@ export function useFeatureEnabled(key: string, defaultValue = false): boolean {
 }
 
 export * from "./sidebar-preference-store";
+export * from "./desktop-tab-preference-store";
