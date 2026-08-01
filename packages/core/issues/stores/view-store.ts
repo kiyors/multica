@@ -9,7 +9,9 @@ import { ALL_STATUSES } from "../config";
 import { createWorkspaceAwareStorage, registerForWorkspaceRehydration } from "../../platform/workspace-storage";
 import { defaultStorage } from "../../platform/storage";
 
-export type ViewMode = "board" | "list" | "table" | "gantt" | "swimlane";
+export type ViewMode = "board" | "list" | "table" | "gantt" | "swimlane" | "calendar";
+export type AssigneeQuickFilter = "all" | "members" | "agents";
+export type TimeQuickFilter = "all" | "today" | "weekly" | "monthly";
 export type GanttZoom = "day" | "week" | "month";
 /**
  * Board grouping. Besides the two built-ins, a select-type custom property
@@ -146,6 +148,8 @@ export const CARD_PROPERTY_OPTIONS: { key: keyof CardProperties; label: string }
 
 export interface IssueViewState {
   viewMode: ViewMode;
+  assigneeQuickFilter: AssigneeQuickFilter;
+  timeQuickFilter: TimeQuickFilter;
   grouping: IssueGrouping;
   statusFilters: IssueStatus[];
   priorityFilters: IssuePriority[];
@@ -234,10 +238,14 @@ export interface IssueViewState {
   toggleTableParentCollapsed: (issueId: string) => void;
   toggleTableHierarchy: () => void;
   setTableCalculation: (calculation: TableCalculation) => void;
+  setAssigneeQuickFilter: (filter: AssigneeQuickFilter) => void;
+  setTimeQuickFilter: (filter: TimeQuickFilter) => void;
 }
 
 export const viewStoreSlice = (set: StoreApi<IssueViewState>["setState"]): IssueViewState => ({
   viewMode: "board",
+  assigneeQuickFilter: "all",
+  timeQuickFilter: "all",
   grouping: "status",
   statusFilters: [],
   priorityFilters: [],
@@ -348,6 +356,8 @@ export const viewStoreSlice = (set: StoreApi<IssueViewState>["setState"]): Issue
       return { propertyFilters };
     }),
   setDateFilter: (filter) => set({ dateFilter: filter }),
+  setAssigneeQuickFilter: (filter) => set({ assigneeQuickFilter: filter }),
+  setTimeQuickFilter: (filter) => set({ timeQuickFilter: filter }),
   toggleAgentRunningFilter: () =>
     set((state) => ({ agentRunningFilter: !state.agentRunningFilter })),
   hideStatus: (status) =>

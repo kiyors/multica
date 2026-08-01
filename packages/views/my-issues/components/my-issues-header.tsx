@@ -60,6 +60,8 @@ export function MyIssuesHeader({
   const toggleAgentRunningFilter = useViewStore(
     (s) => s.toggleAgentRunningFilter,
   );
+  const dateFilter = useViewStore((s) => s.dateFilter);
+  const setDateFilter = useViewStore((s) => s.setDateFilter);
   const scopeLabel = SCOPES.find((s) => s.value === scope)?.label ?? SCOPES[0]?.label;
 
   return (
@@ -132,6 +134,8 @@ export function MyIssuesHeader({
             facetCountsExact={facetCountsExact}
             tableFacetCounts={tableFacetCounts}
             onTableFacetChange={onTableFacetChange}
+            dateFilter={dateFilter}
+            onDateFilterChange={setDateFilter}
           />
           <ViewRefreshIndicator active={isRefreshing} />
         </div>

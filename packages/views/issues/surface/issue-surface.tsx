@@ -21,6 +21,7 @@ import { ListView } from "../components/list-view";
 import { SwimLaneView } from "../components/swimlane-view";
 import { TableView } from "../components/table-view";
 import { useT } from "../../i18n";
+import { CalendarView } from "./calendar-view";
 import { IssueContextMenuProvider } from "../actions";
 import { IssueSurfaceActionsProvider } from "./actions-context";
 import { IssueSurfaceSelectionProvider } from "./selection-context";
@@ -129,6 +130,8 @@ function IssueSurfaceContent({
     createDefaults,
     search,
   });
+  const dateFilter = useViewStore((s) => s.dateFilter);
+  const setDateFilter = useViewStore((s) => s.setDateFilter);
   const [tableLoadedIssues, setTableLoadedIssues] = useState<Issue[]>([]);
   const handleTableLoadedIssuesChange = useCallback((next: Issue[]) => {
     setTableLoadedIssues((current) =>
@@ -205,6 +208,8 @@ function IssueSurfaceContent({
             }
             tableFacetCounts={controller.tableFacetCounts}
             onTableFacetChange={controller.setActiveTableFacet}
+            dateFilter={dateFilter}
+            onDateFilterChange={setDateFilter}
           />
         )}
         {controller.isLoading ? (
@@ -288,6 +293,13 @@ function IssueSurfaceContent({
             )}
             {controller.viewMode === "gantt" && (
               <GanttView issues={controller.filteredGanttIssues} />
+            )}
+            {controller.viewMode === "calendar" && (
+              <CalendarView 
+                issues={issues} 
+                onIssueMove={(id, start, end) => controller.actions.updateIssue(id, { start_date: start.toISOString(), due_date: end.toISOString() })}
+                onIssueClick={(_id) => { /* might need router navigation or dialog */ }}
+              />
             )}
             {controller.viewMode === "swimlane" && (
               <SwimLaneView

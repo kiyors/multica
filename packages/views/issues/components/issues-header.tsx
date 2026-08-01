@@ -46,6 +46,7 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from "@multica/ui/components/ui/popover";
+import { Tabs, TabsList, TabsTrigger } from "@multica/ui/components/ui/tabs";
 import { Calendar } from "@multica/ui/components/ui/calendar";
 import { Switch } from "@multica/ui/components/ui/switch";
 import {
@@ -84,6 +85,8 @@ import {
   type SwimlaneGrouping,
   type TableGrouping,
   type ViewMode,
+  type AssigneeQuickFilter,
+  type TimeQuickFilter,
 } from "@multica/core/issues/stores/view-store";
 import { useViewStore, useViewStoreApi } from "@multica/core/issues/stores/view-store-context";
 import { addDaysDateOnly, dateOnlyToLocalDate, formatDateOnly, toDateOnly, todayDateOnly } from "@multica/core/issues/date";
@@ -716,34 +719,24 @@ function DateSubContent({
         {t(($) => $.filters.date_last_7_days)}
       </DropdownMenuItem>
 
-      <div className="px-1.5 py-1">
-        <Popover>
-          <PopoverTrigger
-            render={
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 w-full justify-start px-0 text-body font-normal"
-              >
-                {t(($) => $.filters.date_custom_range)}
-              </Button>
-            }
+      <DropdownMenuSub>
+        <DropdownMenuSubTrigger>
+          {t(($) => $.filters.date_custom_range)}
+        </DropdownMenuSubTrigger>
+        <DropdownMenuSubContent className="w-auto p-0">
+          <Calendar
+            mode="range"
+            selected={range}
+            onSelect={(next) => setRange(next)}
+            captionLayout="dropdown"
           />
-          <PopoverContent align="start" side="right" className="w-auto gap-0 p-0">
-            <Calendar
-              mode="range"
-              selected={range}
-              onSelect={(next) => setRange(next)}
-              captionLayout="dropdown"
-            />
-            <div className="flex justify-end border-t p-2">
-              <Button size="sm" onClick={applyCustom} disabled={!range?.from}>
-                {t(($) => $.filters.date_apply)}
-              </Button>
-            </div>
-          </PopoverContent>
-        </Popover>
-      </div>
+          <div className="flex justify-end border-t p-2">
+            <Button size="sm" onClick={applyCustom} disabled={!range?.from}>
+              {t(($) => $.filters.date_apply)}
+            </Button>
+          </div>
+        </DropdownMenuSubContent>
+      </DropdownMenuSub>
 
       {value && (
         <>
@@ -840,6 +833,8 @@ export function IssuesHeader({
   };
 
   const scopeLabel = t(($) => $.scope[SCOPE_LABEL_KEY[scope]]);
+  const assigneeQuickFilter = useViewStore(s => s.assigneeQuickFilter);
+  const { setAssigneeQuickFilter } = useViewStoreApi().getState();
 
   return (
     <div className="h-12 shrink-0 overflow-x-auto px-4 [-webkit-overflow-scrolling:touch]">
@@ -867,6 +862,17 @@ export function IssuesHeader({
               <TooltipContent side="bottom">{t(($) => $.scope[SCOPE_DESC_KEY[s]])}</TooltipContent>
             </Tooltip>
           ))}
+        </div>
+
+        <div className="hidden shrink-0 items-center gap-1 md:flex">
+          <div className="h-4 w-px bg-border mx-1" />
+          <Tabs value={assigneeQuickFilter} onValueChange={(v) => setAssigneeQuickFilter(v as AssigneeQuickFilter)}>
+            <TabsList className="h-8">
+              <TabsTrigger value="all" className="text-xs h-6 px-3">All</TabsTrigger>
+              <TabsTrigger value="members" className="text-xs h-6 px-3">Members</TabsTrigger>
+              <TabsTrigger value="agents" className="text-xs h-6 px-3">Agents</TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
 
         <DropdownMenu>
@@ -949,6 +955,8 @@ export function IssueDisplayControls({
   onTableFacetChange?: (facet: IssueTableFacetSpec | null) => void;
 }) {
   const { t } = useT("issues");
+  const timeQuickFilter = useViewStore(s => s.timeQuickFilter);
+  const { setTimeQuickFilter } = useViewStoreApi().getState();
   const [tableGroupMenuOpen, setTableGroupMenuOpen] = useState(false);
   const [viewMenuOpen, setViewMenuOpen] = useState(false);
   const viewMode = useViewStore((s) => s.viewMode);
@@ -1715,6 +1723,17 @@ export function IssueDisplayControls({
           </PopoverContent>
         </Popover>
 
+        <div className="hidden shrink-0 items-center md:flex mr-1">
+          <Tabs value={timeQuickFilter} onValueChange={(v) => setTimeQuickFilter(v as TimeQuickFilter)}>
+            <TabsList className="h-8">
+              <TabsTrigger value="all" className="text-xs h-6 px-3">All Time</TabsTrigger>
+              <TabsTrigger value="today" className="text-xs h-6 px-3">Today</TabsTrigger>
+              <TabsTrigger value="weekly" className="text-xs h-6 px-3">Weekly</TabsTrigger>
+              <TabsTrigger value="monthly" className="text-xs h-6 px-3">Monthly</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+
         {/* View toggle. If a store has `viewMode === "gantt"` persisted but
             this surface doesn't render Gantt, fall back to "list" so the
             trigger icon matches what's actually on screen. */}
@@ -1734,6 +1753,8 @@ export function IssueDisplayControls({
                           <Waves className="size-3.5" />
                         ) : viewMode === "gantt" && allowGantt ? (
                           <ChartGantt className="size-3.5" />
+                        ) : viewMode === "calendar" ? (
+                          <CalendarDays className="size-3.5" />
                         ) : (
                           <List className="size-3.5" />
                         )}
@@ -1746,6 +1767,8 @@ export function IssueDisplayControls({
                             ? t(($) => $.view.swimlane)
                             : viewMode === "gantt" && allowGantt
                             ? t(($) => $.view.gantt)
+                            : viewMode === "calendar"
+                            ? "Calendar"
                             : t(($) => $.view.list)}
                         </span>
                       </Button>
@@ -1762,6 +1785,8 @@ export function IssueDisplayControls({
                   ? t(($) => $.view.tooltip_swimlane)
                   : viewMode === "gantt" && allowGantt
                   ? t(($) => $.view.tooltip_gantt)
+                  : viewMode === "calendar"
+                  ? "Calendar View"
                   : t(($) => $.view.tooltip_list)}
               </TooltipContent>
             </Tooltip>
@@ -1798,6 +1823,10 @@ export function IssueDisplayControls({
                     {t(($) => $.view.gantt)}
                   </DropdownMenuRadioItem>
                 )}
+                <DropdownMenuRadioItem value="calendar">
+                  <CalendarDays />
+                  Calendar
+                </DropdownMenuRadioItem>
               </DropdownMenuRadioGroup>
             </DropdownMenuContent>
           </DropdownMenu>

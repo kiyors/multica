@@ -212,6 +212,8 @@ export function useIssueSurfaceController({
   const projectId = scope.type === "project" ? scope.projectId : undefined;
 
   const viewMode = useViewStore((s) => s.viewMode);
+  const assigneeQuickFilter = useViewStore((s) => s.assigneeQuickFilter);
+  const timeQuickFilter = useViewStore((s) => s.timeQuickFilter);
   const setViewMode = useViewStore((s) => s.setViewMode);
   const grouping = useViewStore((s) => s.grouping);
   const sortBy = useViewStore((s) => s.sortBy);
@@ -776,13 +778,68 @@ export function useIssueSurfaceController({
 
   const { ganttWorkingScopeIssues: _ganttWorkingScope, ...surfaceData } = data;
 
+  const filterIssuesArray = useCallback((rawIssues: Issue[]) => {
+    return rawIssues.filter((issue) => {
+      if (assigneeQuickFilter === "members") {
+        if (!issue.assignees?.some((a) => a.assignee_type === "member")) return false;
+      } else if (assigneeQuickFilter === "agents") {
+        if (!issue.assignees?.some((a) => a.assignee_type === "agent" || a.assignee_type === "squad")) return false;
+      }
+
+      if (timeQuickFilter === "today") {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const start = issue.start_date ? new Date(issue.start_date) : null;
+        const due = issue.due_date ? new Date(issue.due_date) : null;
+        let match = false;
+        if (start && start.toDateString() === today.toDateString()) match = true;
+        if (due && due.toDateString() === today.toDateString()) match = true;
+        if (!match) return false;
+      } else if (timeQuickFilter === "weekly") {
+        const today = new Date();
+        const startOfWeek = new Date(today);
+        startOfWeek.setDate(today.getDate() - today.getDay());
+        startOfWeek.setHours(0, 0, 0, 0);
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 7);
+        const start = issue.start_date ? new Date(issue.start_date) : null;
+        const due = issue.due_date ? new Date(issue.due_date) : null;
+        let match = false;
+        if (start && start >= startOfWeek && start < endOfWeek) match = true;
+        if (due && due >= startOfWeek && due < endOfWeek) match = true;
+        if (!match) return false;
+      } else if (timeQuickFilter === "monthly") {
+        const today = new Date();
+        const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+        const start = issue.start_date ? new Date(issue.start_date) : null;
+        const due = issue.due_date ? new Date(issue.due_date) : null;
+        let match = false;
+        if (start && start >= startOfMonth && start < endOfMonth) match = true;
+        if (due && due >= startOfMonth && due < endOfMonth) match = true;
+        if (!match) return false;
+      }
+      return true;
+    });
+  }, [assigneeQuickFilter, timeQuickFilter]);
+
+  const filteredSurfaceData = useMemo(() => ({
+    ...surfaceData,
+    surfaceIssues: filterIssuesArray(surfaceData.surfaceIssues),
+    projectIssues: filterIssuesArray(surfaceData.projectIssues),
+    issues: filterIssuesArray(surfaceData.issues),
+    swimlaneIssues: filterIssuesArray(surfaceData.swimlaneIssues),
+    ganttIssues: filterIssuesArray(surfaceData.ganttIssues),
+    filteredGanttIssues: filterIssuesArray(surfaceData.filteredGanttIssues),
+  }), [surfaceData, filterIssuesArray]);
+
   return {
     scopeKey,
     projectId,
     createDefaults: resolvedCreateDefaults,
     viewMode: effectiveViewMode,
-    allowGantt: allowedModes.has("gantt") && !!projectId,
-    ...surfaceData,
+    allowGantt: allowedModes.has("gantt"),
+    ...filteredSurfaceData,
     workingAgents,
     hasActiveFilters,
     statusPagination: usesServerStatusSurface
