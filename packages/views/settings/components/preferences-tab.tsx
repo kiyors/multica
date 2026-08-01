@@ -22,8 +22,7 @@ import {
   useCommentComposerStore,
   useIssueLinkStore,
 } from "@multica/core/issues/stores";
-import { useSidebarPreferenceStore, useDesktopTabPreferenceStore, type SidebarPosition } from "@multica/core/config";
-import type { DesktopTabPosition } from "@multica/core/config/desktop-tab-preference-store";
+import { useSidebarPreferenceStore, useDesktopTabPreferenceStore, type SidebarPosition, type DesktopTabPosition } from "@multica/core/config";
 import { api } from "@multica/core/api";
 import { browserTimezone, timezoneOptions } from "../../common/timezone-select";
 import { useT } from "../../i18n";
@@ -166,7 +165,7 @@ export function PreferencesTab() {
           </SettingsRow>
 
           <SidebarPositionRow />
-          {window.desktopAPI && <DesktopTabPositionRow />}
+          {(window as any).desktopAPI && <DesktopTabPositionRow />}
           <TimezoneRow />
 
           <StickyCommentBarRow />
