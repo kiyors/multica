@@ -243,7 +243,6 @@ func TestSlimBriefIsSubstantiallyShorter(t *testing.T) {
 	t.Cleanup(func() { runtimeFlags.Store(saved) })
 
 	runtimeFlags.Store(nil)
-	legacy := buildMetaSkillContent("claude", ctx)
 }
 
 // TestBackgroundTaskSafetySlimHardPins asserts the slim brief carries the

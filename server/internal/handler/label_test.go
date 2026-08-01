@@ -497,6 +497,7 @@ func TestLabelNameAllowsEmoji(t *testing.T) {
 	})
 }
 
+func TestLabelResourceTypesHaveIndependentNamespaces(t *testing.T) {
 	name := "shared-scope-label-" + uuid.NewString()[:8]
 	for _, resourceType := range []string{"issue", "agent", "skill"} {
 		w := httptest.NewRecorder()
@@ -513,8 +514,6 @@ func TestLabelNameAllowsEmoji(t *testing.T) {
 		var created LabelResponse
 		if err := json.NewDecoder(w.Body).Decode(&created); err != nil {
 			t.Fatalf("decode created label: %v", err)
-		}
-			t.Fatalf("unexpected scoped label: %+v", created)
 		}
 		t.Cleanup(func() {
 			w := httptest.NewRecorder()
@@ -588,6 +587,7 @@ func TestDeleteResourceLabelCleansAssignments(t *testing.T) {
 	}
 }
 
+func TestLabelRejectsUnknownResourceType(t *testing.T) {
 	w := httptest.NewRecorder()
 	req := newRequest("POST", "/api/labels", map[string]any{
 		"resource_type": "project",
