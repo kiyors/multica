@@ -15,7 +15,7 @@
         commonGoArgs = {
           version = (builtins.fromJSON (builtins.readFile ./package.json)).version;
           src = ./server;
-          vendorHash = "sha256-w0HxFUdGZmQ3jz2kvvcf9zwlftI6fOLxR0z4MG8RzrI=";
+          vendorHash = "sha256-sOHL45Ua2S1X2yZ+0tmQsGZA41VRM7qwjKeFg7vi2Vc=";
         };
       in
       {
