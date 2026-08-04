@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS uq_issue_label_workspace_project_name;
