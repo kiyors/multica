@@ -21,6 +21,8 @@ function IssuesSurfaceHeader({
   facetCountsExact,
   tableFacetCounts,
   onTableFacetChange,
+  allowGantt,
+  allowCalendar,
 }: {
   issues: Issue[];
   workingAgents: WorkingAgentSummary[] | undefined;
@@ -28,6 +30,8 @@ function IssuesSurfaceHeader({
   facetCountsExact: boolean;
   tableFacetCounts?: IssueTableFacetsResponse;
   onTableFacetChange: (facet: IssueTableFacetSpec | null) => void;
+  allowGantt: boolean;
+  allowCalendar: boolean;
 }) {
   const dateFilter = useViewStore((s) => s.dateFilter);
   const setDateFilter = useViewStore((s) => s.setDateFilter);
@@ -36,6 +40,9 @@ function IssuesSurfaceHeader({
     <IssuesHeader
       scopedIssues={issues}
       workingAgents={workingAgents}
+      workspaceScopeControls
+      allowGantt={allowGantt}
+      allowCalendar={allowCalendar}
       dateFilter={dateFilter}
       onDateFilterChange={setDateFilter}
       isRefreshing={isRefreshing}
@@ -59,7 +66,7 @@ export function IssuesPage() {
 
       <IssueSurface
         scope={{ type: "workspace", actorKind: scope }}
-        modes={["board", "list", "table", "swimlane"]}
+        modes={["board", "list", "table", "swimlane", "gantt", "calendar"]}
         batchToolbar="list"
         renderHeader={({ controller }) => (
           <IssuesSurfaceHeader
@@ -69,6 +76,8 @@ export function IssuesPage() {
             facetCountsExact={controller.facetCountsExact}
             tableFacetCounts={controller.tableFacetCounts}
             onTableFacetChange={controller.setActiveTableFacet}
+            allowGantt={controller.allowGantt}
+            allowCalendar={controller.allowCalendar}
           />
         )}
         renderEmpty={() => (

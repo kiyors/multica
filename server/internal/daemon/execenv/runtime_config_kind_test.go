@@ -218,32 +218,7 @@ func TestSlimQuickCreateAvailableCommands(t *testing.T) {
 	}
 }
 
-// TestSlimBriefIsSubstantiallyShorter is the headline check: on a
-// realistic comment-triggered fixture, the slim brief is at least 30%
-// shorter than the legacy brief. The exact number is in flux as we
-// continue to tune; the assertion just guards against a future change
-// that accidentally bloats the slim path back up to legacy levels.
-func TestSlimBriefIsSubstantiallyShorter(t *testing.T) {
-	// Not t.Parallel-safe because we toggle the global flag inside.
-	ctx := TaskContextForEnv{
-		IssueID: "11111111-2222-3333-4444-555555555555", TriggerCommentID: "66666666-7777-8888-9999-aaaaaaaaaaaa", TriggerThreadID: "66666666-7777-8888-9999-aaaaaaaaaaaa",
-		AgentName: "Eve", AgentID: "eve-1",
-		InitiatorName: "Yushen", InitiatorType: "member", InitiatorEmail: "yushen@devv.ai",
-		Repos: []RepoContextForEnv{
-			{URL: "https://github.com/kiyors/multica", Description: "Managed agents platform"},
-			{URL: "git@github.com:kiyors/multica-cloud.git", Description: "Internal cloud platform"},
-		},
-		AgentSkills: []SkillContextForEnv{
-			{Name: "Multica Git Workflow", Description: "Multica development workflow"},
-			{Name: "PR review", Description: "Review PRs"},
-		},
-	}
 
-	saved := runtimeFlags.Load()
-	t.Cleanup(func() { runtimeFlags.Store(saved) })
-
-	runtimeFlags.Store(nil)
-}
 
 // TestBackgroundTaskSafetySlimHardPins asserts the slim brief carries the
 // same hardened Background Task Safety pins as the legacy brief (MUL-4140).

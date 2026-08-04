@@ -11,7 +11,7 @@ import { useWorkspaceId } from "@multica/core/hooks";
 import { propertyListOptions } from "@multica/core/properties";
 import { CustomPropertyValueDisplay } from "./pickers/custom-property-picker";
 import { formatDateOnly, isPastDateOnly } from "@multica/core/issues/date";
-import { CalendarClock, CalendarDays, CornerDownRight, ChevronDown } from "lucide-react";
+import { CalendarClock, CalendarDays, CornerDownRight, ChevronDown, Eye } from "lucide-react";
 import { ActorAvatar } from "../../common/actor-avatar";
 import { PropertyIcon } from "../../common/property-icon";
 import { useWorkspacePaths } from "@multica/core/paths";
@@ -29,6 +29,7 @@ import { IssueAgentActivityIndicator } from "./issue-agent-activity-indicator";
 import { useIssueSurfaceActionsOptional } from "../surface/actions-context";
 import { useT } from "../../i18n";
 import { StatusIcon } from "./status-icon";
+import { listPendingReviewIssueIDsOptions } from "@multica/core/reviews/queries";
 
 function formatDate(date: string): string {
   return formatDateOnly(date, { month: "short", day: "numeric" }, "en-US");
@@ -182,6 +183,10 @@ export const BoardCardContent = memo(function BoardCardContent({
 
   const showMetaRow = showAssigneeSection || showStartDate || showDueDate || showChildProgress;
   const showRightMeta = !!showStartDate || !!showDueDate || !!showChildProgress || showUpdatedHint;
+  const { data: pendingReviewIssueIds = [] } = useQuery(
+    listPendingReviewIssueIDsOptions(issue.workspace_id),
+  );
+  const hasPendingReview = pendingReviewIssueIds.includes(issue.id);
 
   return (
     <div className="rounded-lg border-[0.5px] border-surface-border bg-surface py-3 px-2.5 shadow-[var(--surface-shadow)] transition-colors group-hover/card:border-foreground/15 group-hover/card:bg-surface-hover group-data-[popup-open]/card:border-foreground/15 group-data-[popup-open]/card:bg-surface-hover">
@@ -194,6 +199,12 @@ export const BoardCardContent = memo(function BoardCardContent({
             <span className="flex items-center gap-1 bg-muted/50 text-muted-foreground px-1.5 py-0.5 rounded text-micro font-medium ml-1 max-w-[120px]">
               <CornerDownRight className="size-3 shrink-0" />
               <span className="truncate">{parentIssue ? parentIssue.identifier : "Subtask"}</span>
+            </span>
+          )}
+          {hasPendingReview && (
+            <span className="ml-1 flex items-center gap-1 rounded bg-blue-500/10 px-1.5 py-0.5 text-micro font-medium text-blue-600 dark:text-blue-400">
+              <Eye className="size-3" />
+              {t(($) => $.card.review_badge)}
             </span>
           )}
         </div>

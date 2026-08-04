@@ -19,6 +19,10 @@ import { workspaceWorkingAgentsOptions } from "@multica/core/agents";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { ALL_STATUSES } from "@multica/core/issues/config";
 import { dateOnlyToLocalDate } from "@multica/core/issues/date";
+import {
+  issueScheduleOverlapsPeriod,
+  issueSchedulePeriodForFilter,
+} from "@multica/core/issues";
 import type {
   AssigneeGroupedIssuesFilter,
   IssueSortParam,
@@ -29,6 +33,7 @@ import {
   buildIssueSurfaceQueryPlan,
   type IssueSurfaceQueryPlan,
 } from "@multica/core/issues/surface/query-plan";
+import { issueSurfaceScheduledOptions } from "@multica/core/issues/surface/repository";
 import type { IssueScope } from "@multica/core/issues/surface/scope";
 import type { IssueDateFilter, SortField } from "@multica/core/issues/stores/view-store";
 import { propertyListOptions } from "@multica/core/properties";
@@ -71,6 +76,7 @@ export interface IssueSurfaceController {
   createDefaults: IssueCreateDefaults;
   viewMode: IssueSurfaceMode;
   allowGantt: boolean;
+  allowCalendar: boolean;
   surfaceIssues: Issue[];
   projectIssues: Issue[];
   issues: Issue[];
@@ -318,18 +324,29 @@ export function useIssueSurfaceController({
     groupingPropertyId && catalogSettled && !activeGroupingProperty
       ? "status"
       : grouping;
-  const usesAssigneeBoard =
-    effectiveViewMode === "board" && effectiveGrouping === "assignee";
-  const usesGantt = effectiveViewMode === "gantt" && !!projectId;
+  const usesGantt = effectiveViewMode === "gantt";
+  const usesCalendar = effectiveViewMode === "calendar";
   const usesTable = effectiveViewMode === "table";
+  const schedulePeriod = useMemo(
+    () => issueSchedulePeriodForFilter(timeQuickFilter),
+    [timeQuickFilter],
+  );
+  const usesScheduledWindow =
+    !usesTable && (usesGantt || usesCalendar || schedulePeriod !== null);
+  const usesAssigneeBoard =
+    !usesScheduledWindow &&
+    effectiveViewMode === "board" &&
+    effectiveGrouping === "assignee";
   const activeSearch = usesTable ? tableSearch : search;
   const debouncedActiveSearch = useDebouncedTableSearch(activeSearch);
   const usesServerStatusSurface =
-    effectiveViewMode === "list" ||
-    (effectiveViewMode === "board" && effectiveGrouping === "status");
+    !usesScheduledWindow &&
+    (effectiveViewMode === "list" ||
+      (effectiveViewMode === "board" && effectiveGrouping === "status"));
   const usesServerGroupSurface =
-    (effectiveViewMode === "board" && effectiveGrouping !== "status") ||
-    effectiveViewMode === "swimlane";
+    !usesScheduledWindow &&
+    ((effectiveViewMode === "board" && effectiveGrouping !== "status") ||
+      effectiveViewMode === "swimlane");
   const usesServerFacets =
     usesTable || usesServerStatusSurface || usesServerGroupSurface;
   const serverStatuses = useMemo<IssueStatus[]>(
@@ -371,7 +388,14 @@ export function useIssueSurfaceController({
     labelFilters.length > 0 ||
     Object.keys(effectivePropertyFilters).length > 0 ||
     dateFilter != null ||
+    timeQuickFilter !== "all" ||
+    (scope.type !== "workspace" && assigneeQuickFilter !== "all") ||
     agentRunningFilter === true;
+
+  const scheduledIssuesQuery = useQuery({
+    ...issueSurfaceScheduledOptions(wsId, queryPlan, sort),
+    enabled: usesScheduledWindow,
+  });
 
   const workingAgentMineRelation =
     scope.type === "my"
@@ -447,6 +471,14 @@ export function useIssueSurfaceController({
           ? { properties: effectivePropertyFilters }
           : {}),
         ...(date ? { date } : {}),
+        ...(schedulePeriod
+          ? {
+              schedule: {
+                start: schedulePeriod.from,
+                end: schedulePeriod.to,
+              },
+            }
+          : {}),
         ...(agentRunningFilter
           ? { working_issue_ids: [...workingIssueIDs] }
           : {}),
@@ -469,6 +501,7 @@ export function useIssueSurfaceController({
     labelFilters,
     priorityFilters,
     scope,
+    schedulePeriod,
     showSubIssues,
     sort.sort_by,
     sort.sort_direction,
@@ -553,7 +586,7 @@ export function useIssueSurfaceController({
     // `agentRunningFilter` is unreachable there. Skip the aggregation rather
     // than pay for it on every panel mount. Adding the chip to that header
     // means dropping this clause.
-    enabled: !usesGantt && scope.type !== "actor",
+    enabled: !usesScheduledWindow && scope.type !== "actor",
   });
   const facetWorkingAgents = useMemo<WorkingAgentSummary[] | undefined>(() => {
     const facet = workingAgentsFacetQuery.data?.facets.find(
@@ -649,6 +682,8 @@ export function useIssueSurfaceController({
         agentRunningFilter,
         showSubIssues,
         dateParams,
+        timeQuickFilter,
+        scope.type === "workspace" ? "all" : assigneeQuickFilter,
         debouncedActiveSearch,
       ]),
     [
@@ -656,11 +691,14 @@ export function useIssueSurfaceController({
       assigneeFilters,
       creatorFilters,
       dateParams,
+      timeQuickFilter,
+      assigneeQuickFilter,
       debouncedActiveSearch,
       effectivePropertyFilters,
       includeNoAssignee,
       labelFilters,
       priorityFilters,
+      scope.type,
       showSubIssues,
       statusFilters,
       viewIncludeNoProject,
@@ -675,9 +713,11 @@ export function useIssueSurfaceController({
   const data = useIssueSurfaceData({
     wsId,
     queryPlan,
-    projectId,
     usesAssigneeBoard,
-    usesGantt,
+    usesScheduledWindow,
+    scheduledIssues: scheduledIssuesQuery.data ?? EMPTY_LIST,
+    scheduledIssuesLoading: scheduledIssuesQuery.isLoading,
+    scheduledIssuesFetching: scheduledIssuesQuery.isFetching,
     usesTable,
     serverStatusBranches,
     serverGroupBranches,
@@ -704,7 +744,7 @@ export function useIssueSurfaceController({
   // Gantt draws a client-materialized canvas, so its chip counts the agents
   // holding those canvas rows. Every other view mode takes the server facet.
   const workingAgents = useMemo<WorkingAgentSummary[] | undefined>(() => {
-    if (!usesGantt) return facetWorkingAgents;
+    if (!usesScheduledWindow) return facetWorkingAgents;
     const rows = data.ganttWorkingScopeIssues;
     if (!rows) return undefined;
     const visible = new Set(rows.map((issue) => issue.id));
@@ -719,7 +759,7 @@ export function useIssueSurfaceController({
   }, [
     data.ganttWorkingScopeIssues,
     facetWorkingAgents,
-    usesGantt,
+    usesScheduledWindow,
     workspaceWorkingAgents,
   ]);
 
@@ -780,58 +820,52 @@ export function useIssueSurfaceController({
 
   const filterIssuesArray = useCallback((rawIssues: Issue[]) => {
     return rawIssues.filter((issue) => {
-      if (assigneeQuickFilter === "members") {
-        if (!issue.assignees?.some((a) => a.assignee_type === "member")) return false;
-      } else if (assigneeQuickFilter === "agents") {
-        if (!issue.assignees?.some((a) => a.assignee_type === "agent" || a.assignee_type === "squad")) return false;
+      const assigneeTypes = issue.assignees?.length
+        ? issue.assignees.map((assignee) => assignee.assignee_type)
+        : issue.assignee_type
+          ? [issue.assignee_type]
+          : [];
+      if (scope.type !== "workspace" && assigneeQuickFilter === "members") {
+        if (!assigneeTypes.includes("member")) return false;
+      } else if (scope.type !== "workspace" && assigneeQuickFilter === "agents") {
+        if (!assigneeTypes.some((type) => type === "agent" || type === "squad")) return false;
       }
 
-      if (timeQuickFilter === "today") {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const start = issue.start_date ? new Date(issue.start_date) : null;
-        const due = issue.due_date ? new Date(issue.due_date) : null;
-        let match = false;
-        if (start && start.toDateString() === today.toDateString()) match = true;
-        if (due && due.toDateString() === today.toDateString()) match = true;
-        if (!match) return false;
-      } else if (timeQuickFilter === "weekly") {
-        const today = new Date();
-        const startOfWeek = new Date(today);
-        startOfWeek.setDate(today.getDate() - today.getDay());
-        startOfWeek.setHours(0, 0, 0, 0);
-        const endOfWeek = new Date(startOfWeek);
-        endOfWeek.setDate(startOfWeek.getDate() + 7);
-        const start = issue.start_date ? new Date(issue.start_date) : null;
-        const due = issue.due_date ? new Date(issue.due_date) : null;
-        let match = false;
-        if (start && start >= startOfWeek && start < endOfWeek) match = true;
-        if (due && due >= startOfWeek && due < endOfWeek) match = true;
-        if (!match) return false;
-      } else if (timeQuickFilter === "monthly") {
-        const today = new Date();
-        const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-        const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
-        const start = issue.start_date ? new Date(issue.start_date) : null;
-        const due = issue.due_date ? new Date(issue.due_date) : null;
-        let match = false;
-        if (start && start >= startOfMonth && start < endOfMonth) match = true;
-        if (due && due >= startOfMonth && due < endOfMonth) match = true;
-        if (!match) return false;
-      }
+      if (schedulePeriod && !issueScheduleOverlapsPeriod(issue, schedulePeriod)) return false;
       return true;
     });
-  }, [assigneeQuickFilter, timeQuickFilter]);
+  }, [assigneeQuickFilter, schedulePeriod, scope.type]);
 
-  const filteredSurfaceData = useMemo(() => ({
-    ...surfaceData,
-    surfaceIssues: filterIssuesArray(surfaceData.surfaceIssues),
-    projectIssues: filterIssuesArray(surfaceData.projectIssues),
-    issues: filterIssuesArray(surfaceData.issues),
-    swimlaneIssues: filterIssuesArray(surfaceData.swimlaneIssues),
-    ganttIssues: filterIssuesArray(surfaceData.ganttIssues),
-    filteredGanttIssues: filterIssuesArray(surfaceData.filteredGanttIssues),
-  }), [surfaceData, filterIssuesArray]);
+  const filteredSurfaceData = useMemo(() => {
+    const issues = filterIssuesArray(surfaceData.issues);
+    const statusPagination = usesScheduledWindow
+      ? Object.fromEntries(
+          ALL_STATUSES.map((status) => {
+            const count = issues.filter((issue) => issue.status === status).length;
+            return [status, {
+              total: count,
+              loaded: count,
+              hasMore: false,
+              isLoading: false,
+              isFetching: false,
+              isError: false,
+              loadMore: () => {},
+              retry: () => {},
+            }];
+          }),
+        ) as IssueStatusPagination
+      : surfaceData.statusPagination;
+    return {
+      ...surfaceData,
+      surfaceIssues: filterIssuesArray(surfaceData.surfaceIssues),
+      projectIssues: filterIssuesArray(surfaceData.projectIssues),
+      issues,
+      swimlaneIssues: filterIssuesArray(surfaceData.swimlaneIssues),
+      ganttIssues: filterIssuesArray(surfaceData.ganttIssues),
+      filteredGanttIssues: filterIssuesArray(surfaceData.filteredGanttIssues),
+      statusPagination,
+    };
+  }, [filterIssuesArray, surfaceData, usesScheduledWindow]);
 
   return {
     scopeKey,
@@ -839,10 +873,13 @@ export function useIssueSurfaceController({
     createDefaults: resolvedCreateDefaults,
     viewMode: effectiveViewMode,
     allowGantt: allowedModes.has("gantt"),
+    allowCalendar: allowedModes.has("calendar"),
     ...filteredSurfaceData,
     workingAgents,
     hasActiveFilters,
-    statusPagination: usesServerStatusSurface
+    statusPagination: usesScheduledWindow
+      ? filteredSurfaceData.statusPagination
+      : usesServerStatusSurface
       ? data.statusPagination
       : undefined,
     groupBranches: usesServerGroupSurface
@@ -853,7 +890,7 @@ export function useIssueSurfaceController({
     // debounced value as well to avoid a brief empty-screen flash while a
     // cleared query is waiting to re-fetch the unsearched window.
     isEmpty:
-      data.isEmpty &&
+      ((schedulePeriod !== null && filteredSurfaceData.issues.length === 0) || data.isEmpty) &&
       !data.isRefreshing &&
       !(usesTable && (tableSearch.trim() || debouncedActiveSearch)),
     sort,

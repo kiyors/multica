@@ -40,6 +40,7 @@ type TimelineEntry struct {
 	ReviewPageIndex *int32               `json:"review_page_index,omitempty"`
 	ReviewStartTime *float32             `json:"review_start_time,omitempty"`
 	ReviewEndTime   *float32             `json:"review_end_time,omitempty"`
+	QuickActionID   *string              `json:"quick_action_id,omitempty"`
 }
 
 // timelineHardCap bounds the per-issue timeline payload. Sized as a defensive
@@ -300,6 +301,7 @@ func (h *Handler) commentsToEntries(r *http.Request, comments []db.Comment) []Ti
 			ReviewPageIndex: int4ToPtr(c.ReviewPageIndex),
 			ReviewStartTime: float4ToPtr(c.ReviewStartTime),
 			ReviewEndTime:   float4ToPtr(c.ReviewEndTime),
+			QuickActionID:   uuidToPtr(c.QuickActionID),
 		}
 	}
 	return out

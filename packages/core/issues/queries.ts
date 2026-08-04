@@ -107,6 +107,14 @@ export const issueKeys = {
    */
   projectGantt: (wsId: string, projectId: string) =>
     [...issueKeys.projectGanttAll(wsId), projectId] as const,
+  scheduledAll: (wsId: string) =>
+    [...issueKeys.all(wsId), "scheduled"] as const,
+  scheduled: (
+    wsId: string,
+    scope: string,
+    filter: IssueFlatFilter,
+    sort?: IssueSortParam,
+  ) => [...issueKeys.scheduledAll(wsId), scope, filter, sort ?? {}] as const,
   detail: (wsId: string, id: string) =>
     [...issueKeys.all(wsId), "detail", id] as const,
   /** Resolve a bare issue identifier (e.g. "MUL-123") to an issue. */
@@ -199,6 +207,7 @@ export type IssueFlatFilter = MyIssuesFilter &
     | "label_ids"
     | "top_level_only"
     | "ids"
+    | "scheduled"
   >;
 
 export type AssigneeGroupedIssuesFilter = Omit<
@@ -498,6 +507,29 @@ export function issueFlatExportOptions(
         ? fetchAllMyFlatIssues(userId, filter, sort)
         : fetchAllFlatPages(filter, sort),
     staleTime: 0,
+  });
+}
+
+/**
+ * Fully materialized scheduled window for Calendar, Gantt, and schedule quick
+ * filters. Unlike board/list pages this walks every server page, so a period
+ * filter can never hide a matching issue merely because it was beyond the
+ * currently loaded status page.
+ */
+export function issueScheduledOptions(
+  wsId: string,
+  scope: string,
+  filter: IssueFlatFilter,
+  userId?: string,
+  sort?: IssueSortParam,
+) {
+  const scheduledFilter: IssueFlatFilter = { ...filter, scheduled: true };
+  return queryOptions({
+    queryKey: issueKeys.scheduled(wsId, scope, scheduledFilter, sort),
+    queryFn: () =>
+      scope === "all" && userId
+        ? fetchAllMyFlatIssues(userId, scheduledFilter, sort)
+        : fetchAllFlatPages(scheduledFilter, sort),
   });
 }
 

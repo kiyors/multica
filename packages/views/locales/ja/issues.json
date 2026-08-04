@@ -34,6 +34,12 @@
     "agents_label": "エージェント",
     "agents_description": "AI エージェントに割り当てられたイシュー"
   },
+  "schedule_period": {
+    "all": "全期間",
+    "today": "今日",
+    "week": "今週",
+    "month": "今月"
+  },
   "filters": {
     "tooltip": "フィルター",
     "placeholder": "フィルター...",
@@ -99,12 +105,14 @@
     "tooltip_list": "リスト表示",
     "tooltip_table": "テーブル表示",
     "tooltip_gantt": "ガント表示",
+    "tooltip_calendar": "カレンダー表示",
     "tooltip_swimlane": "スイムレーン表示",
     "section": "表示",
     "board": "ボード",
     "list": "リスト",
     "table": "テーブル",
     "gantt": "ガント",
+    "calendar": "カレンダー",
     "swimlane": "スイムレーン"
   },
   "table": {
@@ -181,6 +189,10 @@
     "show_completed": "完了済みを表示",
     "empty": "スケジュールされたイシューがまだありません。いずれかのイシューに開始日または期限を設定すると、タイムラインに表示されます。",
     "inverted_dates_warning": "開始日が期限より後になっています。バーは早い日付から遅い日付まで表示されます。"
+  },
+  "calendar_view": {
+    "previous": "前の期間",
+    "next": "次の期間"
   },
   "actor_issues": {
     "scope": {
@@ -349,6 +361,10 @@
     "due_date_removed": "期限を削除しました",
     "title_renamed": "このイシューのタイトルを \"{{from}}\" から \"{{to}}\" に変更しました",
     "description_updated": "説明を更新しました",
+    "approval_requested": "{{name}} に承認を依頼しました",
+    "approval_approved": "承認リクエストを承認しました",
+    "approval_rejected": "承認リクエストを却下しました",
+    "approval_reviewer_fallback": "レビュアー",
     "task_completed_other": "タスクを完了しました（{{count}} 回）",
     "task_failed_other": "タスクが失敗しました（{{count}} 回）",
     "squad_leader_evaluated": "スクワッドのトリガーを評価しました",
@@ -371,6 +387,9 @@
     "edit_placeholder": "コメントを編集...",
     "save_action": "保存",
     "cancel_edit": "キャンセル",
+    "open_media_review": "メディアレビューを開く{{location}}",
+    "review_location_time": "（{{time}}）",
+    "review_location_page": "（{{page}}ページ）",
     "copy_action": "コピー",
     "copied_toast": "コピーしました",
     "edit_action": "編集",
@@ -524,7 +543,8 @@
   },
   "card": {
     "update_failed": "イシューを更新できませんでした",
-    "updated_ago": "{{time}} に更新"
+    "updated_ago": "{{time}} に更新",
+    "review_badge": "レビュー"
   },
   "actions": {
     "status": "ステータス",
@@ -614,6 +634,22 @@
     "create_failed": "ラベルを作成できませんでした",
     "update_failed": "ラベルを更新できませんでした",
     "delete_failed": "ラベルを削除できませんでした"
+  },
+  "approval": {
+    "pending": "承認待ち",
+    "comment_placeholder": "コメントを追加（任意）…",
+    "approve": "承認",
+    "reject": "却下",
+    "waiting_for": "レビュー待ち：",
+    "by": "担当：",
+    "status_approved": "承認済み",
+    "status_rejected": "却下済み",
+    "request": "承認を依頼",
+    "select_reviewer": "レビュアーを選択",
+    "send_request": "依頼を送信",
+    "cancel": "キャンセル",
+    "create_failed": "承認を依頼できませんでした",
+    "decision_failed": "承認を更新できませんでした"
   },
   "backlog_hint": {
     "title": "バックログではエージェントが一時停止します",

@@ -34,6 +34,12 @@
     "agents_label": "Agents",
     "agents_description": "Tasks assigned to AI agents"
   },
+  "schedule_period": {
+    "all": "All Time",
+    "today": "Today",
+    "week": "Weekly",
+    "month": "Monthly"
+  },
   "filters": {
     "tooltip": "Filter",
     "placeholder": "Filter...",
@@ -101,12 +107,14 @@
     "tooltip_list": "List view",
     "tooltip_table": "Table view",
     "tooltip_gantt": "Gantt view",
+    "tooltip_calendar": "Calendar view",
     "tooltip_swimlane": "Swimlane view",
     "section": "View",
     "board": "Board",
     "list": "List",
     "table": "Table",
     "gantt": "Gantt",
+    "calendar": "Calendar",
     "swimlane": "Swimlane"
   },
   "table": {
@@ -183,6 +191,10 @@
     "show_completed": "Show completed",
     "empty": "No scheduled tasks yet — set a start or due date on any task to see it on the timeline.",
     "inverted_dates_warning": "Start date is after due date — bar shown from min to max."
+  },
+  "calendar_view": {
+    "previous": "Previous period",
+    "next": "Next period"
   },
   "actor_issues": {
     "scope": {
@@ -354,6 +366,10 @@
     "due_date_removed": "removed due date",
     "title_renamed": "renamed this task from \"{{from}}\" to \"{{to}}\"",
     "description_updated": "updated the description",
+    "approval_requested": "requested approval from {{name}}",
+    "approval_approved": "approved the approval request",
+    "approval_rejected": "rejected the approval request",
+    "approval_reviewer_fallback": "a reviewer",
     "task_completed_one": "completed the task",
     "task_completed_other": "completed the task ({{count}} times)",
     "task_failed_one": "task failed",
@@ -380,6 +396,9 @@
     "edit_placeholder": "Edit comment...",
     "save_action": "Save",
     "cancel_edit": "Cancel",
+    "open_media_review": "Open media review{{location}}",
+    "review_location_time": " at {{time}}",
+    "review_location_page": " on page {{page}}",
     "copy_action": "Copy",
     "copied_toast": "Copied",
     "edit_action": "Edit",
@@ -551,7 +570,8 @@
   },
   "card": {
     "update_failed": "Failed to update task",
-    "updated_ago": "Updated {{time}}"
+    "updated_ago": "Updated {{time}}",
+    "review_badge": "Review"
   },
   "actions": {
     "status": "Status",
@@ -641,6 +661,22 @@
     "create_failed": "Failed to create label",
     "update_failed": "Failed to update label",
     "delete_failed": "Failed to delete label"
+  },
+  "approval": {
+    "pending": "Pending approval",
+    "comment_placeholder": "Add a comment (optional)…",
+    "approve": "Approve",
+    "reject": "Reject",
+    "waiting_for": "Waiting for review from",
+    "by": "by",
+    "status_approved": "Approved",
+    "status_rejected": "Rejected",
+    "request": "Request approval",
+    "select_reviewer": "Select reviewer",
+    "send_request": "Send request",
+    "cancel": "Cancel",
+    "create_failed": "Failed to request approval",
+    "decision_failed": "Failed to update approval"
   },
   "backlog_hint": {
     "title": "Agent is paused in Backlog",

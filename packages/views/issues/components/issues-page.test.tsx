@@ -292,6 +292,8 @@ vi.mock("@multica/core/issues/config", () => ({
 // Mock view store
 const mockViewState = {
   viewMode: "board" as "board" | "list",
+  assigneeQuickFilter: "all" as const,
+  timeQuickFilter: "all" as const,
   grouping: "status" as "status" | "assignee",
   statusFilters: [] as string[],
   priorityFilters: [] as string[],
@@ -785,8 +787,8 @@ describe("IssuesPage (shared)", () => {
     renderWithQuery(<IssuesPage />);
 
     expect(await screen.findAllByText("All")).not.toHaveLength(0);
-    expect(screen.getByText("Members")).toBeInTheDocument();
-    expect(screen.getByText("Agents")).toBeInTheDocument();
+    expect(screen.getAllByText("Members")).toHaveLength(1);
+    expect(screen.getAllByText("Agents")).toHaveLength(1);
   });
 
   // The Members/Agents tabs filter server-side via assignee_types (the same

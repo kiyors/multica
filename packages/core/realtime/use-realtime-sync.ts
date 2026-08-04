@@ -37,6 +37,9 @@ import {
   onIssueMetadataChanged,
 } from "../issues/ws-updaters";
 import { onReviewAssetUpdated, onReviewCommentCreated, onReviewCommentResolved, onReviewCommentUnresolved } from "../reviews/ws-updaters";
+import { reviewKeys } from "../reviews/queries";
+import { onApprovalChanged } from "../approvals/ws-updaters";
+import { approvalKeys } from "../approvals/queries";
 import { onInboxNew, onInboxInvalidate, onInboxIssueStatusChanged, onInboxIssueDeleted, onInboxSummaryInvalidate } from "../inbox/ws-updaters";
 import { inboxKeys } from "../inbox/queries";
 import {
@@ -98,6 +101,7 @@ import type {
   ChatMessagesPage,
   ChatSession,
   InvitationCreatedPayload,
+  Approval,
 } from "../types";
 
 const chatWsLogger = createLogger("chat.ws");
@@ -602,6 +606,8 @@ function invalidateWorkspaceScopedQueries(qc: QueryClient): void {
     qc.invalidateQueries({ queryKey: chatKeys.all(wsId) });
     qc.invalidateQueries({ queryKey: labelKeys.all(wsId) });
     qc.invalidateQueries({ queryKey: propertyKeys.all(wsId) });
+    qc.invalidateQueries({ queryKey: reviewKeys.all(wsId) });
+    qc.invalidateQueries({ queryKey: approvalKeys.all(wsId) });
   }
   // Cross-workspace, so outside the wsId guard: a reconnect may have missed
   // inbox events from any workspace, so re-pull the switcher-dot summary.
@@ -1112,6 +1118,14 @@ export function useRealtimeSync(
       if (wsId) onReviewCommentUnresolved(qc, wsId, p as any);
     });
 
+    const handleApprovalEvent = (payload: unknown) => {
+      const wsId = getCurrentWsId();
+      if (wsId) onApprovalChanged(qc, wsId, payload as Approval);
+    };
+    const unsubApprovalRequested = ws.on("approval:requested", handleApprovalEvent);
+    const unsubApprovalApproved = ws.on("approval:approved", handleApprovalEvent);
+    const unsubApprovalRejected = ws.on("approval:rejected", handleApprovalEvent);
+
     // --- Side-effect handlers (toast, navigation) ---
 
     // After the current workspace disappears (deleted or we were kicked out),
@@ -1577,6 +1591,9 @@ export function useRealtimeSync(
       unsubReviewComment();
       unsubReviewCommentResolved();
       unsubReviewCommentUnresolved();
+      unsubApprovalRequested();
+      unsubApprovalApproved();
+      unsubApprovalRejected();
 
       unsubWsUpdated();
       unsubWsDeleted();

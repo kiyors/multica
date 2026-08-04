@@ -203,6 +203,10 @@ func (h *Handler) CreateApproval(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	if !h.isWorkspaceEntity(r.Context(), body.ApproverType, body.ApproverID, wsIDStr) {
+		writeError(w, http.StatusBadRequest, "approver must be a member or agent in this workspace")
+		return
+	}
 
 	actorType, actorIDStr := h.resolveActor(r, requestUserID(r), wsIDStr)
 	actorID, ok := parseUUIDOrBadRequest(w, actorIDStr, "actor_id")

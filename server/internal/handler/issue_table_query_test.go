@@ -168,6 +168,68 @@ func TestIssueTableExplicitEmptyAssigneesMatchesNone(t *testing.T) {
 	}
 }
 
+func TestIssueTableScheduleFilterUsesInclusiveIntervalOverlap(t *testing.T) {
+	if testHandler == nil {
+		t.Skip("database not available")
+	}
+
+	spec := issueTableQuerySpec{
+		Scope: issueTableScope{Kind: "workspace"},
+		Filters: issueTableFiltersRequest{
+			Schedule: &issueTableScheduleFilterRequest{
+				Start: "2026-08-03",
+				End:   "2026-08-09",
+			},
+		},
+		Sort: issueTableSortRequest{Field: "position", Direction: "asc"},
+	}
+	w := httptest.NewRecorder()
+	compiled, ok := testHandler.compileIssueTableQuery(
+		w,
+		newRequest(http.MethodPost, "/api/issues/table/rows", nil),
+		spec,
+	)
+	if !ok {
+		t.Fatalf("compile failed: %d %s", w.Code, w.Body.String())
+	}
+	if !strings.Contains(compiled.where, "LEAST(") ||
+		!strings.Contains(compiled.where, "GREATEST(") {
+		t.Fatalf("schedule predicate does not use interval overlap: %q", compiled.where)
+	}
+	if !strings.Contains(compiled.where, "i.start_date IS NOT NULL OR i.due_date IS NOT NULL") {
+		t.Fatalf("schedule predicate does not exclude undated issues: %q", compiled.where)
+	}
+}
+
+func TestIssueTableApprovalsScopeUsesPendingApproverMembership(t *testing.T) {
+	if testHandler == nil {
+		t.Skip("database not available")
+	}
+
+	spec := issueTableQuerySpec{
+		Scope: issueTableScope{Kind: "my", Relation: "approvals"},
+		Sort:  issueTableSortRequest{Field: "position", Direction: "asc"},
+	}
+	w := httptest.NewRecorder()
+	compiled, ok := testHandler.compileIssueTableQuery(
+		w,
+		newRequest(http.MethodPost, "/api/issues/table/rows", nil),
+		spec,
+	)
+	if !ok {
+		t.Fatalf("compile failed: %d %s", w.Code, w.Body.String())
+	}
+	for _, fragment := range []string{
+		"FROM approvals approval_scope",
+		"approval_scope.issue_id = i.id",
+		"approval_scope.status = 'pending'",
+	} {
+		if !strings.Contains(compiled.where, fragment) {
+			t.Fatalf("approval predicate missing %q: %s", fragment, compiled.where)
+		}
+	}
+}
+
 func TestIssueTableWorkingIssueIDsAreExplicitAndAssigneeIndependent(t *testing.T) {
 	if testHandler == nil {
 		t.Skip("database not available")

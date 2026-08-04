@@ -16,7 +16,6 @@ import {
 } from "@multica/core/issues/queries";
 import {
   issueSurfaceAssigneeGroupsOptions,
-  issueSurfaceGanttOptions,
   issueSurfaceListOptions,
 } from "@multica/core/issues/surface/repository";
 import type { IssueSurfaceQueryPlan } from "@multica/core/issues/surface/query-plan";
@@ -37,6 +36,7 @@ import type { IssueGroupBranches } from "./use-issue-group-branches";
 const EMPTY_ISSUES: Issue[] = [];
 const EMPTY_CHILD_PROGRESS = new Map<string, ChildProgress>();
 const EMPTY_PROJECTS: Project[] = [];
+const NOOP = () => {};
 
 /**
  * The rows the gantt canvas actually draws, on top of the shared filters.
@@ -102,9 +102,11 @@ export interface IssueSurfaceData {
 export function useIssueSurfaceData({
   wsId,
   queryPlan,
-  projectId,
   usesAssigneeBoard,
-  usesGantt,
+  usesScheduledWindow,
+  scheduledIssues,
+  scheduledIssuesLoading,
+  scheduledIssuesFetching,
   usesTable,
   serverStatusBranches,
   serverGroupBranches,
@@ -126,9 +128,11 @@ export function useIssueSurfaceData({
 }: {
   wsId: string;
   queryPlan: IssueSurfaceQueryPlan;
-  projectId?: string;
   usesAssigneeBoard: boolean;
-  usesGantt: boolean;
+  usesScheduledWindow: boolean;
+  scheduledIssues: Issue[];
+  scheduledIssuesLoading: boolean;
+  scheduledIssuesFetching: boolean;
   usesTable: boolean;
   serverStatusBranches: IssueStatusBranches;
   serverGroupBranches: IssueGroupBranches;
@@ -187,7 +191,7 @@ export function useIssueSurfaceData({
     ...issueSurfaceListOptions(wsId, queryPlan, sort),
     enabled:
       !usesAssigneeBoard &&
-      !usesGantt &&
+      !usesScheduledWindow &&
       !usesTable &&
       !serverStatusBranches.enabled &&
       !serverGroupBranches.enabled,
@@ -195,10 +199,6 @@ export function useIssueSurfaceData({
   const assigneeGroupsQuery = useQuery({
     ...activeAssigneeGroupsOptions,
     enabled: usesAssigneeBoard && !serverGroupBranches.enabled,
-  });
-  const ganttIssuesQuery = useQuery({
-    ...issueSurfaceGanttOptions(wsId, projectId ?? ""),
-    enabled: usesGantt,
   });
   const workingFilterContext = useMemo(
     () => ({ runningIssueIds: workingIssueIDs }),
@@ -227,8 +227,8 @@ export function useIssueSurfaceData({
   // board / swimlane columns, header facet counts, batch selection, and the
   // isEmpty check. The status filter narrows this set like any other status —
   // it no longer unlocks an otherwise-hidden bucket.
-  const ganttIssues = ganttIssuesQuery.data ?? EMPTY_ISSUES;
-  const surfaceIssues = usesGantt
+  const ganttIssues = usesScheduledWindow ? scheduledIssues : EMPTY_ISSUES;
+  const surfaceIssues = usesScheduledWindow
     ? ganttIssues
     : usesTable
       ? EMPTY_ISSUES
@@ -312,6 +312,29 @@ export function useIssueSurfaceData({
     ],
   );
 
+  const completeStatusPagination = useMemo<IssueStatusPagination>(() => {
+    const counts = new Map<IssueStatus, number>();
+    for (const status of ALL_STATUSES) counts.set(status, 0);
+    for (const issue of issues) {
+      counts.set(issue.status, (counts.get(issue.status) ?? 0) + 1);
+    }
+    return Object.fromEntries(
+      ALL_STATUSES.map((status) => {
+        const count = counts.get(status) ?? 0;
+        return [status, {
+          total: count,
+          loaded: count,
+          hasMore: false,
+          isLoading: false,
+          isFetching: false,
+          isError: false,
+          loadMore: NOOP,
+          retry: NOOP,
+        }];
+      }),
+    ) as IssueStatusPagination;
+  }, [issues]);
+
   // The assignee-grouped board renders straight from `groups`, bypassing the
   // flat applyIssueFilters output — re-apply the remaining client-only
   // display filters per group. Server-owned group paths encode running-task
@@ -355,7 +378,7 @@ export function useIssueSurfaceData({
   // rows come from. Rebuilding a second complete issue window client-side to
   // decorate the chip is what the server facet exists to avoid.
   const ganttWorkingScopeIssues = useMemo(() => {
-    if (!usesGantt) return undefined;
+    if (!usesScheduledWindow) return undefined;
     return ganttCanvasRows(
       applyIssueFilters(ganttIssues, workingFilterState, workingFilterContext),
       ganttShowCompleted,
@@ -363,7 +386,7 @@ export function useIssueSurfaceData({
   }, [
     ganttIssues,
     ganttShowCompleted,
-    usesGantt,
+    usesScheduledWindow,
     workingFilterState,
     workingFilterContext,
   ]);
@@ -468,8 +491,8 @@ export function useIssueSurfaceData({
     ? serverGroupBranches.isLoading
     : usesAssigneeBoard
       ? assigneeGroupsQuery.isLoading
-      : usesGantt
-      ? ganttIssuesQuery.isLoading
+      : usesScheduledWindow
+      ? scheduledIssuesLoading
       : usesTable
         ? false
         : serverStatusBranches.enabled
@@ -483,8 +506,8 @@ export function useIssueSurfaceData({
     ? serverGroupBranches.isRefreshing
     : usesAssigneeBoard
       ? assigneeGroupsQuery.isPlaceholderData
-      : usesGantt
-      ? false
+      : usesScheduledWindow
+      ? scheduledIssuesFetching && !scheduledIssuesLoading
       : usesTable
         ? false
         : serverStatusBranches.enabled
@@ -509,7 +532,9 @@ export function useIssueSurfaceData({
     ganttIssues,
     visibleStatuses,
     hiddenStatuses,
-    statusPagination: serverStatusBranches.pagination,
+    statusPagination: usesScheduledWindow
+      ? completeStatusPagination
+      : serverStatusBranches.pagination,
     activeFilters,
     childProgressMap,
     projectMap,
@@ -526,7 +551,7 @@ export function useIssueSurfaceData({
     // so this shared legacy surface projection never asserts Table empty.
     isEmpty:
       !isLoading &&
-      !usesGantt &&
+      !usesScheduledWindow &&
       !usesTable &&
       (serverStatusBranches.enabled
         ? serverStatusBranches.isTotalKnown &&

@@ -275,6 +275,11 @@ export interface IssueTableFilters {
     start: string;
     end: string;
   };
+  /** Inclusive calendar-day overlap against start_date/due_date. */
+  schedule?: {
+    start: string;
+    end: string;
+  };
   working_only?: boolean;
   /** Match the running-task issue projection returned by
    *  `/api/working-agents`. An explicit empty list matches nothing. */

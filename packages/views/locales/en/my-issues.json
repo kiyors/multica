@@ -14,7 +14,9 @@
       "created_label": "Created",
       "created_description": "Tasks I created",
       "agents_label": "My Agents and Squads",
-      "agents_description": "Tasks assigned to my agents"
+      "agents_description": "Tasks assigned to my agents",
+      "approvals_label": "Approvals",
+      "approvals_description": "Tasks waiting for my approval"
     },
     "filter_button": "Filter",
     "filter_status": "Status",

@@ -1,5 +1,130 @@
 # Multica Detailed Implementation Plan
 
+## Recovery Audit and Fix Plan (2026-08-04)
+
+This section is the immediate source of truth for recovering the pre-upstream-merge task features. The older roadmap below is retained for history, but its `Completed` labels must not be treated as verified until the acceptance checks in this section pass.
+
+### Audit inputs
+
+- Current checkout at `398044b4` (`main`).
+- The ignored source snapshot at `multica-0.3.25/`. This is not the Git tag `v0.3.25`; it contains later custom work and is the comparison source for merge regressions.
+- The two supplied screenshots of the duplicated task controls and the preferred compact Gantt toolbar.
+- ReUI's component catalog: <https://reui.io/llms.txt>.
+- `list-jonas/shadcn-ui-big-calendar`: <https://github.com/list-jonas/shadcn-ui-big-calendar>.
+- Static source inspection, the full non-mobile workspace typecheck, touched-file lint, 181 focused unit/component tests, and 2 focused Go handler tests (passed on 2026-08-04). Runtime and end-to-end verification is still required.
+
+### Status legend
+
+- **Verified (static):** the intended wiring is present and the affected package typechecks; runtime coverage is still required where listed.
+- **Partial:** foundations exist, but the feature does not meet the plan or is incomplete on one platform.
+- **Regressed:** working UI/wiring exists in `multica-0.3.25/` but is disconnected or missing in the current checkout.
+- **Missing:** no complete implementation was found.
+- **Needs runtime verification:** source exists, but the original bug cannot be considered fixed without a targeted test.
+
+### Current feature audit
+
+| Area | Current status | Evidence and gap | Required outcome |
+| --- | --- | --- | --- |
+| MCP server integration | **Partial** | `multica mcp` and the four planned tool names exist. Authentication uses `--token` plus `--workspace-id`, not the documented client-ID/API-key contract. `create_task` lacks assignee input; `update_task` lacks assignee and comment support; no focused MCP tests were found. | Decide and document one auth contract, complete tool schemas, validate API responses/errors, and add stdio/tool integration tests. |
+| Big Calendar | **Partial — corrected static wiring and controls** | Calendar is now exposed by All Tasks, My Tasks, and project surfaces. It uses the complete filtered scheduled-task projection, shares Gantt's completed visibility preference, opens task detail, and converts inclusive date-only issue fields to/from React Big Calendar's exclusive end. A compact localized Today/previous/next, Day/Week/Month, and completed-task toolbar plus task event renderer are present. Runtime and visual coverage remain. | Finish empty/responsive states, CSS pruning, and web + desktop runtime coverage. |
+| Sidebar position | **Verified (static)** | The persisted core preference, Settings selector, and `DashboardLayout` left/right layout switch are present. | Add/retain a focused preference/layout test and verify web + desktop visually. |
+| Assignee/time quick filters | **Verified (focused tests)** | All Tasks renders one server-backed `All / Members / Agents` control; project surfaces retain only their local assignee quick filter. Every view, including server-paged Table, now uses inclusive schedule-interval overlap semantics and keeps one-sided/spanning tasks. | Complete runtime checks for workspace, My Tasks, and project surfaces and clarify activity-date versus schedule-period copy. |
+| Project tab URLs | **Partial** | Web has nested `/board`, `/docs`, `/milestones`, and `/settings` routes. Desktop still exposes only `projects/:id`, so URL-backed tab parity is incomplete. | Preserve refresh/deep-link state on both web and desktop through shared navigation contracts and platform route wiring. |
+| Admin member bulk assignment | **Partial / unsafe** | The modal exists, but it starts with no current memberships, only adds (cannot reconcile removals), launches many independent requests, uses `Promise.allSettled`, and always reports success because rejected requests are swallowed. There is no atomic batch endpoint. | Load current access, compute additions/removals, submit one transactional backend mutation, invalidate relevant queries, surface partial/validation errors, and test rollback/idempotency. |
+| Gantt in Tasks | **Verified (static + controller tests)** | All Tasks, My Tasks, and project surfaces now expose Gantt backed by the complete scheduled-task query. Existing Day/Week/Month and completed controls are retained. | Verify the three scopes at runtime against the supplied compact-toolbar reference. |
+| Date filters | **Partial / incorrect** | The advanced date filter is wired for `created_at`/`updated_at`. The quick Today/Weekly/Monthly control separately filters `start_date`/`due_date` on loaded rows only. These are different concepts presented without clear separation. | Separate “activity date” from “schedule period,” make both server-authoritative, timezone/date-only safe, and consistent across workspace, My Tasks, and project surfaces. |
+| Issue types and milestones | **Verified (static)** | Create Issue and Issue Detail both mount `IssueTypePicker` and `MilestonePicker`, and API types contain both IDs. | Add/retain create/edit persistence tests and verify project-scoped option behavior at runtime. |
+| Media upload and review | **Partial — workflow UI restored** | Current `IssueDetail` again mounts `ReviewAssetsList` and the full-screen `MediaReviewLayout`; upload/version/status/delete flows are reachable, board cards show pending review, and URL/timeline deep links restore the asset, comment, PDF page, and video timestamp through `NavigationAdapter`. | Verify status/version flows, desktop asset URLs, guest reviews, and permissions at runtime. |
+| Approval requests | **Partial — workflow UI restored and hardened** | Current `IssueDetail` renders the localized `ApprovalWidget`; reviewer choices are limited to supported members/agents and the backend rejects unsupported or cross-workspace approvers. My Tasks exposes the localized `approvals` scope, Table supports the pending-approver relation, WebSocket events invalidate approval/timeline caches, and approval activity is localized. Full authorization and end-to-end workflow tests remain. | Add requester/approver authorization and end-to-end workflow coverage. |
+
+### Calendar/reference decision
+
+ReUI does not currently provide a full-sized scheduling calendar. Its Base UI-compatible `Frame`, `Filters`, `Date Selector`, and sortable patterns may inform surrounding controls, but adding ReUI is not required for the calendar itself.
+
+`shadcn-ui-big-calendar` is a themed wrapper around `react-big-calendar`, which matches the dependency already added to `packages/views`. We should use it as a styling and registry reference rather than copying the demo wholesale. Keep Multica's shared `IssueSurface`, semantic tokens, navigation adapter, React Query mutations, and date-only utilities.
+
+The target calendar should adapt the strong parts of the supplied Gantt screenshot:
+
+- one compact toolbar with a single assignee scope, agent-working chip, Filter, Display, schedule period, and view switcher;
+- calendar-local `Today`, previous, next, and `Day / Week / Month` controls;
+- optional completed-task visibility consistent with Gantt;
+- issue chips/cards using Multica status, priority, project, and assignee visuals;
+- responsive overflow without duplicating controls.
+
+### Data and interaction rules to settle before UI work
+
+1. Issue `start_date` and `due_date` remain calendar-day strings (`YYYY-MM-DD`), never timestamps.
+2. A scheduled task matches a period when its effective interval overlaps that period, not only when an endpoint falls inside it.
+3. A one-date task renders for one full calendar day. React Big Calendar's exclusive `end` must therefore be one day after the inclusive issue due date.
+4. Dragging a task preserves its duration; resizing changes the inclusive due date; optimistic updates must roll back on failure.
+5. Calendar and Gantt need a complete scheduled-task data source independent of board/list pagination.
+6. All Tasks, My Tasks, and Project Tasks share the same schedule/filter primitives, while each surface keeps its own persisted view state.
+
+### Phased implementation plan
+
+#### Phase A — Freeze regressions with tests
+
+- [ ] Add component tests proving each surface exposes only its allowed modes and exactly one assignee control.
+- [ ] Add query/controller tests for Today, current week, current month, one-sided dates, spanning intervals, timezone edges, completed visibility, and pagination independence.
+- [ ] Add snapshot-to-current recovery tests for Approval, Pending My Approval, media upload/list/player opening, review deep links, and pending-review board indication.
+- [ ] Add route tests for web and desktop project subsections.
+- [ ] Add an audit checklist for the older “completed fixes”: Windows login, task visibility, attachment access, invitation/project assignment, updater installation, realtime recovery, and desktop uploaded-image rendering.
+
+#### Phase B — Repair task surface state and controls
+
+- [x] Remove the duplicate client-only assignee quick filter from workspace Tasks; retain one server-backed scope control.
+- [x] Make the shared header accept an explicit scope-control contract so project and My Tasks never mutate unrelated workspace scope.
+- [x] Replace client-window schedule filtering with a complete scheduled query and shared overlap helpers.
+- [x] Extend the Table server query contract with the same schedule-period overlap semantics.
+- [ ] Clarify labels for activity-date filters versus scheduled-period filters and internationalize all new copy.
+- [x] Enable Gantt on All Tasks and My Tasks after the complete scheduled dataset is available.
+
+#### Phase C — Rebuild Calendar on the corrected data layer
+
+- [x] Create a typed calendar event adapter using the existing date-only helpers.
+- [x] Add complete workspace/My/project calendar queries and cache keys that include workspace and surface scope.
+- [x] Build a compact localized Multica toolbar and task event renderer around React Big Calendar using semantic tokens.
+- [ ] Prune inherited/demo calendar CSS after visual verification.
+- [x] Implement task navigation, Today/previous/next, Day/Week/Month, completed toggle, drag, and resize.
+- [ ] Add loading, filtered-empty, undated-task explanation, overflow, keyboard, mobile, dark-theme, and desktop checks.
+- [ ] Add unit/component tests plus Playwright coverage for all three task scopes.
+
+#### Phase D — Restore media review and approvals from `multica-0.3.25/`
+
+- [x] Reintegrate the review asset list and full-screen review UI into the current Issue Detail without overwriting newer editor, timeline, property, or scroll-restoration work.
+- [x] Restore URL/deep-link state for asset, comment, PDF page, and video timestamp; use `NavigationAdapter` rather than platform routers in shared views.
+- [x] Restore the existing upload/version/delete/approve/change-request UI entry points and board pending-review badge.
+- [x] Restore timeline jump actions and cover URL-driven media opening with focused tests.
+- [x] Reintegrate `ApprovalWidget`, adapt its reviewer picker to the current typed single-assignee contract, limit reviewers to supported member/agent actors, validate workspace membership on the server, surface mutation failures, and expose Pending My Approval in My Tasks with all supported locales.
+- [x] Restore approval realtime invalidation for issue, pending, count, and timeline caches.
+- [x] Restore localized approval activity copy and the pending-approver Table scope.
+- [ ] Add approval requester/approver authorization and end-to-end workflow tests.
+- [ ] Verify permissions, malformed API responses, realtime cache updates, desktop asset URLs, and guest-review behavior.
+
+#### Phase E — Finish partially implemented plan features
+
+- [ ] Harden the MCP command/auth/tool contract and add tests/documentation.
+- [ ] Add desktop routes for project board/docs/milestones/settings parity.
+- [ ] Replace member bulk assignment fan-out with one transactional reconcile endpoint and mutation hook.
+- [ ] Add focused verification for Sidebar Position and Issue Type/Milestone persistence.
+
+#### Phase F — Regression verification and closeout
+
+- [ ] Run focused package tests while implementing, then `pnpm typecheck`, `pnpm test`, relevant Go tests, and targeted Playwright suites.
+- [ ] Manually verify web and desktop in light/dark themes with empty, small, paginated, and large task sets.
+- [ ] Re-run the seven older fix scenarios; change their historical status to Verified only when a reproducible test passes.
+- [ ] Update the audit table and the older roadmap entries with final commit/test evidence; do not leave bare `Completed` claims.
+
+### Recommended delivery order
+
+1. Phase A tests and Phase B data/control corrections.
+2. Gantt exposure and Calendar rebuild (Phase C).
+3. Media review and approval recovery (Phase D).
+4. MCP, desktop project routes, and atomic bulk assignment (Phase E).
+5. Full regression pass and roadmap cleanup (Phase F).
+
+This order avoids polishing Calendar on top of incomplete paginated data and avoids restoring old Issue Detail wholesale over newer upstream architecture.
+
 ## Features
 
 ### 1. MCP (Model Context Protocol) Server Integration

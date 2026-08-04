@@ -790,6 +790,8 @@ export function IssuesHeader({
   scopedIssues,
   workingAgents,
   allowGantt = false,
+  allowCalendar = false,
+  workspaceScopeControls = false,
   dateFilter = null,
   onDateFilterChange,
   isRefreshing = false,
@@ -802,6 +804,12 @@ export function IssuesHeader({
    *  behind the agents-working chip. */
   workingAgents: WorkingAgentSummary[] | undefined;
   allowGantt?: boolean;
+  allowCalendar?: boolean;
+  /** Workspace Tasks owns a server-backed actor scope. Project surfaces use
+   * the local assignee quick filter instead. Never render both: they express
+   * the same All/Members/Agents choice and were the duplicated controls shown
+   * in the recovery audit. */
+  workspaceScopeControls?: boolean;
   dateFilter?: IssueDateFilter | null;
   onDateFilterChange?: (filter: IssueDateFilter | null) => void;
   isRefreshing?: boolean;
@@ -835,12 +843,13 @@ export function IssuesHeader({
   const scopeLabel = t(($) => $.scope[SCOPE_LABEL_KEY[scope]]);
   const assigneeQuickFilter = useViewStore(s => s.assigneeQuickFilter);
   const { setAssigneeQuickFilter } = useViewStoreApi().getState();
+  const assigneeQuickLabel = t(($) => $.scope[SCOPE_LABEL_KEY[assigneeQuickFilter]]);
 
   return (
     <div className="h-12 shrink-0 overflow-x-auto px-4 [-webkit-overflow-scrolling:touch]">
       <div className="flex h-full w-max min-w-full items-center justify-between gap-2">
         {/* Left: scope buttons */}
-        <div className="hidden shrink-0 items-center gap-1 md:flex">
+        {workspaceScopeControls && <div className="hidden shrink-0 items-center gap-1 md:flex">
           {SCOPE_VALUES.map((s) => (
             <Tooltip key={s}>
               <TooltipTrigger
@@ -862,20 +871,19 @@ export function IssuesHeader({
               <TooltipContent side="bottom">{t(($) => $.scope[SCOPE_DESC_KEY[s]])}</TooltipContent>
             </Tooltip>
           ))}
-        </div>
+        </div>}
 
-        <div className="hidden shrink-0 items-center gap-1 md:flex">
-          <div className="h-4 w-px bg-border mx-1" />
+        {!workspaceScopeControls && <div className="hidden shrink-0 items-center gap-1 md:flex">
           <Tabs value={assigneeQuickFilter} onValueChange={(v) => setAssigneeQuickFilter(v as AssigneeQuickFilter)}>
             <TabsList className="h-8">
-              <TabsTrigger value="all" className="text-xs h-6 px-3">All</TabsTrigger>
-              <TabsTrigger value="members" className="text-xs h-6 px-3">Members</TabsTrigger>
-              <TabsTrigger value="agents" className="text-xs h-6 px-3">Agents</TabsTrigger>
+              <TabsTrigger value="all" className="text-xs h-6 px-3">{t(($) => $.scope.all_label)}</TabsTrigger>
+              <TabsTrigger value="members" className="text-xs h-6 px-3">{t(($) => $.scope.members_label)}</TabsTrigger>
+              <TabsTrigger value="agents" className="text-xs h-6 px-3">{t(($) => $.scope.agents_label)}</TabsTrigger>
             </TabsList>
           </Tabs>
-        </div>
+        </div>}
 
-        <DropdownMenu>
+        {workspaceScopeControls && <DropdownMenu>
           <DropdownMenuTrigger
             render={
               <Button
@@ -897,7 +905,34 @@ export function IssuesHeader({
               ))}
             </DropdownMenuRadioGroup>
           </DropdownMenuContent>
-        </DropdownMenu>
+        </DropdownMenu>}
+
+        {!workspaceScopeControls && <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button
+                variant="outline"
+                size="sm"
+                className="shrink-0 gap-1 text-muted-foreground md:hidden"
+              >
+                <span className="truncate">{assigneeQuickLabel}</span>
+                <ChevronDown className="size-3 text-muted-foreground" />
+              </Button>
+            }
+          />
+          <DropdownMenuContent align="start" className="w-auto">
+            <DropdownMenuRadioGroup
+              value={assigneeQuickFilter}
+              onValueChange={(value) => setAssigneeQuickFilter(value as AssigneeQuickFilter)}
+            >
+              {SCOPE_VALUES.map((value) => (
+                <DropdownMenuRadioItem key={value} value={value}>
+                  {t(($) => $.scope[SCOPE_LABEL_KEY[value]])}
+                </DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>}
 
         <div className="flex shrink-0 items-center gap-1">
           {agentRunningFilter && (
@@ -913,6 +948,7 @@ export function IssuesHeader({
           <IssueDisplayControls
             scopedIssues={scopedIssues}
             allowGantt={allowGantt}
+            allowCalendar={allowCalendar}
             dateFilter={dateFilter}
             onDateFilterChange={onDateFilterChange}
             facetCountsExact={facetCountsExact}
@@ -930,6 +966,7 @@ export function IssueDisplayControls({
   scopedIssues,
   hideViewToggle = false,
   allowGantt = false,
+  allowCalendar = false,
   dateFilter = null,
   onDateFilterChange,
   facetCountsExact = true,
@@ -944,6 +981,7 @@ export function IssueDisplayControls({
   // /my-issues, actor panel) ignore viewMode === "gantt" and would silently
   // fall back to List if the option were exposed there. Keep Gantt opt-in.
   allowGantt?: boolean;
+  allowCalendar?: boolean;
   /**
    * Whether `scopedIssues` covers the surface's full window. Table does not
    * use loaded rows for counts; server-paged List, Board, and Swimlane follow
@@ -1726,10 +1764,10 @@ export function IssueDisplayControls({
         <div className="hidden shrink-0 items-center md:flex mr-1">
           <Tabs value={timeQuickFilter} onValueChange={(v) => setTimeQuickFilter(v as TimeQuickFilter)}>
             <TabsList className="h-8">
-              <TabsTrigger value="all" className="text-xs h-6 px-3">All Time</TabsTrigger>
-              <TabsTrigger value="today" className="text-xs h-6 px-3">Today</TabsTrigger>
-              <TabsTrigger value="weekly" className="text-xs h-6 px-3">Weekly</TabsTrigger>
-              <TabsTrigger value="monthly" className="text-xs h-6 px-3">Monthly</TabsTrigger>
+              <TabsTrigger value="all" className="text-xs h-6 px-3">{t(($) => $.schedule_period.all)}</TabsTrigger>
+              <TabsTrigger value="today" className="text-xs h-6 px-3">{t(($) => $.schedule_period.today)}</TabsTrigger>
+              <TabsTrigger value="weekly" className="text-xs h-6 px-3">{t(($) => $.schedule_period.week)}</TabsTrigger>
+              <TabsTrigger value="monthly" className="text-xs h-6 px-3">{t(($) => $.schedule_period.month)}</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
@@ -1753,7 +1791,7 @@ export function IssueDisplayControls({
                           <Waves className="size-3.5" />
                         ) : viewMode === "gantt" && allowGantt ? (
                           <ChartGantt className="size-3.5" />
-                        ) : viewMode === "calendar" ? (
+                        ) : viewMode === "calendar" && allowCalendar ? (
                           <CalendarDays className="size-3.5" />
                         ) : (
                           <List className="size-3.5" />
@@ -1767,8 +1805,8 @@ export function IssueDisplayControls({
                             ? t(($) => $.view.swimlane)
                             : viewMode === "gantt" && allowGantt
                             ? t(($) => $.view.gantt)
-                            : viewMode === "calendar"
-                            ? "Calendar"
+                            : viewMode === "calendar" && allowCalendar
+                            ? t(($) => $.view.calendar)
                             : t(($) => $.view.list)}
                         </span>
                       </Button>
@@ -1785,8 +1823,8 @@ export function IssueDisplayControls({
                   ? t(($) => $.view.tooltip_swimlane)
                   : viewMode === "gantt" && allowGantt
                   ? t(($) => $.view.tooltip_gantt)
-                  : viewMode === "calendar"
-                  ? "Calendar View"
+                  : viewMode === "calendar" && allowCalendar
+                  ? t(($) => $.view.tooltip_calendar)
                   : t(($) => $.view.tooltip_list)}
               </TooltipContent>
             </Tooltip>
@@ -1823,10 +1861,12 @@ export function IssueDisplayControls({
                     {t(($) => $.view.gantt)}
                   </DropdownMenuRadioItem>
                 )}
-                <DropdownMenuRadioItem value="calendar">
-                  <CalendarDays />
-                  Calendar
-                </DropdownMenuRadioItem>
+                {allowCalendar && (
+                  <DropdownMenuRadioItem value="calendar">
+                    <CalendarDays />
+                    {t(($) => $.view.calendar)}
+                  </DropdownMenuRadioItem>
+                )}
               </DropdownMenuRadioGroup>
             </DropdownMenuContent>
           </DropdownMenu>

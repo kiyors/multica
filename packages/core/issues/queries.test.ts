@@ -23,6 +23,7 @@ import {
   issueFlatListOptions,
   issueIdentifierOptions,
   issueKeys,
+  issueScheduledOptions,
   issueTableRowPageOptions,
   projectGanttIssuesOptions,
 } from "./queries";
@@ -390,6 +391,59 @@ describe("projectGanttIssuesOptions", () => {
   it("uses the project-scoped Gantt cache key", () => {
     const options = projectGanttIssuesOptions(WS_ID, PROJECT_ID);
     expect(options.queryKey).toEqual(issueKeys.projectGantt(WS_ID, PROJECT_ID));
+  });
+});
+
+describe("issueScheduledOptions", () => {
+  it("walks every scheduled page for a scoped surface", async () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const firstPage = Array.from({ length: ISSUE_FLAT_PAGE_SIZE }, (_, index) =>
+      makeIssue(index),
+    );
+    const finalIssue = makeIssue(ISSUE_FLAT_PAGE_SIZE);
+    const listIssues = vi
+      .fn<(params?: ListIssuesParams) => Promise<ListIssuesResponse>>()
+      .mockImplementation(async (params) => ({
+        issues: (params?.offset ?? 0) === 0 ? firstPage : [finalIssue],
+        total: ISSUE_FLAT_PAGE_SIZE + 1,
+      }));
+    installFakeApi(listIssues);
+
+    const data = await qc.fetchQuery(
+      issueScheduledOptions(
+        WS_ID,
+        `project:${PROJECT_ID}`,
+        { project_id: PROJECT_ID },
+      ),
+    );
+
+    expect(data).toHaveLength(ISSUE_FLAT_PAGE_SIZE + 1);
+    expect(listIssues).toHaveBeenNthCalledWith(1, {
+      project_id: PROJECT_ID,
+      scheduled: true,
+      limit: ISSUE_FLAT_PAGE_SIZE,
+      offset: 0,
+    });
+    expect(listIssues).toHaveBeenNthCalledWith(2, {
+      project_id: PROJECT_ID,
+      scheduled: true,
+      limit: ISSUE_FLAT_PAGE_SIZE,
+      offset: ISSUE_FLAT_PAGE_SIZE,
+    });
+    expect(
+      issueScheduledOptions(
+        WS_ID,
+        `project:${PROJECT_ID}`,
+        { project_id: PROJECT_ID },
+      ).queryKey,
+    ).toEqual(
+      issueKeys.scheduled(
+        WS_ID,
+        `project:${PROJECT_ID}`,
+        { project_id: PROJECT_ID, scheduled: true },
+      ),
+    );
+    qc.clear();
   });
 });
 

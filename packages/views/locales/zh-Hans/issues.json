@@ -34,6 +34,12 @@
     "agents_label": "智能体",
     "agents_description": "分配给智能体的 issue"
   },
+  "schedule_period": {
+    "all": "不限时间",
+    "today": "今天",
+    "week": "本周",
+    "month": "本月"
+  },
   "filters": {
     "tooltip": "筛选",
     "placeholder": "筛选...",
@@ -99,12 +105,14 @@
     "tooltip_list": "列表视图",
     "tooltip_table": "表格视图",
     "tooltip_gantt": "甘特图",
+    "tooltip_calendar": "日历视图",
     "tooltip_swimlane": "泳道视图",
     "section": "视图",
     "board": "看板",
     "list": "列表",
     "table": "表格",
     "gantt": "甘特图",
+    "calendar": "日历",
     "swimlane": "泳道"
   },
   "table": {
@@ -181,6 +189,10 @@
     "show_completed": "显示已完成",
     "empty": "暂无已排期的 issue — 给任意 issue 设置开始或截止日期，即可显示在时间轴上。",
     "inverted_dates_warning": "开始日期晚于截止日期 — 已按区间最小/最大端绘制。"
+  },
+  "calendar_view": {
+    "previous": "上一时段",
+    "next": "下一时段"
   },
   "actor_issues": {
     "scope": {
@@ -349,6 +361,10 @@
     "due_date_removed": "移除了截止日期",
     "title_renamed": "把这个 issue 从\"{{from}}\"重命名为\"{{to}}\"",
     "description_updated": "更新了描述",
+    "approval_requested": "请求 {{name}} 审批",
+    "approval_approved": "批准了审批请求",
+    "approval_rejected": "拒绝了审批请求",
+    "approval_reviewer_fallback": "审核人",
     "task_completed_other": "完成了 task（{{count}} 次）",
     "task_failed_other": "task 失败（{{count}} 次）",
     "squad_leader_evaluated": "评估了小队触发",
@@ -371,6 +387,9 @@
     "edit_placeholder": "编辑评论...",
     "save_action": "保存",
     "cancel_edit": "取消",
+    "open_media_review": "打开媒体审核{{location}}",
+    "review_location_time": "（{{time}}）",
+    "review_location_page": "（第 {{page}} 页）",
     "copy_action": "复制",
     "copied_toast": "已复制",
     "edit_action": "编辑",
@@ -524,7 +543,8 @@
   },
   "card": {
     "update_failed": "更新 issue 失败",
-    "updated_ago": "更新于 {{time}}"
+    "updated_ago": "更新于 {{time}}",
+    "review_badge": "审核"
   },
   "actions": {
     "status": "状态",
@@ -614,6 +634,22 @@
     "create_failed": "创建标签失败",
     "update_failed": "更新标签失败",
     "delete_failed": "删除标签失败"
+  },
+  "approval": {
+    "pending": "等待审批",
+    "comment_placeholder": "添加评论（可选）…",
+    "approve": "批准",
+    "reject": "拒绝",
+    "waiting_for": "等待审核：",
+    "by": "审核人：",
+    "status_approved": "已批准",
+    "status_rejected": "已拒绝",
+    "request": "请求审批",
+    "select_reviewer": "选择审核人",
+    "send_request": "发送请求",
+    "cancel": "取消",
+    "create_failed": "无法请求审批",
+    "decision_failed": "无法更新审批"
   },
   "backlog_hint": {
     "title": "智能体在 backlog 状态下暂停",

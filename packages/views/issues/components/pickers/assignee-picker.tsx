@@ -42,6 +42,8 @@ export function canAssignAgent(
 interface AssigneePickerProps {
   assigneeType: IssueAssigneeType | null;
   assigneeId: string | null;
+  /** Restrict which actor groups are offered. Defaults to every assignee type. */
+  allowedTypes?: readonly IssueAssigneeType[];
   /**
    * `true` when a batch selection spans different assignees ("mixed"): no row
    * is checked, including the unassigned row. Distinct from `assigneeType` /
@@ -91,6 +93,7 @@ export function AssigneePicker(props: AssigneePickerProps) {
 function AssigneePickerImpl({
   assigneeType,
   assigneeId,
+  allowedTypes = ["member", "agent", "squad"],
   mixed = false,
   onUpdate,
   trigger: customTrigger,
@@ -111,6 +114,9 @@ function AssigneePickerImpl({
   const { data: squads = [] } = useQuery(squadListOptions(wsId));
   const { data: frequency = [] } = useQuery(assigneeFrequencyOptions(wsId));
   const { getActorName } = useActorName();
+  const allowsMembers = allowedTypes.includes("member");
+  const allowsAgents = allowedTypes.includes("agent");
+  const allowsSquads = allowedTypes.includes("squad");
 
   const currentMember = members.find((m) => m.user_id === user?.id);
   const memberRole = currentMember?.role;
@@ -184,7 +190,7 @@ function AssigneePickerImpl({
       )}
 
       {/* Members */}
-      {filteredMembers.length > 0 && (
+      {allowsMembers && filteredMembers.length > 0 && (
         <PickerSection label={t(($) => $.pickers.assignee.members_group)}>
           {filteredMembers.map((m) => (
             <PickerItem
@@ -206,7 +212,7 @@ function AssigneePickerImpl({
       )}
 
       {/* Agents */}
-      {filteredAgents.length > 0 && (
+      {allowsAgents && filteredAgents.length > 0 && (
         <PickerSection label={t(($) => $.pickers.assignee.agents_group)}>
           {filteredAgents.map((a) => {
             const decision = canAssignAgentToIssue(a, {
@@ -247,7 +253,7 @@ function AssigneePickerImpl({
 
       {/* Squads — group ownership; assigning to a squad routes the issue to
           its leader agent on the backend. */}
-      {filteredSquads.length > 0 && (
+      {allowsSquads && filteredSquads.length > 0 && (
         <PickerSection label={t(($) => $.pickers.assignee.squads_group)}>
           {filteredSquads.map((s) => (
             <PickerItem
@@ -268,9 +274,9 @@ function AssigneePickerImpl({
         </PickerSection>
       )}
 
-      {filteredMembers.length === 0 &&
-        filteredAgents.length === 0 &&
-        filteredSquads.length === 0 &&
+      {(!allowsMembers || filteredMembers.length === 0) &&
+        (!allowsAgents || filteredAgents.length === 0) &&
+        (!allowsSquads || filteredSquads.length === 0) &&
         filter && <PickerEmpty />}
     </PropertyPicker>
   );

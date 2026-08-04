@@ -80,20 +80,26 @@ type issueTableDateFilterRequest struct {
 	End   string `json:"end"`
 }
 
+type issueTableScheduleFilterRequest struct {
+	Start string `json:"start"`
+	End   string `json:"end"`
+}
+
 type issueTableFiltersRequest struct {
-	Statuses          []string                     `json:"statuses,omitempty"`
-	Priorities        []string                     `json:"priorities,omitempty"`
-	Assignees         []issueTableActorRef         `json:"assignees,omitempty"`
-	IncludeNoAssignee bool                         `json:"include_no_assignee,omitempty"`
-	Creators          []issueTableActorRef         `json:"creators,omitempty"`
-	ProjectIDs        []string                     `json:"project_ids,omitempty"`
-	IncludeNoProject  bool                         `json:"include_no_project,omitempty"`
-	LabelIDs          []string                     `json:"label_ids,omitempty"`
-	Properties        map[string][]string          `json:"properties,omitempty"`
-	Date              *issueTableDateFilterRequest `json:"date,omitempty"`
-	WorkingOnly       bool                         `json:"working_only,omitempty"`
-	WorkingIssueIDs   []string                     `json:"working_issue_ids,omitempty"`
-	IncludeSubIssues  *bool                        `json:"include_sub_issues,omitempty"`
+	Statuses          []string                         `json:"statuses,omitempty"`
+	Priorities        []string                         `json:"priorities,omitempty"`
+	Assignees         []issueTableActorRef             `json:"assignees,omitempty"`
+	IncludeNoAssignee bool                             `json:"include_no_assignee,omitempty"`
+	Creators          []issueTableActorRef             `json:"creators,omitempty"`
+	ProjectIDs        []string                         `json:"project_ids,omitempty"`
+	IncludeNoProject  bool                             `json:"include_no_project,omitempty"`
+	LabelIDs          []string                         `json:"label_ids,omitempty"`
+	Properties        map[string][]string              `json:"properties,omitempty"`
+	Date              *issueTableDateFilterRequest     `json:"date,omitempty"`
+	Schedule          *issueTableScheduleFilterRequest `json:"schedule,omitempty"`
+	WorkingOnly       bool                             `json:"working_only,omitempty"`
+	WorkingIssueIDs   []string                         `json:"working_issue_ids,omitempty"`
+	IncludeSubIssues  *bool                            `json:"include_sub_issues,omitempty"`
 }
 
 type issueTableSortRequest struct {
@@ -491,6 +497,15 @@ func (h *Handler) compileIssueTableQuery(w http.ResponseWriter, r *http.Request,
 			where = append(where, fmt.Sprintf("i.creator_type = 'member' AND i.creator_id = %s::uuid", addArg(userUUID)))
 		case "involved":
 			where = appendIssueTableInvolvedPredicate(where, addArg, userUUID)
+		case "approvals":
+			where = append(where, fmt.Sprintf(`EXISTS (
+				SELECT 1 FROM approvals approval_scope
+				WHERE approval_scope.workspace_id = $1
+				  AND approval_scope.issue_id = i.id
+				  AND approval_scope.approver_type = 'member'
+				  AND approval_scope.approver_id = %s::uuid
+				  AND approval_scope.status = 'pending'
+			)`, addArg(userUUID)))
 		case "any":
 			assignedRef := addArg(userUUID)
 			createdRef := addArg(userUUID)
@@ -593,6 +608,27 @@ func (h *Handler) compileIssueTableQuery(w http.ResponseWriter, r *http.Request,
 			return issueTableSQL{}, false
 		}
 		where = append(where, fmt.Sprintf("i.%s >= %s AND i.%s < %s", column, addArg(start), column, addArg(end)))
+	}
+
+	if spec.Filters.Schedule != nil {
+		start, startErr := time.Parse("2006-01-02", spec.Filters.Schedule.Start)
+		end, endErr := time.Parse("2006-01-02", spec.Filters.Schedule.End)
+		if startErr != nil || endErr != nil || start.After(end) {
+			writeError(w, http.StatusBadRequest, "invalid filters.schedule range")
+			return issueTableSQL{}, false
+		}
+		startRef := addArg(start)
+		endRef := addArg(end)
+		where = append(where, fmt.Sprintf(`
+			(i.start_date IS NOT NULL OR i.due_date IS NOT NULL)
+			AND LEAST(
+				COALESCE(i.start_date, i.due_date),
+				COALESCE(i.due_date, i.start_date)
+			) <= %s::date
+			AND GREATEST(
+				COALESCE(i.start_date, i.due_date),
+				COALESCE(i.due_date, i.start_date)
+			) >= %s::date`, endRef, startRef))
 	}
 
 	if spec.Filters.WorkingOnly {

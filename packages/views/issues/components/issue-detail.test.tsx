@@ -15,6 +15,10 @@ import enIssues from "../../locales/en/issues.json";
 const TEST_RESOURCES = { en: { common: enCommon, issues: enIssues } };
 
 const mockViewport = vi.hoisted(() => ({ isMobile: false }));
+const mockNavigation = vi.hoisted(() => ({
+  search: "",
+  replace: vi.fn(),
+}));
 
 // Counts MockContentEditor mounts. This pins the description to exactly one
 // eager editor per issue and catches stale editor reuse across issue switches.
@@ -116,7 +120,9 @@ vi.mock("../../navigation", () => ({
   ),
   useNavigation: () => ({
     push: vi.fn(),
+    replace: mockNavigation.replace,
     pathname: "/issues/issue-1",
+    searchParams: new URLSearchParams(mockNavigation.search),
     getShareableUrl: (p: string) => `https://app.multica.com${p}`,
   }),
   useBackOrReplace: () => vi.fn(),
@@ -288,6 +294,9 @@ const mockApiObj = vi.hoisted(() => ({
   addIssueReaction: vi.fn(),
   removeIssueReaction: vi.fn(),
   listAttachments: vi.fn().mockResolvedValue([]),
+  listReviewAssets: vi.fn().mockResolvedValue([]),
+  listReviewComments: vi.fn().mockResolvedValue([]),
+  listApprovalsByIssue: vi.fn().mockResolvedValue([]),
   addCommentReaction: vi.fn(),
   removeCommentReaction: vi.fn(),
   listMembers: vi.fn().mockResolvedValue([{ user_id: "user-1", name: "Test User", email: "test@test.com", role: "admin" }]),
@@ -624,6 +633,8 @@ describe("IssueDetail (shared)", () => {
     vi.clearAllMocks();
     contentEditorMounts.count = 0;
     mockViewport.isMobile = false;
+    mockNavigation.search = "";
+    mockNavigation.replace.mockClear();
     // Default: issue loads successfully
     mockApiObj.getIssue.mockResolvedValue(mockIssue);
     // /timeline returns the entries flat in chronological order (oldest first).
@@ -959,6 +970,60 @@ describe("IssueDetail (shared)", () => {
     });
 
     expect(screen.getByText("I can help with this")).toBeInTheDocument();
+  });
+
+  it("renders approval activity with the selected reviewer", async () => {
+    mockApiObj.listTimeline.mockResolvedValue([
+      {
+        type: "activity",
+        id: "approval-activity",
+        actor_type: "member",
+        actor_id: "user-1",
+        action: "approval_requested",
+        details: { approver_type: "agent", approver_id: "agent-1" },
+        created_at: "2026-01-18T00:00:00Z",
+      },
+    ] as TimelineEntry[]);
+
+    renderIssueDetail();
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/requested approval from Claude Agent/i),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("opens a media-review deep link from URL state", async () => {
+    mockNavigation.search =
+      "review=asset-1&reviewComment=review-comment-1&reviewTime=12.5";
+    mockApiObj.listReviewAssets.mockResolvedValue([
+      {
+        id: "asset-1",
+        issue_id: "issue-1",
+        workspace_id: "ws-1",
+        asset_group_id: "group-1",
+        name: "hero.png",
+        asset_type: "image",
+        src_url: "https://example.com/hero.png",
+        version: 1,
+        status: "pending",
+        created_at: "2026-01-18T00:00:00Z",
+        updated_at: "2026-01-18T00:00:00Z",
+      },
+    ]);
+
+    renderIssueDetail();
+
+    await waitFor(() => {
+      expect(
+        document.querySelector('[data-slot="dialog-content"]'),
+      ).not.toBeNull();
+    });
+    expect(mockApiObj.listReviewAssets).toHaveBeenCalledWith(
+      "ws-1",
+      "issue-1",
+    );
   });
 
   it("reruns the source task from an agent failure comment", async () => {

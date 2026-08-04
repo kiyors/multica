@@ -6,6 +6,7 @@ import { Button } from "@multica/ui/components/ui/button";
 import { Skeleton } from "@multica/ui/components/ui/skeleton";
 import { cn } from "@multica/ui/lib/utils";
 import { useWorkspaceId } from "@multica/core/hooks";
+import { useWorkspacePaths } from "@multica/core/paths";
 import {
   useViewStore,
   ViewStoreProvider,
@@ -21,6 +22,7 @@ import { ListView } from "../components/list-view";
 import { SwimLaneView } from "../components/swimlane-view";
 import { TableView } from "../components/table-view";
 import { useT } from "../../i18n";
+import { useNavigation } from "../../navigation";
 import { CalendarView } from "./calendar-view";
 import { IssueContextMenuProvider } from "../actions";
 import { IssueSurfaceActionsProvider } from "./actions-context";
@@ -124,6 +126,8 @@ function IssueSurfaceContent({
   contentClassName,
 }: Omit<IssueSurfaceComponentProps, "surfaceKey">) {
   const { t } = useT("projects");
+  const navigation = useNavigation();
+  const workspacePaths = useWorkspacePaths();
   const controller = useIssueSurfaceController({
     scope,
     modes,
@@ -202,6 +206,8 @@ function IssueSurfaceContent({
             scopedIssues={controller.surfaceIssues}
             workingAgents={controller.workingAgents}
             allowGantt={controller.allowGantt}
+            allowCalendar={controller.allowCalendar}
+            workspaceScopeControls={scope.type === "workspace"}
             isRefreshing={controller.isRefreshing}
             facetCountsExact={
               controller.facetCountsExact
@@ -295,10 +301,15 @@ function IssueSurfaceContent({
               <GanttView issues={controller.filteredGanttIssues} />
             )}
             {controller.viewMode === "calendar" && (
-              <CalendarView 
-                issues={issues} 
-                onIssueMove={(id, start, end) => controller.actions.updateIssue(id, { start_date: start.toISOString(), due_date: end.toISOString() })}
-                onIssueClick={(_id) => { /* might need router navigation or dialog */ }}
+              <CalendarView
+                issues={controller.filteredGanttIssues}
+                onIssueMove={(id, startDate, dueDate) =>
+                  controller.actions.updateIssue(id, {
+                    start_date: startDate,
+                    due_date: dueDate,
+                  })
+                }
+                onIssueClick={(id) => navigation.push(workspacePaths.issueDetail(id))}
               />
             )}
             {controller.viewMode === "swimlane" && (

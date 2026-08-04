@@ -562,7 +562,7 @@ export function ProjectDetail({
               {children || (
                 <IssueSurface
                   scope={issueScope}
-                  modes={["board", "list", "table", "swimlane", "gantt"]}
+                  modes={["board", "list", "table", "swimlane", "gantt", "calendar"]}
                 />
               )}
             </div>

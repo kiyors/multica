@@ -241,6 +241,30 @@ describe("useIssueSurfaceController", () => {
     );
   });
 
+  it("sends schedule-period overlap filters to the Table server query", async () => {
+    const store = getIssueSurfaceViewStore("project:p1");
+    act(() => {
+      store.getState().setViewMode("table");
+      store.getState().setTimeQuickFilter("weekly");
+    });
+
+    const { result } = renderHook(
+      () =>
+        useIssueSurfaceController({
+          scope: { type: "project", projectId: "p1" },
+          modes: ["table"],
+        }),
+      { wrapper: makeWrapper(qc, "project:p1") },
+    );
+
+    await waitFor(() => {
+      expect(result.current.tableQuerySpec.filters.schedule).toEqual({
+        start: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+        end: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+      });
+    });
+  });
+
   // MUL-5477. `tableQuerySpec` is the identity every downstream consumer keys
   // off: the facet request, the status/group branch hooks, and — the expensive
   // one — the Table's `useQueries` branch list, which is rebuilt whenever this
@@ -1543,6 +1567,88 @@ describe("useIssueSurfaceController", () => {
       return Promise.resolve({ issues: [], total: 0 });
     });
   }
+
+  it("uses the complete scheduled window and keeps tasks spanning the selected week", async () => {
+    const spanning = makeIssue({
+      id: "spans-current-week",
+      status: "in_progress",
+      start_date: "2000-01-01",
+      due_date: "2100-01-01",
+    });
+    const historical = makeIssue({
+      id: "historical",
+      status: "todo",
+      start_date: "1999-01-01",
+      due_date: "1999-01-02",
+    });
+    mockGanttIssues([spanning, historical]);
+
+    const store = getIssueSurfaceViewStore("project:p1");
+    act(() => {
+      store.getState().setViewMode("list");
+      store.getState().setTimeQuickFilter("weekly");
+    });
+
+    const { result } = renderHook(
+      () =>
+        useIssueSurfaceController({
+          scope: { type: "project", projectId: "p1" },
+          modes: ["board", "list", "swimlane", "gantt", "calendar"],
+        }),
+      { wrapper: makeWrapper(qc, "project:p1") },
+    );
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(listIssues).toHaveBeenCalledWith(
+      expect.objectContaining({
+        project_id: "p1",
+        scheduled: true,
+        limit: 100,
+        offset: 0,
+      }),
+    );
+    expect(result.current.issues.map((issue) => issue.id)).toEqual([
+      "spans-current-week",
+    ]);
+  });
+
+  it("applies project assignee quick filters to the current single-assignee fields", async () => {
+    mockGanttIssues([
+      makeIssue({
+        id: "member-task",
+        status: "todo",
+        assignee_type: "member",
+        assignee_id: "member-1",
+        start_date: "2026-08-04",
+      }),
+      makeIssue({
+        id: "agent-task",
+        status: "todo",
+        assignee_type: "agent",
+        assignee_id: "agent-1",
+        start_date: "2026-08-04",
+      }),
+    ]);
+
+    const store = getIssueSurfaceViewStore("project:p1");
+    act(() => {
+      store.getState().setViewMode("gantt");
+      store.getState().setAssigneeQuickFilter("members");
+    });
+
+    const { result } = renderHook(
+      () =>
+        useIssueSurfaceController({
+          scope: { type: "project", projectId: "p1" },
+          modes: ["board", "list", "gantt"],
+        }),
+      { wrapper: makeWrapper(qc, "project:p1") },
+    );
+
+    await waitFor(() => expect(result.current.ganttIssues).toHaveLength(1));
+    expect(result.current.ganttIssues[0]?.id).toBe("member-task");
+  });
 
   const ganttFixture = [
     makeIssue({

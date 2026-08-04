@@ -3,6 +3,7 @@ import {
   issueAssigneeGroupsOptions,
   issueFlatExportOptions,
   issueFlatListOptions,
+  issueScheduledOptions,
   issueListOptions,
   myIssueAssigneeGroupsOptions,
   myIssueListOptions,
@@ -92,4 +93,19 @@ export function issueSurfaceAssigneeGroupsOptions(
 /** Scheduled-only issue set — feeds a project surface's Gantt mode. */
 export function issueSurfaceGanttOptions(wsId: string, projectId: string) {
   return projectGanttIssuesOptions(wsId, projectId);
+}
+
+/** Complete scheduled window for any issue-surface scope. */
+export function issueSurfaceScheduledOptions(
+  wsId: string,
+  plan: IssueSurfaceQueryPlan,
+  sort?: IssueSortParam,
+) {
+  return issueScheduledOptions(
+    wsId,
+    plan.queryScope ?? plan.scopeKey,
+    plan.queryFilter,
+    plan.userId,
+    sort,
+  );
 }

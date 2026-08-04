@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from "react";
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
 import { useDefaultLayout, usePanelRef } from "react-resizable-panels";
-import { AppLink, useBackOrReplace } from "../../navigation";
+import { AppLink, useBackOrReplace, useNavigation } from "../../navigation";
 import {
   Archive,
   Box,
@@ -53,7 +53,7 @@ import { AvatarGroup, AvatarGroupCount } from "@multica/ui/components/ui/avatar"
 import { ActorAvatar } from "../../common/actor-avatar";
 import { PropRow } from "../../common/prop-row";
 import { PropertyIcon } from "../../common/property-icon";
-import type { Attachment, Issue, IssueProperty, IssueStatus, IssuePriority, TimelineEntry, UpdateIssueRequest } from "@multica/core/types";
+import type { Attachment, Issue, IssueProperty, IssueStatus, IssuePriority, ReviewAsset, TimelineEntry, UpdateIssueRequest } from "@multica/core/types";
 import { contentReferencesAttachment } from "@multica/core/types";
 import { STATUS_CONFIG, PRIORITY_CONFIG } from "@multica/core/issues/config";
 import { formatDateOnly, isPastDateOnly } from "@multica/core/issues/date";
@@ -69,6 +69,9 @@ import { IssueAgentActivityIndicator } from "./issue-agent-activity-indicator";
 import { SubIssuesAgentWorkingChip } from "./sub-issues-agent-working-chip";
 import { ProjectPicker } from "../../projects/components/project-picker";
 import { LocalDirectoryHint } from "../../projects/components/local-directory-hint";
+import { ApprovalWidget } from "./approval-widget";
+import { ReviewAssetsList } from "./review-assets-list";
+import { MediaReviewLayout } from "../../reviews/media-review-layout";
 import { CommentCard } from "./comment-card";
 import { CommentInput } from "./comment-input";
 import { ResolvedThreadBar } from "./resolved-thread-bar";
@@ -90,6 +93,7 @@ import { projectDetailOptions } from "@multica/core/projects/queries";
 import { ProjectIcon } from "../../projects/components/project-icon";
 import { issueLabelsOptions } from "@multica/core/labels";
 import { propertyListOptions } from "@multica/core/properties";
+import { listReviewAssetsOptions } from "@multica/core/reviews/queries";
 import { memberListOptions, agentListOptions } from "@multica/core/workspace/queries";
 import {
   selectExpandedResolved,
@@ -273,6 +277,17 @@ function formatActivity(
       });
     case "description_updated":
       return t(($) => $.activity.description_updated);
+    case "approval_requested": {
+      const approverName =
+        details.approver_type && details.approver_id && resolveActorName
+          ? resolveActorName(details.approver_type, details.approver_id)
+          : t(($) => $.activity.approval_reviewer_fallback);
+      return t(($) => $.activity.approval_requested, { name: approverName });
+    }
+    case "approval_approve":
+      return t(($) => $.activity.approval_approved);
+    case "approval_reject":
+      return t(($) => $.activity.approval_rejected);
     case "task_completed":
       return t(($) => $.activity.task_completed, { count: entry.coalesced_count ?? 1 });
     case "task_failed":
@@ -1008,9 +1023,76 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
   const id = issueId;
   const user = useAuthStore((s) => s.user);
   const paths = useWorkspacePaths();
+  const navigation = useNavigation();
+  const [reviewAsset, setReviewAsset] = useState<ReviewAsset | null>(null);
 
   // Issue navigation — read from TQ list cache
   const wsId = useWorkspaceId();
+  const reviewAssetId = navigation.searchParams.get("review");
+  const reviewCommentId = navigation.searchParams.get("reviewComment") ?? undefined;
+  const reviewPageIndex = Math.max(
+    0,
+    Number.parseInt(navigation.searchParams.get("reviewPage") ?? "0", 10) || 0,
+  );
+  const parsedReviewTime = Number.parseFloat(
+    navigation.searchParams.get("reviewTime") ?? "",
+  );
+  const reviewTime = Number.isFinite(parsedReviewTime)
+    ? parsedReviewTime
+    : undefined;
+  const { data: reviewAssets } = useQuery({
+    ...listReviewAssetsOptions(wsId, id),
+    enabled: !!reviewAssetId,
+  });
+
+  useEffect(() => {
+    if (!reviewAssetId) {
+      setReviewAsset(null);
+      return;
+    }
+    if (!reviewAssets) return;
+    setReviewAsset(reviewAssets.find((asset) => asset.id === reviewAssetId) ?? null);
+  }, [reviewAssetId, reviewAssets]);
+
+  const replaceReviewParams = useCallback(
+    (params: URLSearchParams) => {
+      const search = params.toString();
+      navigation.replace(
+        `${navigation.pathname}${search ? `?${search}` : ""}`,
+      );
+    },
+    [navigation],
+  );
+
+  const handleReviewAssetChange = useCallback(
+    (asset: ReviewAsset | null) => {
+      setReviewAsset(asset);
+      const params = new URLSearchParams(navigation.searchParams);
+      if (asset) params.set("review", asset.id);
+      else params.delete("review");
+      params.delete("reviewComment");
+      params.delete("reviewPage");
+      params.delete("reviewTime");
+      replaceReviewParams(params);
+    },
+    [navigation.searchParams, replaceReviewParams],
+  );
+
+  const handleOpenReviewFromTimeline = useCallback(
+    (entry: TimelineEntry) => {
+      if (!entry.review_asset_id) return;
+      const params = new URLSearchParams(navigation.searchParams);
+      params.set("review", entry.review_asset_id);
+      if (entry.review_comment_id) params.set("reviewComment", entry.review_comment_id);
+      else params.delete("reviewComment");
+      if (entry.review_page_index != null) params.set("reviewPage", String(entry.review_page_index));
+      else params.delete("reviewPage");
+      if (entry.review_start_time != null) params.set("reviewTime", String(entry.review_start_time));
+      else params.delete("reviewTime");
+      replaceReviewParams(params);
+    },
+    [navigation.searchParams, replaceReviewParams],
+  );
   const { data: members = [] } = useQuery(memberListOptions(wsId));
   const { data: agents = [] } = useQuery(agentListOptions(wsId));
   // Workspace owners and admins moderate any comment authored by anyone
@@ -1824,6 +1906,8 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
 
   const sidebarContent = (
     <div className="space-y-5">
+      <ApprovalWidget issueId={id} />
+
       {/* Properties */}
       <div>
         <button
@@ -2239,6 +2323,7 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
             expandedResolvedIds={expandedResolved}
             onResolvedExpandChange={toggleResolvedExpand}
             highlightedCommentId={highlightedId}
+            onOpenReview={handleOpenReviewFromTimeline}
           />
         </div>
       );
@@ -2738,6 +2823,12 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
 
             <LocalDirectoryHint projectId={issue?.project_id} />
 
+            <ReviewAssetsList
+              workspaceId={wsId}
+              issueId={id}
+              onOpenAsset={handleReviewAssetChange}
+            />
+
             {/* The "agent is working" live signal now lives in the header
                 (IssueAgentHeaderChip) so it stays in one fixed place and
                 doesn't compete with sticky banners in this content column.
@@ -2865,41 +2956,73 @@ export function IssueDetail({ issueId, onDelete, onDone, defaultSidebarOpen = tr
       </div>
   );
 
+  const reviewDialog = (
+    <Dialog
+      open={reviewAsset !== null}
+      onOpenChange={(open) => {
+        if (!open) handleReviewAssetChange(null);
+      }}
+    >
+      <DialogContent
+        showCloseButton={false}
+        className="h-screen max-h-none w-screen max-w-none gap-0 rounded-none border-0 bg-background p-0 sm:max-w-none"
+      >
+        {reviewAsset && (
+          <MediaReviewLayout
+            workspaceId={wsId}
+            asset={reviewAsset}
+            onAssetChange={handleReviewAssetChange}
+            onClose={() => handleReviewAssetChange(null)}
+            initialCommentId={reviewCommentId}
+            initialPageIndex={reviewPageIndex}
+            initialTime={reviewTime}
+          />
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+
   if (isMobile) {
     return (
-      <div className="flex flex-1 min-h-0">
-        {detailContent}
-        <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
-          <SheetContent side="right" showCloseButton={false} className="w-[320px] overflow-y-auto p-4">
-            {sidebarContent}
-          </SheetContent>
-        </Sheet>
-      </div>
+      <Fragment>
+        <div className="flex flex-1 min-h-0">
+          {detailContent}
+          <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
+            <SheetContent side="right" showCloseButton={false} className="w-[320px] overflow-y-auto p-4">
+              {sidebarContent}
+            </SheetContent>
+          </Sheet>
+        </div>
+        {reviewDialog}
+      </Fragment>
     );
   }
 
   return (
-    <ResizablePanelGroup orientation="horizontal" className="flex-1 min-h-0" defaultLayout={defaultLayout} onLayoutChanged={onLayoutChanged}>
-      <ResizablePanel id="content" minSize="50%">
-        {detailContent}
-      </ResizablePanel>
-      <ResizableHandle />
-      <ResizablePanel
-        id="sidebar"
-        {...rightSidebarPanelMotionProps}
-        data-right-sidebar-motion={desktopSidebarMotionEnabled ? "enabled" : undefined}
-        defaultSize={desktopSidebarOpen ? 320 : 0}
-        minSize={260}
-        maxSize={420}
-        collapsible
-        groupResizeBehavior="preserve-pixel-size"
-        panelRef={sidebarRef}
-        onResize={handleDesktopSidebarResize}
-      >
-        <AnimatedRightSidebar open={desktopSidebarVisualOpen} motionEnabled={desktopSidebarMotionEnabled}>
-          {sidebarContent}
-        </AnimatedRightSidebar>
-      </ResizablePanel>
-    </ResizablePanelGroup>
+    <Fragment>
+      <ResizablePanelGroup orientation="horizontal" className="flex-1 min-h-0" defaultLayout={defaultLayout} onLayoutChanged={onLayoutChanged}>
+        <ResizablePanel id="content" minSize="50%">
+          {detailContent}
+        </ResizablePanel>
+        <ResizableHandle />
+        <ResizablePanel
+          id="sidebar"
+          {...rightSidebarPanelMotionProps}
+          data-right-sidebar-motion={desktopSidebarMotionEnabled ? "enabled" : undefined}
+          defaultSize={desktopSidebarOpen ? 320 : 0}
+          minSize={260}
+          maxSize={420}
+          collapsible
+          groupResizeBehavior="preserve-pixel-size"
+          panelRef={sidebarRef}
+          onResize={handleDesktopSidebarResize}
+        >
+          <AnimatedRightSidebar open={desktopSidebarVisualOpen} motionEnabled={desktopSidebarMotionEnabled}>
+            {sidebarContent}
+          </AnimatedRightSidebar>
+        </ResizablePanel>
+      </ResizablePanelGroup>
+      {reviewDialog}
+    </Fragment>
   );
 }
