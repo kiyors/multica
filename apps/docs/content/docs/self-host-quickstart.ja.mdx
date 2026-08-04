@@ -64,7 +64,7 @@ make selfhost
 コンテナの状態を確認します。
 
 ```bash
-docker compose -f docker-compose.selfhost.yml ps
+docker compose -f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml ps
 ```
 
 `postgres` が `healthy`、`backend` と `frontend` が実行中であることを確認します。続いて backend、データベース、migration をチェックします。
@@ -134,12 +134,12 @@ api.example.com {
 Caddy が TLS 証明書を取得し、WebSocket を転送します。`.env` を変更したら、`up -d` でコンテナを作り直して新しい設定を反映します。
 
 ```bash
-docker compose -f docker-compose.selfhost.yml up -d
+docker compose -f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml up -d
 curl -fsS https://api.example.com/readyz
 ```
 
 <Callout type="warning">
-`docker compose restart` は既存のコンテナを再起動するだけで、`.env` を読み直しません。設定を変更した後に `.env` を読み直すには、`docker compose -f docker-compose.selfhost.yml up -d` を実行してください。
+`docker compose restart` は既存のコンテナを再起動するだけで、`.env` を読み直しません。設定を変更した後に `.env` を読み直すには、`docker compose -f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml up -d` を実行してください。
 </Callout>
 
 ## 4. ログインしてワークスペースを作成する
@@ -149,7 +149,7 @@ curl -fsS https://api.example.com/readyz
 デフォルトではメールサービスは設定されていません。コードをリクエストしたら、backend のログから読み取ります。
 
 ```bash
-docker compose -f docker-compose.selfhost.yml logs backend \
+docker compose -f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml logs backend \
   | grep "Verification code"
 ```
 
@@ -227,24 +227,24 @@ Multica に戻ります。ランタイム一覧にオンラインのランタイ
 
 ```bash
 # 状態を確認する
-docker compose -f docker-compose.selfhost.yml ps
+docker compose -f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml ps
 
 # backend のログを追う
-docker compose -f docker-compose.selfhost.yml logs -f backend
+docker compose -f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml logs -f backend
 
 # .env の変更を反映する
-docker compose -f docker-compose.selfhost.yml up -d
+docker compose -f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml up -d
 
 # サービスを停止する（ボリュームは保持）
-docker compose -f docker-compose.selfhost.yml down
+docker compose -f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml down
 ```
 
 公開済みの最新イメージへアップグレードします。
 
 ```bash
 git pull --ff-only
-docker compose -f docker-compose.selfhost.yml pull
-docker compose -f docker-compose.selfhost.yml up -d
+docker compose -f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml pull
+docker compose -f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml up -d
 curl -fsS http://localhost:8080/readyz
 ```
 
@@ -259,8 +259,8 @@ make selfhost
 ```bash
 cd multica
 git pull
-docker compose -f docker-compose.selfhost.yml pull
-docker compose -f docker-compose.selfhost.yml up -d
+docker compose -f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml pull
+docker compose -f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml up -d
 ```
 
 ### `git pull` が実際に更新するもの
@@ -287,7 +287,7 @@ grep MULTICA_IMAGE_TAG .env
 migration は前方向のみで巻き戻せないため、大事な環境をアップグレードする前にダンプを取ってください。
 
 ```bash
-docker compose -f docker-compose.selfhost.yml exec -T postgres \
+docker compose -f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml exec -T postgres \
   pg_dump -U multica multica > multica-backup.sql && gzip multica-backup.sql
 ```
 
@@ -302,7 +302,7 @@ docker compose -f docker-compose.selfhost.yml exec -T postgres \
 [ステップ1](#1-プロジェクトを取得してバックエンドを起動する)と同じく、バックエンドコンテナはトラフィックを受け付ける前に起動時に `./migrate up` を実行します（`docker/entrypoint.sh`）。個別のアップグレードコマンドはありません — 新しいイメージを立ち上げること自体が migration のステップです。様子を見るには:
 
 ```bash
-docker compose -f docker-compose.selfhost.yml logs -f backend
+docker compose -f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml logs -f backend
 ```
 
 migration は backend の起動時に自動で実行されます。過去データのバックフィルが必要な migration（103 など）も、バックフィルまで自動で完了します。ごくまれに自動バックフィルが `refusing to drop legacy daily rollups` で失敗することがあります。対処は[トラブルシューティング](/troubleshooting#migration-103-の失敗)を参照してください。
@@ -332,7 +332,7 @@ Helm には独自のアップグレード経路があります。values ファ�
 
 | 症状 | まず確認すること |
 |---|---|
-| `/readyz` が `ok` を返さない | `docker compose -f docker-compose.selfhost.yml logs backend postgres` を実行する。 |
+| `/readyz` が `ok` を返さない | `docker compose -f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml logs backend postgres` を実行する。 |
 | 認証コードが届かない | コードを一度リクエストし、backend のログで `Verification code` を探す。 |
 | `setup self-host` が server に到達できないと報告する | 実行用コンピュータから `https://api.example.com/health` をリクエストし、DNS、TLS、リバースプロキシがすべて到達可能か確認する。 |
 | デーモンが `Agents` を表示しない | AI コーディングツールが `PATH` にありログイン済みであることを確認し、`multica daemon restart` を実行する。 |

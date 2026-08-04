@@ -109,7 +109,7 @@ Check the `/ws` connection under **Network → WS** in the browser's developer t
 Containers read `.env` only at creation time; recreate them after changes:
 
 ```bash
-docker compose -f docker-compose.selfhost.yml up -d
+docker compose -f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml up -d
 ```
 
 For a complete reverse-proxy example, see the [self-host quickstart](/self-host-quickstart#3-choose-how-to-access).
@@ -119,7 +119,7 @@ For a complete reverse-proxy example, see the [self-host quickstart](/self-host-
 Check the backend startup log first. It states whether the server is using `SMTP relay`, `Resend API`, or `DEV mode`:
 
 ```bash
-docker compose -f docker-compose.selfhost.yml logs backend \
+docker compose -f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml logs backend \
   | grep "EmailService:"
 ```
 
@@ -200,7 +200,7 @@ If it is another Multica checkout, run `make stop` in that directory first. Othe
 | Default profile's log file | `~/.multica/daemon.log` |
 | Default profile's startup or crash log | `~/.multica/daemon.err.log` |
 | Named profiles | the matching logs under `~/.multica/profiles/<name>/` |
-| Docker backend | `docker compose -f docker-compose.selfhost.yml logs -f backend` |
+| Docker backend | `docker compose -f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml logs -f backend` |
 | Browser | Console and Network in the developer tools |
 
 To observe the daemon's startup directly, run it in the foreground instead:

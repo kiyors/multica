@@ -76,7 +76,7 @@ print_remote_server_token_hint() {
 compose_published_port() {
   local service=$1 container_port=$2 published
 
-  published="$(docker compose -f docker-compose.selfhost.yml port "$service" "$container_port" 2>/dev/null | tail -n 1)"
+  published="$(docker compose -f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml port "$service" "$container_port" 2>/dev/null | tail -n 1)"
   published="${published##*:}"
   published="${published%$'\r'}"
 
@@ -242,7 +242,7 @@ checkout_server_ref() {
 }
 
 pull_official_selfhost_images() {
-  if docker compose -f docker-compose.selfhost.yml pull; then
+  if docker compose -f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml pull; then
     return
   fi
 
@@ -250,7 +250,7 @@ pull_official_selfhost_images() {
   warn "Official images for the selected self-host channel are not published yet."
   echo "This can happen before the first GHCR release is available."
   echo "From $INSTALL_DIR, build from source instead:"
-  echo "  docker compose -f docker-compose.selfhost.yml -f docker-compose.selfhost.build.yml up -d --build"
+  echo "  docker compose -f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml -f docker-compose.selfhost.build.yml up -d --build"
   exit 1
 }
 
@@ -386,17 +386,17 @@ setup_server() {
   info "Pulling official Multica images..."
   pull_official_selfhost_images
   info "Starting Multica services (this may take a few minutes on first run)..."
-  docker compose -f docker-compose.selfhost.yml up -d
+  docker compose -f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml up -d
 
   # Read the ports Compose actually published, once, and reuse them for both the
   # health check and the summary so the two can never disagree.
   if ! SELFHOST_BACKEND_PORT="$(compose_published_port backend 8080)"; then
     fail "Started the stack but could not read the backend host port from Docker Compose.
-  Check it with: cd $INSTALL_DIR && docker compose -f docker-compose.selfhost.yml ps"
+  Check it with: cd $INSTALL_DIR && docker compose -f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml ps"
   fi
   if ! SELFHOST_FRONTEND_PORT="$(compose_published_port frontend 3000)"; then
     fail "Started the stack but could not read the frontend host port from Docker Compose.
-  Check it with: cd $INSTALL_DIR && docker compose -f docker-compose.selfhost.yml ps"
+  Check it with: cd $INSTALL_DIR && docker compose -f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml ps"
   fi
 
   # Wait for health check
@@ -414,7 +414,7 @@ setup_server() {
     ok "Multica server is running"
   else
     warn "Server is still starting. You can check logs with:"
-    echo "  cd $INSTALL_DIR && docker compose -f docker-compose.selfhost.yml logs"
+    echo "  cd $INSTALL_DIR && docker compose -f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml logs"
     echo ""
   fi
 }
@@ -492,7 +492,7 @@ run_stop() {
   if [ -d "$INSTALL_DIR" ]; then
     cd "$INSTALL_DIR"
     if [ -f docker-compose.selfhost.yml ]; then
-      docker compose -f docker-compose.selfhost.yml down
+      docker compose -f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml down
       ok "Docker services stopped"
     else
       warn "No docker-compose.selfhost.yml found at $INSTALL_DIR"

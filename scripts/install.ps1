@@ -64,7 +64,7 @@ function Get-ComposePublishedPort {
 
     $output = $null
     try {
-        $output = docker compose -f docker-compose.selfhost.yml port $Service $ContainerPort 2>$null
+        $output = docker compose -f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml port $Service $ContainerPort 2>$null
     } catch {
         return $null
     }
@@ -129,7 +129,7 @@ function Checkout-ServerRef {
 }
 
 function Pull-OfficialSelfHostImages {
-    docker compose -f docker-compose.selfhost.yml pull
+    docker compose -f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml pull
     if ($LASTEXITCODE -eq 0) {
         return
     }
@@ -138,7 +138,7 @@ function Pull-OfficialSelfHostImages {
     Write-Warn "Official images for the selected self-host channel are not published yet."
     Write-Host "This can happen before the first GHCR release is available."
     Write-Host "From $InstallDir, build from source instead:"
-    Write-Host "  docker compose -f docker-compose.selfhost.yml -f docker-compose.selfhost.build.yml up -d --build"
+    Write-Host "  docker compose -f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml -f docker-compose.selfhost.build.yml up -d --build"
     exit 1
 }
 
@@ -442,17 +442,17 @@ function Install-Server {
     Write-Info "Pulling official Multica images..."
     Pull-OfficialSelfHostImages
     Write-Info "Starting Multica services (this may take a few minutes on first run)..."
-    docker compose -f docker-compose.selfhost.yml up -d
+    docker compose -f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml up -d
 
     # Read the ports Compose actually published, once, and reuse them for both
     # the health check and the summary so the two can never disagree.
     $script:SelfHostBackendPort = Get-ComposePublishedPort -Service "backend" -ContainerPort 8080
     if (-not $script:SelfHostBackendPort) {
-        Write-Fail "Started the stack but could not read the backend host port from Docker Compose.`n  Check it with: cd $InstallDir; docker compose -f docker-compose.selfhost.yml ps"
+        Write-Fail "Started the stack but could not read the backend host port from Docker Compose.`n  Check it with: cd $InstallDir; docker compose -f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml ps"
     }
     $script:SelfHostFrontendPort = Get-ComposePublishedPort -Service "frontend" -ContainerPort 3000
     if (-not $script:SelfHostFrontendPort) {
-        Write-Fail "Started the stack but could not read the frontend host port from Docker Compose.`n  Check it with: cd $InstallDir; docker compose -f docker-compose.selfhost.yml ps"
+        Write-Fail "Started the stack but could not read the frontend host port from Docker Compose.`n  Check it with: cd $InstallDir; docker compose -f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml ps"
     }
 
     Write-Info "Waiting for backend to be ready..."
@@ -471,7 +471,7 @@ function Install-Server {
         Write-Ok "Multica server is running"
     } else {
         Write-Warn "Server is still starting. Check logs with:"
-        Write-Host "  cd $InstallDir; docker compose -f docker-compose.selfhost.yml logs"
+        Write-Host "  cd $InstallDir; docker compose -f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml logs"
     }
 
     Pop-Location
@@ -547,7 +547,7 @@ function Start-Stop {
     if (Test-Path $InstallDir) {
         Push-Location $InstallDir
         if (Test-Path "docker-compose.selfhost.yml") {
-            docker compose -f docker-compose.selfhost.yml down
+            docker compose -f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml down
             Write-Ok "Docker services stopped"
         } else {
             Write-Warn "No docker-compose.selfhost.yml found at $InstallDir"

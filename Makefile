@@ -101,7 +101,7 @@ selfhost: ## Create .env if needed, then pull and start the official self-hosted
 		echo "==> Generated random JWT_SECRET, POSTGRES_PASSWORD, and MULTICA_VCS_SECRET_KEY"; \
 	fi
 	@echo "==> Pulling official Multica images..."
-	@if ! $(COMPOSE) -f docker-compose.selfhost.yml pull; then \
+	@if ! $(COMPOSE) -f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml pull; then \
 		echo ""; \
 		echo "Official images for tag '$${MULTICA_IMAGE_TAG:-latest}' are not published yet."; \
 		echo "If this is before the first GHCR release, build from the current checkout:"; \
@@ -109,7 +109,7 @@ selfhost: ## Create .env if needed, then pull and start the official self-hosted
 		exit 1; \
 	fi
 	@echo "==> Starting Multica via Docker Compose..."
-	$(COMPOSE) -f docker-compose.selfhost.yml up -d
+	$(COMPOSE) -f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml up -d
 	@bash scripts/selfhost-wait.sh official
 
 selfhost-build: ## Build backend/web from the current checkout and start the self-hosted stack
@@ -134,13 +134,13 @@ selfhost-build: ## Build backend/web from the current checkout and start the sel
 		echo "==> Generated random JWT_SECRET, POSTGRES_PASSWORD, and MULTICA_VCS_SECRET_KEY"; \
 	fi
 	@echo "==> Building Multica from the current checkout..."
-	$(COMPOSE) -f docker-compose.selfhost.yml -f docker-compose.selfhost.build.yml up -d --build
+	$(COMPOSE) -f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml -f docker-compose.selfhost.build.yml up -d --build
 	@bash scripts/selfhost-wait.sh build
 
 selfhost-stop: ## Stop the self-hosted Docker Compose stack
 	$(REQUIRE_COMPOSE)
 	@echo "==> Stopping Multica services..."
-	$(COMPOSE) -f docker-compose.selfhost.yml down
+	$(COMPOSE) -f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml down
 	@echo "✓ All services stopped."
 
 # ---------- One-click commands ----------

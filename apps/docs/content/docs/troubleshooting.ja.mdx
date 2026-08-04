@@ -109,7 +109,7 @@ multica issue runs <issue-id>
 コンテナは作成時にしか `.env` を読み込みません。変更後は再作成してください:
 
 ```bash
-docker compose -f docker-compose.selfhost.yml up -d
+docker compose -f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml up -d
 ```
 
 完全なリバースプロキシの例は[セルフホストクイックスタート](/self-host-quickstart#3-アクセス方法を選ぶ)を参照してください。
@@ -119,7 +119,7 @@ docker compose -f docker-compose.selfhost.yml up -d
 まず backend の起動ログを確認します。ログには、現在使っているのが `SMTP relay`、`Resend API`、`DEV mode` のどれかが表示されます:
 
 ```bash
-docker compose -f docker-compose.selfhost.yml logs backend \
+docker compose -f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml logs backend \
   | grep "EmailService:"
 ```
 
@@ -200,7 +200,7 @@ netstat -ano | findstr :8080       # Windows
 | デフォルトプロファイルのログファイル | `~/.multica/daemon.log` |
 | デフォルトプロファイルの起動・クラッシュログ | `~/.multica/daemon.err.log` |
 | 名前付きプロファイル | `~/.multica/profiles/<name>/` 配下の対応するログ |
-| Docker backend | `docker compose -f docker-compose.selfhost.yml logs -f backend` |
+| Docker backend | `docker compose -f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml logs -f backend` |
 | ブラウザ | 開発者ツールの Console と Network |
 
 デーモンの起動過程を直接観察したい場合は、フォアグラウンドで実行します:

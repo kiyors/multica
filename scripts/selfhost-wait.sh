@@ -20,10 +20,10 @@ cd "$ROOT_DIR"
 mode=${1:-official}
 case "$mode" in
 official)
-  compose_files=(-f docker-compose.selfhost.yml)
+  compose_files=(-f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml)
   ;;
 build)
-  compose_files=(-f docker-compose.selfhost.yml -f docker-compose.selfhost.build.yml)
+  compose_files=(-f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml -f docker-compose.selfhost.build.yml)
   ;;
 *)
   echo "usage: ${BASH_SOURCE[0]} [official|build]" >&2

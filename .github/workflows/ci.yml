@@ -61,6 +61,7 @@ jobs:
               - 'scripts/local-env.sh'
               - '.env.example'
               - 'docker-compose.selfhost.yml'
+              - 'docker-compose.selfhost.local.yml'
               - 'docker-compose.selfhost.build.yml'
               - 'Makefile'
 

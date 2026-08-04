@@ -109,7 +109,7 @@ multica issue runs <issue-id>
 容器只在创建时读取 `.env`，修改后需要重新创建：
 
 ```bash
-docker compose -f docker-compose.selfhost.yml up -d
+docker compose -f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml up -d
 ```
 
 完整的反向代理示例见[自托管快速上手](/self-host-quickstart#3-选择访问方式)。
@@ -119,7 +119,7 @@ docker compose -f docker-compose.selfhost.yml up -d
 先查看 backend 启动日志。日志会说明当前使用 `SMTP relay`、`Resend API` 还是 `DEV mode`：
 
 ```bash
-docker compose -f docker-compose.selfhost.yml logs backend \
+docker compose -f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml logs backend \
   | grep "EmailService:"
 ```
 
@@ -200,7 +200,7 @@ netstat -ano | findstr :8080       # Windows
 | 默认 profile 的日志文件 | `~/.multica/daemon.log` |
 | 默认 profile 的启动或崩溃日志 | `~/.multica/daemon.err.log` |
 | 命名 profile | `~/.multica/profiles/<name>/` 下的对应日志 |
-| Docker backend | `docker compose -f docker-compose.selfhost.yml logs -f backend` |
+| Docker backend | `docker compose -f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml logs -f backend` |
 | 浏览器 | 开发者工具中的 Console 和 Network |
 
 需要直接观察守护进程启动过程时，可以改为前台运行：

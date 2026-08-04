@@ -38,8 +38,19 @@ config="$(
   docker compose \
     --env-file "$tmp_env" \
     -f docker-compose.selfhost.yml \
+    -f docker-compose.selfhost.local.yml \
     config
 )"
+
+deploy_config="$(docker compose --env-file "$tmp_env" -f docker-compose.selfhost.yml config --format json)"
+node -e '
+const config = JSON.parse(process.argv[1]);
+for (const service of ["backend", "frontend"]) {
+  if (config.services[service].ports?.length) {
+    throw new Error(`${service} must not publish host ports in the Dokploy base stack`);
+  }
+}
+' "$deploy_config"
 
 
 require_config "$config" 'FRONTEND_ORIGIN: http://localhost:3100'
@@ -223,7 +234,7 @@ chmod +x "$stub_dir/docker" "$stub_dir/curl"
 # Throwaway checkout so the recipe never touches this repo's own .env.
 recipe_dir="$tmp_dir/recipe"
 mkdir -p "$recipe_dir/scripts"
-cp Makefile .env.example docker-compose.selfhost.yml docker-compose.selfhost.build.yml "$recipe_dir/"
+cp Makefile .env.example docker-compose.selfhost.yml docker-compose.selfhost.local.yml docker-compose.selfhost.build.yml "$recipe_dir/"
 cp scripts/selfhost-wait.sh "$recipe_dir/scripts/"
 
 record="$tmp_dir/published"
@@ -426,7 +437,7 @@ done
 compose_published_ports() {
   local env_file=$1
   shift
-  env "$@" docker compose --env-file "$env_file" -f docker-compose.selfhost.yml config --format json |
+  env "$@" docker compose --env-file "$env_file" -f docker-compose.selfhost.yml -f docker-compose.selfhost.local.yml config --format json |
     node -e '
 let raw = "";
 process.stdin.on("data", (chunk) => (raw += chunk));
