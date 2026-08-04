@@ -60,7 +60,7 @@ export function GuestReviewClient({ token }: { token: string }) {
       if (!response.ok) throw new Error("Unable to post your feedback.");
       const comment = await response.json() as ReviewComment;
       
-      let updatedReview = { ...review!, comments: [...review!.comments, comment] };
+      const updatedReview = { ...review!, comments: [...review!.comments, comment] };
       
       if (sentiment !== "pending") {
         const statusResp = await fetch(`${apiBase}/api/guest/reviews/${encodeURIComponent(token)}/status`, {

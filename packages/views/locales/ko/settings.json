@@ -684,6 +684,7 @@
     "confirm_cancel": "취소",
     "confirm_action": "확인",
     "change_role": "역할 변경",
+    "manage_assignments": "프로젝트와 스쿼드에 할당",
     "remove_action": "워크스페이스에서 제거",
     "cannot_demote_last_owner_title": "먼저 다른 멤버를 소유자로 승격하세요. 워크스페이스에는 최소 한 명의 소유자가 필요합니다.",
     "cannot_demote_last_owner": "마지막 소유자는 강등할 수 없습니다",

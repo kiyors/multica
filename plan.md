@@ -112,6 +112,7 @@ The target calendar should adapt the strong parts of the supplied Gantt screensh
 
 - [ ] Run focused package tests while implementing, then `pnpm typecheck`, `pnpm test`, relevant Go tests, and targeted Playwright suites.
 - Verification completed this pass: `pnpm typecheck`; full Core and Views suites; all Desktop source suites in deterministic groups; relevant Go handler/MCP/CLI suites; locale parity/JSON; `git diff --check`; and Playwright test discovery. Live Playwright execution and the repository-wide aggregate `pnpm test` remain open because the application services were not running and the pre-existing Desktop packaging-script test stalls under the aggregate Vitest invocation.
+- CI follow-up for [Actions run 30887560838](https://github.com/kiyors/multica/actions/runs/30887560838): restored self-host backend/frontend port publication and Compose-authoritative health checks, repaired recovered review/milestone migration ordering, and moved Calendar/project-tab typography onto role-named tokens. Verified with a complete fresh-database migration, all seven DB-backed approval/review/bulk-assignment tests, the self-host configuration suite, and all 188 Web tests.
 - [ ] Manually verify web and desktop in light/dark themes with empty, small, paginated, and large task sets.
 - [ ] Re-run the seven older fix scenarios; change their historical status to Verified only when a reproducible test passes.
 - [ ] Update the audit table and the older roadmap entries with final commit/test evidence; do not leave bare `Completed` claims.

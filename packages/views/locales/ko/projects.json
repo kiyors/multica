@@ -57,6 +57,12 @@
   "detail": {
     "not_found": "프로젝트를 찾을 수 없습니다",
     "breadcrumb_fallback": "프로젝트",
+    "tabs": {
+      "tasks": "작업",
+      "documents": "문서",
+      "milestones": "마일스톤",
+      "settings": "설정"
+    },
     "title_placeholder": "프로젝트 제목",
     "icon_tooltip": "아이콘 변경",
     "pin_tooltip": "사이드바에 고정",

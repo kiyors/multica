@@ -20,7 +20,7 @@ export default function DocsPage() {
         <section>
           <h2 className="mb-4 text-display-sm font-semibold">1. Workspaces</h2>
           <p className="text-muted-foreground mb-4">
-            A workspace is your organization's home in Multica. All projects, tasks, and team members belong to a workspace.
+            A workspace is your organization&apos;s home in Multica. All projects, tasks, and team members belong to a workspace.
           </p>
           <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
             <li>You can invite team members to your workspace from the <strong>Settings &rarr; Members</strong> tab.</li>
@@ -35,7 +35,7 @@ export default function DocsPage() {
           </p>
           <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
             <li>When creating a task, you can assign it to a specific project.</li>
-            <li>You can view a project's tasks in List, Board, Swimlane, or Gantt views.</li>
+            <li>You can view a project&apos;s tasks in List, Board, Swimlane, or Gantt views.</li>
             <li><strong>Project Settings:</strong> You can define custom labels and issue types that are specific only to that project.</li>
           </ul>
         </section>
@@ -59,7 +59,7 @@ export default function DocsPage() {
           </p>
           <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
             <li>You can chat with agents in the <strong>Agents</strong> tab.</li>
-            <li>When creating a task, you can switch to "Agent Mode" to have an agent automatically draft the task details for you based on a prompt.</li>
+            <li>When creating a task, you can switch to &ldquo;Agent Mode&rdquo; to have an agent automatically draft the task details for you based on a prompt.</li>
             <li>You can set up <strong>Autopilots</strong> to trigger agents automatically on specific events (e.g., when a task is moved to a specific status).</li>
           </ul>
         </section>

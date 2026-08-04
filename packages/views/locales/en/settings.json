@@ -833,6 +833,7 @@
     "confirm_cancel": "Cancel",
     "confirm_action": "Confirm",
     "change_role": "Change role",
+    "manage_assignments": "Assign to projects and squads",
     "remove_action": "Remove from workspace",
     "cannot_demote_last_owner_title": "Promote another member to owner first — a workspace must keep at least one owner.",
     "cannot_demote_last_owner": "Cannot demote the last owner",

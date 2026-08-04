@@ -110,33 +110,7 @@ selfhost: ## Create .env if needed, then pull and start the official self-hosted
 	fi
 	@echo "==> Starting Multica via Docker Compose..."
 	$(COMPOSE) -f docker-compose.selfhost.yml up -d
-	@echo "==> Waiting for backend to be ready..."
-	@for i in $$(seq 1 30); do \
-		if curl -sf http://localhost:$${PORT:-8080}/health > /dev/null 2>&1; then \
-			break; \
-		fi; \
-		sleep 2; \
-	done
-	@if curl -sf http://localhost:$${PORT:-8080}/health > /dev/null 2>&1; then \
-		echo ""; \
-		echo "✓ Multica is running!"; \
-		echo "  Frontend: http://localhost:$${FRONTEND_PORT:-3000}"; \
-		echo "  Backend:  http://localhost:$${PORT:-8080}"; \
-		echo ""; \
-		echo "Images: $${MULTICA_BACKEND_IMAGE:-ghcr.io/kiyors/multica-backend}:$${MULTICA_IMAGE_TAG:-latest}"; \
-		echo "        $${MULTICA_WEB_IMAGE:-ghcr.io/kiyors/multica-web}:$${MULTICA_IMAGE_TAG:-latest}"; \
-		echo ""; \
-		echo "Log in: configure RESEND_API_KEY in .env for email codes,"; \
-		echo "        or read the generated code from backend logs when Resend is unset."; \
-		echo ""; \
-		echo "Next — install the CLI and connect your machine:"; \
-		echo "  brew install multica-ai/tap/multica"; \
-		echo "  multica setup self-host"; \
-	else \
-		echo ""; \
-		echo "Services are still starting. Check logs:"; \
-		echo "  $(COMPOSE) -f docker-compose.selfhost.yml logs"; \
-	fi
+	@bash scripts/selfhost-wait.sh official
 
 selfhost-build: ## Build backend/web from the current checkout and start the self-hosted stack
 	$(REQUIRE_COMPOSE)

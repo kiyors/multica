@@ -57,6 +57,12 @@
   "detail": {
     "not_found": "プロジェクトが見つかりません",
     "breadcrumb_fallback": "プロジェクト",
+    "tabs": {
+      "tasks": "タスク",
+      "documents": "ドキュメント",
+      "milestones": "マイルストーン",
+      "settings": "設定"
+    },
     "title_placeholder": "プロジェクトのタイトル",
     "icon_tooltip": "アイコンを変更",
     "pin_tooltip": "サイドバーに固定",

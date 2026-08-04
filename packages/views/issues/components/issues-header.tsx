@@ -876,9 +876,9 @@ export function IssuesHeader({
         {!workspaceScopeControls && <div className="hidden shrink-0 items-center gap-1 md:flex">
           <Tabs value={assigneeQuickFilter} onValueChange={(v) => setAssigneeQuickFilter(v as AssigneeQuickFilter)}>
             <TabsList className="h-8">
-              <TabsTrigger value="all" className="text-xs h-6 px-3">{t(($) => $.scope.all_label)}</TabsTrigger>
-              <TabsTrigger value="members" className="text-xs h-6 px-3">{t(($) => $.scope.members_label)}</TabsTrigger>
-              <TabsTrigger value="agents" className="text-xs h-6 px-3">{t(($) => $.scope.agents_label)}</TabsTrigger>
+              <TabsTrigger value="all" className="text-caption h-6 px-3">{t(($) => $.scope.all_label)}</TabsTrigger>
+              <TabsTrigger value="members" className="text-caption h-6 px-3">{t(($) => $.scope.members_label)}</TabsTrigger>
+              <TabsTrigger value="agents" className="text-caption h-6 px-3">{t(($) => $.scope.agents_label)}</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>}
@@ -1771,10 +1771,10 @@ export function IssueDisplayControls({
             aria-label={t(($) => $.schedule_period.label)}
           >
             <TabsList className="h-8">
-              <TabsTrigger value="all" className="text-xs h-6 px-3">{t(($) => $.schedule_period.all)}</TabsTrigger>
-              <TabsTrigger value="today" className="text-xs h-6 px-3">{t(($) => $.schedule_period.today)}</TabsTrigger>
-              <TabsTrigger value="weekly" className="text-xs h-6 px-3">{t(($) => $.schedule_period.week)}</TabsTrigger>
-              <TabsTrigger value="monthly" className="text-xs h-6 px-3">{t(($) => $.schedule_period.month)}</TabsTrigger>
+              <TabsTrigger value="all" className="text-caption h-6 px-3">{t(($) => $.schedule_period.all)}</TabsTrigger>
+              <TabsTrigger value="today" className="text-caption h-6 px-3">{t(($) => $.schedule_period.today)}</TabsTrigger>
+              <TabsTrigger value="weekly" className="text-caption h-6 px-3">{t(($) => $.schedule_period.week)}</TabsTrigger>
+              <TabsTrigger value="monthly" className="text-caption h-6 px-3">{t(($) => $.schedule_period.month)}</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>

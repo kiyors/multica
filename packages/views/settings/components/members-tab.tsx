@@ -171,7 +171,7 @@ function MemberRow({
             {canEditRole && (
               <DropdownMenuItem onClick={onBulkAssign}>
                 <Plus className="h-3.5 w-3.5" />
-                Assign to Projects/Squads
+                {t(($) => $.members.manage_assignments)}
               </DropdownMenuItem>
             )}
             {canEditRole && canRemove && <DropdownMenuSeparator />}

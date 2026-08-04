@@ -1,3 +1,5 @@
+-- Recovered custom migration; review comments must be redesigned before the
+-- later timestamped guest/deep-link migrations consume these columns.
 DO $$
 BEGIN
   IF EXISTS (

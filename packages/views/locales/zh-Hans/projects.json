@@ -57,6 +57,12 @@
   "detail": {
     "not_found": "未找到该项目",
     "breadcrumb_fallback": "项目",
+    "tabs": {
+      "tasks": "任务",
+      "documents": "文档",
+      "milestones": "里程碑",
+      "settings": "设置"
+    },
     "title_placeholder": "项目标题",
     "icon_tooltip": "更换图标",
     "pin_tooltip": "固定到侧边栏",

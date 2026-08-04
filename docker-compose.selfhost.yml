@@ -39,6 +39,8 @@ services:
     depends_on:
       - postgres
       - valkey
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-${API_PORT:-${SERVER_PORT:-${PORT:-8080}}}}:8080"
     networks:
       - dokploy-network
     labels:
@@ -129,6 +131,8 @@ services:
     pull_policy: always
     depends_on:
       - backend
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-3000}:3000"
     networks:
       - dokploy-network
     labels:

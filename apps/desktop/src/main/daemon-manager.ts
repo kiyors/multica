@@ -911,9 +911,8 @@ function desktopSpawnEnv(): NodeJS.ProcessEnv {
   // Bind Nix to the daemon environment on non-Windows so agents
   // and the daemon itself can install/use Nix applications and CLIs.
   if (process.platform !== "win32") {
-    const homedir = require("os").homedir();
     const nixPaths = [
-      `${homedir}/.nix-profile/bin`,
+      `${homedir()}/.nix-profile/bin`,
       `/nix/var/nix/profiles/default/bin`
     ];
     

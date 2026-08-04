@@ -58,6 +58,12 @@
   "detail": {
     "not_found": "Project not found",
     "breadcrumb_fallback": "Projects",
+    "tabs": {
+      "tasks": "Tasks",
+      "documents": "Documents",
+      "milestones": "Milestones",
+      "settings": "Settings"
+    },
     "title_placeholder": "Project title",
     "icon_tooltip": "Change icon",
     "pin_tooltip": "Pin to sidebar",

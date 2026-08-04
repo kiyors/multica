@@ -1,3 +1,5 @@
+-- Recovered custom migration. Keep it alongside the other 135 migrations so
+-- dependent review migrations run in their original order on fresh databases.
 CREATE TABLE IF NOT EXISTS review_assets (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   issue_id    UUID NOT NULL,

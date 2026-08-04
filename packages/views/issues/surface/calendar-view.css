@@ -18,7 +18,7 @@
   border-color: var(--border);
   padding: 0.55rem 0.4rem;
   color: var(--muted-foreground);
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   font-weight: 500;
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -53,7 +53,7 @@
 .shadcn-big-calendar .rbc-date-cell {
   padding: 0.35rem 0.45rem 0;
   color: var(--muted-foreground);
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
 }
 
 .shadcn-big-calendar .rbc-date-cell.rbc-now > a {
@@ -73,7 +73,7 @@
   background: color-mix(in oklab, var(--primary) 88%, var(--background));
   color: var(--primary-foreground);
   padding: 0.2rem 0.4rem;
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   font-weight: 500;
   line-height: 1.2;
 }
@@ -92,7 +92,7 @@
   border-radius: calc(var(--radius) - 3px);
   background: transparent;
   color: var(--muted-foreground);
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   font-weight: 500;
 }
 
@@ -121,7 +121,7 @@
 .shadcn-big-calendar .rbc-label,
 .shadcn-big-calendar .rbc-time-gutter {
   color: var(--muted-foreground);
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
 }
 
 .shadcn-big-calendar .rbc-time-slot {
@@ -149,7 +149,7 @@
 @media (max-width: 640px) {
   .shadcn-big-calendar .rbc-header {
     padding-inline: 0.2rem;
-    font-size: 0.6875rem;
+    font-size: var(--text-micro);
   }
 
   .shadcn-big-calendar .rbc-event {

@@ -832,6 +832,7 @@
     "confirm_cancel": "キャンセル",
     "confirm_action": "確認",
     "change_role": "ロールを変更",
+    "manage_assignments": "プロジェクトとスクワッドに割り当て",
     "remove_action": "ワークスペースから削除",
     "cannot_demote_last_owner_title": "先に別のメンバーを owner に昇格させてください。ワークスペースには少なくとも 1 人の owner が必要です。",
     "cannot_demote_last_owner": "最後の owner は降格できません",

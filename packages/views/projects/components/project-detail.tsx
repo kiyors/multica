@@ -553,10 +553,10 @@ export function ProjectDetail({
 
           <div className="flex flex-col flex-1 min-h-0">
             <div className="border-b px-4 py-2 flex gap-4">
-              <AppLink href={wsPaths.projectDetail(projectId) + "/board"} className={cn("text-sm font-medium border-b-2 px-1 pb-2 -mb-[9px]", activeTab === "board" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>Tasks</AppLink>
-              <AppLink href={wsPaths.projectDetail(projectId) + "/docs"} className={cn("text-sm font-medium border-b-2 px-1 pb-2 -mb-[9px]", activeTab === "docs" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>Documents</AppLink>
-              <AppLink href={wsPaths.projectDetail(projectId) + "/milestones"} className={cn("text-sm font-medium border-b-2 px-1 pb-2 -mb-[9px]", activeTab === "milestones" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>Milestones</AppLink>
-              <AppLink href={wsPaths.projectDetail(projectId) + "/settings"} className={cn("text-sm font-medium border-b-2 px-1 pb-2 -mb-[9px]", activeTab === "settings" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>Settings</AppLink>
+              <AppLink href={wsPaths.projectDetail(projectId) + "/board"} className={cn("text-body font-medium border-b-2 px-1 pb-2 -mb-[9px]", activeTab === "board" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>{t(($) => $.detail.tabs.tasks)}</AppLink>
+              <AppLink href={wsPaths.projectDetail(projectId) + "/docs"} className={cn("text-body font-medium border-b-2 px-1 pb-2 -mb-[9px]", activeTab === "docs" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>{t(($) => $.detail.tabs.documents)}</AppLink>
+              <AppLink href={wsPaths.projectDetail(projectId) + "/milestones"} className={cn("text-body font-medium border-b-2 px-1 pb-2 -mb-[9px]", activeTab === "milestones" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>{t(($) => $.detail.tabs.milestones)}</AppLink>
+              <AppLink href={wsPaths.projectDetail(projectId) + "/settings"} className={cn("text-body font-medium border-b-2 px-1 pb-2 -mb-[9px]", activeTab === "settings" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>{t(($) => $.detail.tabs.settings)}</AppLink>
             </div>
             <div className="flex-1 min-h-0 flex flex-col">
               {children || (
