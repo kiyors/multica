@@ -7,14 +7,18 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
+	"math"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/kiyors/multica/server/internal/middleware"
 	"github.com/kiyors/multica/server/internal/storage"
 	"github.com/kiyors/multica/server/internal/util"
 	db "github.com/kiyors/multica/server/pkg/db/generated"
@@ -58,16 +62,57 @@ type ReviewCommentResponse struct {
 	UpdatedAt  string          `json:"updated_at"`
 }
 
+func (h *Handler) reviewAssetForIssue(w http.ResponseWriter, r *http.Request, assetID pgtype.UUID) (db.ReviewAsset, db.Issue, bool) {
+	issue, ok := h.loadIssueForUser(w, r, chi.URLParam(r, "id"))
+	if !ok {
+		return db.ReviewAsset{}, db.Issue{}, false
+	}
+	asset, err := h.Queries.GetReviewAsset(r.Context(), assetID)
+	if err != nil || asset.IssueID != issue.ID || asset.WorkspaceID != issue.WorkspaceID {
+		writeError(w, http.StatusNotFound, "asset not found")
+		return db.ReviewAsset{}, db.Issue{}, false
+	}
+	return asset, issue, true
+}
+
+func (h *Handler) reviewCommentForIssue(w http.ResponseWriter, r *http.Request, commentID pgtype.UUID) (db.ReviewComment, db.ReviewAsset, bool) {
+	comment, err := h.Queries.GetReviewComment(r.Context(), commentID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "comment not found")
+		return db.ReviewComment{}, db.ReviewAsset{}, false
+	}
+	asset, _, ok := h.reviewAssetForIssue(w, r, comment.AssetID)
+	if !ok {
+		return db.ReviewComment{}, db.ReviewAsset{}, false
+	}
+	return comment, asset, true
+}
+
+func canManageReviewAsset(member db.Member, asset db.ReviewAsset) bool {
+	return isWorkspaceManagerRole(member.Role) || asset.UploadedBy == member.ID
+}
+
 func (h *Handler) reviewAssetToResponse(a db.ReviewAsset) ReviewAssetResponse {
-	fileURL := a.FileUrl // fallback: raw key
-	if presigner, ok := h.Storage.(storage.Presigner); ok {
-		if signed, err := presigner.PresignGet(context.Background(), a.FileUrl, 30*time.Minute); err == nil {
-			fileURL = signed
-		} else {
-			slog.Warn("review asset presign failed, returning raw key", "asset_id", uuidToString(a.ID), "error", err)
+	resolveAssetURL := func(key string) string {
+		if key == "" || h.Storage == nil {
+			return key
 		}
-	} else {
-		slog.Warn("storage does not support presigned GETs; review asset src_url will be a raw key", "asset_id", uuidToString(a.ID))
+		fallback := h.Storage.ObjectURL(key)
+		if presigner, ok := h.Storage.(storage.Presigner); ok {
+			if signed, err := presigner.PresignGet(context.Background(), key, 30*time.Minute); err == nil {
+				return signed
+			} else {
+				slog.Warn("review asset presign failed, returning configured object URL", "asset_id", uuidToString(a.ID), "error", err)
+			}
+		}
+		return fallback
+	}
+
+	fileURL := resolveAssetURL(a.FileUrl)
+	var thumbnailURL *string
+	if a.ThumbnailUrl.Valid {
+		resolved := resolveAssetURL(a.ThumbnailUrl.String)
+		thumbnailURL = &resolved
 	}
 	return ReviewAssetResponse{
 		ID:           uuidToString(a.ID),
@@ -77,7 +122,7 @@ func (h *Handler) reviewAssetToResponse(a db.ReviewAsset) ReviewAssetResponse {
 		Name:         a.Name,
 		AssetType:    a.AssetType,
 		SrcURL:       fileURL,
-		ThumbnailURL: textToPtr(a.ThumbnailUrl),
+		ThumbnailURL: thumbnailURL,
 		Width:        int4ToPtr(a.Width),
 		Height:       int4ToPtr(a.Height),
 		Duration:     float4ToPtr(a.Duration),
@@ -116,12 +161,24 @@ func float4ToPtr(f pgtype.Float4) *float32 {
 	return &f.Float32
 }
 
+func validReviewTimeRange(start, end *float32) bool {
+	for _, value := range []*float32{start, end} {
+		if value != nil && (*value < 0 || math.IsNaN(float64(*value)) || math.IsInf(float64(*value), 0)) {
+			return false
+		}
+	}
+	return start == nil || end == nil || *end >= *start
+}
+
 type PresignReviewAssetUploadRequest struct {
 	IssueID         string `json:"issue_id"`
 	Filename        string `json:"filename"`
 	ContentType     string `json:"content_type"`
+	Size            int64  `json:"size"`
 	PreviousAssetID string `json:"previous_asset_id,omitempty"`
 }
+
+const maxReviewAssetUploadSize = 100 << 20
 
 type PresignReviewAssetUploadResponse struct {
 	UploadURL string              `json:"upload_url"`
@@ -145,8 +202,13 @@ func (h *Handler) PresignReviewAssetUpload(w http.ResponseWriter, r *http.Reques
 	}
 
 	var req PresignReviewAssetUploadRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 64<<10)).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+	req.Filename = filepath.Base(strings.TrimSpace(req.Filename))
+	if req.Filename == "" || req.Filename == "." || req.Size <= 0 || req.Size > maxReviewAssetUploadSize {
+		writeError(w, http.StatusBadRequest, "filename or size is invalid")
 		return
 	}
 
@@ -155,10 +217,12 @@ func (h *Handler) PresignReviewAssetUpload(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// Verify issue exists
-	issue, err := h.Queries.GetIssue(ctx, issueUUID)
-	if err != nil {
-		writeError(w, http.StatusNotFound, "issue not found")
+	issue, ok := h.loadIssueForUser(w, r, chi.URLParam(r, "id"))
+	if !ok {
+		return
+	}
+	if issue.ID != issueUUID || (req.IssueID != "" && req.IssueID != uuidToString(issue.ID)) {
+		writeError(w, http.StatusBadRequest, "issue_id does not match request path")
 		return
 	}
 
@@ -171,11 +235,19 @@ func (h *Handler) PresignReviewAssetUpload(w http.ResponseWriter, r *http.Reques
 		previousAssetUUID = parsed
 	}
 
-	assetType := "image"
-	if req.ContentType == "video/mp4" || req.ContentType == "video/webm" || req.ContentType == "video/quicktime" {
+	assetType := ""
+	if strings.HasPrefix(req.ContentType, "image/") {
+		assetType = "image"
+	} else if req.ContentType == "video/mp4" || req.ContentType == "video/webm" || req.ContentType == "video/quicktime" {
 		assetType = "video"
+	} else if req.ContentType == "audio/mpeg" || req.ContentType == "audio/mp4" || req.ContentType == "audio/wav" || req.ContentType == "audio/webm" || req.ContentType == "audio/ogg" {
+		assetType = "audio"
 	} else if req.ContentType == "application/pdf" {
 		assetType = "pdf"
+	}
+	if assetType == "" {
+		writeError(w, http.StatusBadRequest, "unsupported content_type")
+		return
 	}
 
 	// For S3 we can generate a presigned URL. For local, we fallback to a direct upload URL
@@ -183,14 +255,12 @@ func (h *Handler) PresignReviewAssetUpload(w http.ResponseWriter, r *http.Reques
 	fileKey := "reviews/" + util.UUIDToString(issueUUID) + "/" + uuid.New().String() + "_" + req.Filename
 
 	if presigner, ok := h.Storage.(storage.UploadPresigner); ok {
+		var err error
 		uploadURL, err = presigner.PresignPut(ctx, fileKey, req.ContentType, 15*time.Minute)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to generate upload url")
 			return
 		}
-	} else {
-		// Fallback for local storage (the client will upload to our direct endpoint)
-		uploadURL = h.cfg.PublicURL + "/api/reviews/assets/direct-upload?key=" + fileKey
 	}
 
 	// Determine version and group ID
@@ -198,12 +268,12 @@ func (h *Handler) PresignReviewAssetUpload(w http.ResponseWriter, r *http.Reques
 	version := int32(1)
 	if previousAssetUUID.Valid {
 		prev, err := h.Queries.GetReviewAsset(ctx, previousAssetUUID)
-		if err == nil {
-			assetGroupID = prev.AssetGroupID
-			version = prev.Version + 1
-		} else {
-			assetGroupID = util.MustParseUUID(uuid.New().String())
+		if err != nil || prev.IssueID != issue.ID || prev.WorkspaceID != issue.WorkspaceID {
+			writeError(w, http.StatusBadRequest, "previous asset is not part of this issue")
+			return
 		}
+		assetGroupID = prev.AssetGroupID
+		version = prev.Version + 1
 	} else {
 		assetGroupID = util.MustParseUUID(uuid.New().String())
 	}
@@ -223,6 +293,9 @@ func (h *Handler) PresignReviewAssetUpload(w http.ResponseWriter, r *http.Reques
 		writeError(w, http.StatusInternalServerError, "failed to create asset record")
 		return
 	}
+	if uploadURL == "" {
+		uploadURL = strings.TrimSuffix(h.cfg.PublicURL, "/") + "/api/issues/" + uuidToString(issue.ID) + "/reviews/assets/direct-upload?asset_id=" + uuidToString(asset.ID)
+	}
 
 	writeJSON(w, http.StatusOK, PresignReviewAssetUploadResponse{
 		UploadURL: uploadURL,
@@ -231,14 +304,50 @@ func (h *Handler) PresignReviewAssetUpload(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *Handler) DirectUploadReviewAsset(w http.ResponseWriter, r *http.Request) {
-	// Stub for local storage direct upload fallback
-	writeError(w, http.StatusNotImplemented, "direct upload not implemented yet")
+	ctx := r.Context()
+	workspaceID := h.resolveWorkspaceID(r)
+	requester, ok := h.requireWorkspaceMember(w, r, workspaceID, "workspace not found")
+	if !ok {
+		return
+	}
+	assetID, ok := parseUUIDOrBadRequest(w, r.URL.Query().Get("asset_id"), "asset_id")
+	if !ok {
+		return
+	}
+	asset, _, ok := h.reviewAssetForIssue(w, r, assetID)
+	if !ok {
+		return
+	}
+	if asset.UploadedBy != requester.ID {
+		writeError(w, http.StatusForbidden, "only the uploader can upload this asset")
+		return
+	}
+	if h.Storage == nil {
+		writeError(w, http.StatusServiceUnavailable, "storage not configured")
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, maxReviewAssetUploadSize)
+	data, err := io.ReadAll(r.Body)
+	if err != nil {
+		writeError(w, http.StatusRequestEntityTooLarge, "upload is too large")
+		return
+	}
+	if len(data) == 0 {
+		writeError(w, http.StatusBadRequest, "upload is empty")
+		return
+	}
+	contentType := strings.TrimSpace(r.Header.Get("Content-Type"))
+	if _, err := h.Storage.Upload(ctx, asset.FileUrl, data, contentType, asset.Name); err != nil {
+		writeError(w, http.StatusBadGateway, "failed to store upload")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handler) CompleteReviewAssetUpload(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	workspaceIDStr := h.resolveWorkspaceID(r)
-	_, ok := h.requireWorkspaceMember(w, r, workspaceIDStr, "workspace not found")
+	requester, ok := h.requireWorkspaceMember(w, r, workspaceIDStr, "workspace not found")
 	if !ok {
 		return
 	}
@@ -256,12 +365,15 @@ func (h *Handler) CompleteReviewAssetUpload(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	asset, err := h.Queries.GetReviewAsset(ctx, assetUUID)
-	if err != nil {
-		writeError(w, http.StatusNotFound, "asset not found")
+	asset, _, ok := h.reviewAssetForIssue(w, r, assetUUID)
+	if !ok {
 		return
 	}
-	asset, err = h.Queries.MarkReviewAssetUploadCompleted(ctx, assetUUID)
+	if !canManageReviewAsset(requester, asset) {
+		writeError(w, http.StatusForbidden, "only the uploader or a workspace manager can complete this upload")
+		return
+	}
+	asset, err := h.Queries.MarkReviewAssetUploadCompleted(ctx, assetUUID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to complete asset upload")
 		return
@@ -281,6 +393,9 @@ func (h *Handler) ListReviewComments(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	assetUUID, ok := parseUUIDOrBadRequest(w, r.URL.Query().Get("asset_id"), "asset_id")
 	if !ok {
+		return
+	}
+	if _, _, ok := h.reviewAssetForIssue(w, r, assetUUID); !ok {
 		return
 	}
 
@@ -321,12 +436,17 @@ func (h *Handler) CreateReviewComment(w http.ResponseWriter, r *http.Request) {
 	userID := uuidToString(requester.UserID)
 
 	var req CreateReviewCommentRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 64<<10)).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid json")
 		return
 	}
-	if req.PageIndex < 0 {
-		writeError(w, http.StatusBadRequest, "page_index must be non-negative")
+	req.Content = strings.TrimSpace(req.Content)
+	if req.Content == "" || len(req.Content) > 5000 || req.PageIndex < 0 || !validReviewTimeRange(req.StartTime, req.EndTime) {
+		writeError(w, http.StatusBadRequest, "content, timing, or page_index is invalid")
+		return
+	}
+	if len(req.Shapes) > 0 && !json.Valid(req.Shapes) {
+		writeError(w, http.StatusBadRequest, "shapes must be valid json")
 		return
 	}
 
@@ -334,10 +454,22 @@ func (h *Handler) CreateReviewComment(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	asset, issue, ok := h.reviewAssetForIssue(w, r, assetUUID)
+	if !ok {
+		return
+	}
 
 	var parentUUID pgtype.UUID
 	if req.ParentID != nil {
-		parentUUID = util.MustParseUUID(*req.ParentID)
+		parentUUID, ok = parseUUIDOrBadRequest(w, *req.ParentID, "parent_id")
+		if !ok {
+			return
+		}
+		parent, err := h.Queries.GetReviewComment(ctx, parentUUID)
+		if err != nil || parent.AssetID != asset.ID {
+			writeError(w, http.StatusBadRequest, "parent comment is not part of this review")
+			return
+		}
 	}
 
 	var shapes json.RawMessage
@@ -373,8 +505,6 @@ func (h *Handler) CreateReviewComment(w http.ResponseWriter, r *http.Request) {
 	resp := reviewCommentToResponse(comment)
 	workspaceID := h.resolveWorkspaceID(r)
 	if workspaceID != "" {
-		asset, _ := h.Queries.GetReviewAsset(ctx, assetUUID)
-		issue, _ := h.Queries.GetIssue(ctx, asset.IssueID)
 		h.publish(protocol.EventReviewCommentCreated, workspaceID, "member", userID, map[string]any{
 			"comment":           resp,
 			"issue_id":          util.UUIDToString(asset.IssueID),
@@ -431,12 +561,12 @@ func (h *Handler) CreateReviewComment(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) ListReviewAssets(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	issueUUID, ok := parseUUIDOrBadRequest(w, chi.URLParam(r, "id"), "issue_id")
+	issue, ok := h.loadIssueForUser(w, r, chi.URLParam(r, "id"))
 	if !ok {
 		return
 	}
 
-	assets, err := h.Queries.ListReviewAssetsByIssue(ctx, issueUUID)
+	assets, err := h.Queries.ListReviewAssetsByIssue(ctx, issue.ID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to list review assets")
 		return
@@ -463,19 +593,27 @@ type UpdateReviewAssetStatusRequest struct {
 
 func (h *Handler) UpdateReviewAssetStatus(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	workspaceIDStr := h.resolveWorkspaceID(r)
+	requester, ok := h.requireWorkspaceMember(w, r, workspaceIDStr, "workspace not found")
+	if !ok {
+		return
+	}
 	assetUUID, ok := parseUUIDOrBadRequest(w, chi.URLParam(r, "assetId"), "assetId")
 	if !ok {
 		return
 	}
 
 	var req UpdateReviewAssetStatusRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 64<<10)).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid json")
 		return
 	}
 
 	if req.Status != "pending" && req.Status != "approved" && req.Status != "changes_requested" {
 		writeError(w, http.StatusBadRequest, "invalid status")
+		return
+	}
+	if _, _, ok := h.reviewAssetForIssue(w, r, assetUUID); !ok {
 		return
 	}
 
@@ -488,14 +626,7 @@ func (h *Handler) UpdateReviewAssetStatus(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// userID, ok := requireUserID(w, r)
-	// We might not have parsed it above if not needed, let's grab it for the event
-	userID := r.Header.Get("X-User-ID") // fallback, but usually we use requireUserID
-	if userID == "" {
-		if u, ok := requireUserID(w, r); ok {
-			userID = u
-		}
-	}
+	userID := uuidToString(requester.UserID)
 
 	resp := h.reviewAssetToResponse(asset)
 	workspaceID := h.resolveWorkspaceID(r)
@@ -518,33 +649,38 @@ type BulkApproveReviewAssetsRequest struct {
 
 func (h *Handler) BulkApproveReviewAssets(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	workspaceIDStr := h.resolveWorkspaceID(r)
+	requester, ok := h.requireWorkspaceMember(w, r, workspaceIDStr, "workspace not found")
+	if !ok {
+		return
+	}
 	var req BulkApproveReviewAssetsRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid json")
 		return
 	}
 
-	issueUUID, ok := parseUUIDOrBadRequest(w, chi.URLParam(r, "id"), "issue_id")
+	issue, ok := h.loadIssueForUser(w, r, chi.URLParam(r, "id"))
 	if !ok {
 		return
 	}
+	if req.IssueID != "" && req.IssueID != uuidToString(issue.ID) {
+		writeError(w, http.StatusBadRequest, "issue_id does not match request path")
+		return
+	}
 
-	err := h.Queries.BulkApproveReviewAssets(ctx, issueUUID)
+	err := h.Queries.BulkApproveReviewAssets(ctx, issue.ID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to bulk approve assets")
 		return
 	}
 
-	userID := ""
-	if u, ok := requireUserID(w, r); ok {
-		userID = u
-	}
+	userID := uuidToString(requester.UserID)
 	workspaceID := h.resolveWorkspaceID(r)
 	if workspaceID != "" {
-		issue, _ := h.Queries.GetIssue(ctx, issueUUID)
 		// Empty payload will force clients to refetch
 		h.publish(protocol.EventReviewAssetUpdated, workspaceID, "member", userID, map[string]any{
-			"issue_id":     util.UUIDToString(issueUUID),
+			"issue_id":     util.UUIDToString(issue.ID),
 			"issue_title":  issue.Title,
 			"issue_status": issue.Status,
 		})
@@ -568,7 +704,18 @@ func (h *Handler) DownloadReviewAsset(w http.ResponseWriter, r *http.Request) {
 	}
 
 	workspaceIDStr := uuidToString(asset.WorkspaceID)
-	if _, ok := h.requireWorkspaceMember(w, r, workspaceIDStr, "workspace not found"); !ok {
+	member, ok := h.requireWorkspaceMember(w, r, workspaceIDStr, "workspace not found")
+	if !ok {
+		return
+	}
+	checked := r.Clone(middleware.SetMemberContext(r.Context(), workspaceIDStr, member))
+	checked.Header = r.Header.Clone()
+	checked.Header.Set("X-Workspace-ID", workspaceIDStr)
+	issue, ok := h.loadIssueForUser(w, checked, chi.URLParam(r, "id"))
+	if !ok || issue.ID != asset.IssueID {
+		if ok {
+			writeError(w, http.StatusNotFound, "asset not found")
+		}
 		return
 	}
 
@@ -605,6 +752,9 @@ func (h *Handler) ResolveReviewComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	userID := uuidToString(requester.UserID)
+	if _, _, ok := h.reviewCommentForIssue(w, r, commentUUID); !ok {
+		return
+	}
 
 	comment, err := h.Queries.ResolveReviewComment(ctx, db.ResolveReviewCommentParams{
 		ID:         commentUUID,
@@ -630,8 +780,13 @@ func (h *Handler) UnresolveReviewComment(w http.ResponseWriter, r *http.Request)
 	if !ok {
 		return
 	}
-	userID, ok := requireUserID(w, r)
+	workspaceIDStr := h.resolveWorkspaceID(r)
+	requester, ok := h.requireWorkspaceMember(w, r, workspaceIDStr, "workspace not found")
 	if !ok {
+		return
+	}
+	userID := uuidToString(requester.UserID)
+	if _, _, ok := h.reviewCommentForIssue(w, r, commentUUID); !ok {
 		return
 	}
 
@@ -653,6 +808,9 @@ func (h *Handler) UnresolveReviewComment(w http.ResponseWriter, r *http.Request)
 func (h *Handler) ListPendingReviewIssueIDs(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	workspaceID := h.resolveWorkspaceID(r)
+	if _, ok := h.requireWorkspaceMember(w, r, workspaceID, "workspace not found"); !ok {
+		return
+	}
 	wsUUID, ok := parseUUIDOrBadRequest(w, workspaceID, "workspace_id")
 	if !ok {
 		return
@@ -681,9 +839,25 @@ func (h *Handler) DeleteReviewAsset(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	workspaceIDStr := h.resolveWorkspaceID(r)
+	requester, ok := h.requireWorkspaceMember(w, r, workspaceIDStr, "workspace not found")
+	if !ok {
+		return
+	}
+	asset, _, ok := h.reviewAssetForIssue(w, r, assetUUID)
+	if !ok {
+		return
+	}
+	if !canManageReviewAsset(requester, asset) {
+		writeError(w, http.StatusForbidden, "only the uploader or a workspace manager can delete this asset")
+		return
+	}
 	if err := h.Queries.DeleteReviewAsset(ctx, assetUUID); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to delete review asset")
 		return
+	}
+	if h.Storage != nil {
+		h.Storage.DeleteKeys(ctx, []string{asset.FileUrl})
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -696,9 +870,38 @@ func (h *Handler) DeleteReviewAssetGroup(w http.ResponseWriter, r *http.Request)
 	if !ok {
 		return
 	}
+	workspaceIDStr := h.resolveWorkspaceID(r)
+	requester, ok := h.requireWorkspaceMember(w, r, workspaceIDStr, "workspace not found")
+	if !ok {
+		return
+	}
+	assets, err := h.Queries.ListReviewAssetVersions(ctx, groupUUID)
+	if err != nil || len(assets) == 0 {
+		writeError(w, http.StatusNotFound, "asset group not found")
+		return
+	}
+	issue, ok := h.loadIssueForUser(w, r, chi.URLParam(r, "id"))
+	if !ok {
+		return
+	}
+	keys := make([]string, 0, len(assets))
+	for _, asset := range assets {
+		if asset.IssueID != issue.ID || asset.WorkspaceID != issue.WorkspaceID {
+			writeError(w, http.StatusNotFound, "asset group not found")
+			return
+		}
+		if !canManageReviewAsset(requester, asset) {
+			writeError(w, http.StatusForbidden, "only uploaders or workspace managers can delete this asset group")
+			return
+		}
+		keys = append(keys, asset.FileUrl)
+	}
 	if err := h.Queries.DeleteReviewAssetGroup(ctx, groupUUID); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to delete review asset group")
 		return
+	}
+	if h.Storage != nil {
+		h.Storage.DeleteKeys(ctx, keys)
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -724,22 +927,25 @@ func (h *Handler) UpdateReviewComment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req UpdateReviewCommentRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 64<<10)).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid json payload")
 		return
 	}
-	if req.PageIndex != nil && *req.PageIndex < 0 {
-		writeError(w, http.StatusBadRequest, "page_index must be non-negative")
+	req.Content = strings.TrimSpace(req.Content)
+	if req.Content == "" || len(req.Content) > 5000 || (req.PageIndex != nil && *req.PageIndex < 0) || !validReviewTimeRange(req.StartTime, req.EndTime) {
+		writeError(w, http.StatusBadRequest, "content, timing, or page_index is invalid")
+		return
+	}
+	if len(req.Shapes) > 0 && !json.Valid(req.Shapes) {
+		writeError(w, http.StatusBadRequest, "shapes must be valid json")
 		return
 	}
 
-	// Fetch existing to check permissions
-	existing, err := h.Queries.GetReviewComment(ctx, commentUUID)
-	if err != nil {
-		writeError(w, http.StatusNotFound, "comment not found")
+	existing, _, ok := h.reviewCommentForIssue(w, r, commentUUID)
+	if !ok {
 		return
 	}
-	if existing.AuthorID != requester.UserID {
+	if existing.AuthorID != requester.ID {
 		writeError(w, http.StatusForbidden, "only the author can edit this comment")
 		return
 	}
@@ -806,9 +1012,12 @@ func (h *Handler) CreateGuestReviewLink(w http.ResponseWriter, r *http.Request) 
 	if !ok {
 		return
 	}
-	asset, err := h.Queries.GetReviewAsset(ctx, assetID)
-	if err != nil || uuidToString(asset.WorkspaceID) != workspaceID {
-		writeError(w, http.StatusNotFound, "asset not found")
+	asset, _, ok := h.reviewAssetForIssue(w, r, assetID)
+	if !ok {
+		return
+	}
+	if !canManageReviewAsset(requester, asset) {
+		writeError(w, http.StatusForbidden, "only the uploader or a workspace manager can share this asset")
 		return
 	}
 
@@ -886,7 +1095,7 @@ func (h *Handler) CreateGuestReviewComment(w http.ResponseWriter, r *http.Reques
 	}
 	req.GuestName = strings.TrimSpace(req.GuestName)
 	req.Content = strings.TrimSpace(req.Content)
-	if req.GuestName == "" || len(req.GuestName) > 80 || req.Content == "" || len(req.Content) > 5000 || req.PageIndex < 0 {
+	if req.GuestName == "" || len(req.GuestName) > 80 || req.Content == "" || len(req.Content) > 5000 || req.PageIndex < 0 || !validReviewTimeRange(req.StartTime, req.EndTime) {
 		writeError(w, http.StatusBadRequest, "guest_name, content, or page_index is invalid")
 		return
 	}
@@ -969,12 +1178,11 @@ func (h *Handler) DeleteReviewComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	existing, err := h.Queries.GetReviewComment(ctx, commentUUID)
-	if err != nil {
-		writeError(w, http.StatusNotFound, "comment not found")
+	existing, _, ok := h.reviewCommentForIssue(w, r, commentUUID)
+	if !ok {
 		return
 	}
-	if existing.AuthorID != requester.UserID {
+	if existing.AuthorID != requester.ID {
 		writeError(w, http.StatusForbidden, "only the author can delete this comment")
 		return
 	}

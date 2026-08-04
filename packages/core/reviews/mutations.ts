@@ -224,29 +224,7 @@ export function useReviewAssetUpload() {
 
         // 2. Upload with XHR to track progress
         onPhaseChange?.('uploading');
-        await new Promise<void>((resolve, reject) => {
-          const xhr = new XMLHttpRequest();
-          xhr.open("PUT", upload_url, true);
-          xhr.setRequestHeader("Content-Type", file.type);
-
-          xhr.upload.onprogress = (event) => {
-            if (event.lengthComputable && onProgress) {
-              const percentComplete = (event.loaded / event.total) * 100;
-              onProgress(percentComplete);
-            }
-          };
-
-          xhr.onload = () => {
-            if (xhr.status >= 200 && xhr.status < 300) {
-              resolve();
-            } else {
-              reject(new Error(`Failed to upload file to storage: ${xhr.status} ${xhr.statusText}`));
-            }
-          };
-
-          xhr.onerror = () => reject(new Error("Network error during upload"));
-          xhr.send(file);
-        });
+        await api.uploadReviewAssetBytes(upload_url, workspaceId, file, onProgress);
 
         // 3. Complete
         onPhaseChange?.('completing');

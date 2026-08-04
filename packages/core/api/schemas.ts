@@ -47,6 +47,7 @@ import type {
   SearchIssuesResponse,
   SearchProjectsResponse,
   ProjectMember,
+  MemberAssignments,
   Milestone,
   ProjectDocument,
   Squad,
@@ -811,6 +812,16 @@ export const EMPTY_PROJECT_MEMBER: ProjectMember = {
   role: "viewer",
   invited_at: "",
   invited_by: null,
+};
+
+export const MemberAssignmentsSchema = z.object({
+  project_ids: z.array(z.string()).default([]),
+  squad_ids: z.array(z.string()).default([]),
+}).loose();
+
+export const EMPTY_MEMBER_ASSIGNMENTS: MemberAssignments = {
+  project_ids: [],
+  squad_ids: [],
 };
 
 export const MilestoneSchema = z.object({

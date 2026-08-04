@@ -898,11 +898,13 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 		r.Post("/tasks/{taskId}/session", h.PinTaskSession)
 	})
 
-	// MCP OAuth 2.0 Mock Endpoints (Public)
-	// These allow Gemini and other strictly-OAuth2 clients to connect using a PAT
-	// provided as the Client Secret.
-	r.Get("/api/mcp/oauth/authorize", mcpserver.HandleOAuthAuthorize)
-	r.Post("/api/mcp/oauth/token", mcpserver.HandleOAuthToken)
+	// Legacy PAT-as-client-secret OAuth compatibility bridge. This is not a
+	// general OAuth authorization server and is disabled by default; operators
+	// must explicitly accept its client-secret handling contract.
+	if envBool("ENABLE_MCP_OAUTH_PAT_BRIDGE", false) {
+		r.Get("/api/mcp/oauth/authorize", mcpserver.HandleOAuthAuthorize)
+		r.Post("/api/mcp/oauth/token", mcpserver.HandleOAuthToken)
+	}
 
 	// Protected API routes
 	r.Group(func(r chi.Router) {
@@ -995,6 +997,8 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 					r.Route("/members/{memberId}", func(r chi.Router) {
 						r.Patch("/", h.UpdateMember)
 						r.Delete("/", h.DeleteMember)
+						r.Get("/assignments", h.GetMemberAssignments)
+						r.Put("/assignments", h.ReconcileMemberAssignments)
 					})
 					r.Delete("/invitations/{invitationId}", h.RevokeInvitation)
 					// Custom runtime profile mutations (admin-only).

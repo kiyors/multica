@@ -139,8 +139,28 @@ export const appRoutes: RouteObject[] = [
           },
           {
             path: "projects/:id",
-            element: <ProjectDetailPage />,
+            element: <ProjectDetailPage activeTab="board" />,
             handle: { title: "Project" },
+          },
+          {
+            path: "projects/:id/board",
+            element: <ProjectDetailPage activeTab="board" />,
+            handle: { title: "Project Tasks" },
+          },
+          {
+            path: "projects/:id/docs",
+            element: <ProjectDetailPage activeTab="docs" />,
+            handle: { title: "Project Documents" },
+          },
+          {
+            path: "projects/:id/milestones",
+            element: <ProjectDetailPage activeTab="milestones" />,
+            handle: { title: "Project Milestones" },
+          },
+          {
+            path: "projects/:id/settings",
+            element: <ProjectDetailPage activeTab="settings" />,
+            handle: { title: "Project Settings" },
           },
           {
             path: "autopilots",

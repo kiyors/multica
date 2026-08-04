@@ -35,6 +35,7 @@
     "agents_description": "AI エージェントに割り当てられたイシュー"
   },
   "schedule_period": {
+    "label": "スケジュール期間",
     "all": "全期間",
     "today": "今日",
     "week": "今週",
@@ -53,7 +54,7 @@
     "section_creator": "作成者",
     "section_project": "プロジェクト",
     "section_label": "ラベル",
-    "section_date": "日付",
+    "section_date": "アクティビティ日",
     "date_field": "項目",
     "date_field_created": "作成",
     "date_field_updated": "更新",
@@ -191,6 +192,8 @@
     "inverted_dates_warning": "開始日が期限より後になっています。バーは早い日付から遅い日付まで表示されます。"
   },
   "calendar_view": {
+    "empty_title": "予定されたタスクはありません",
+    "empty_hint": "開始日または期限を追加するとカレンダーに表示されます。",
     "previous": "前の期間",
     "next": "次の期間"
   },
@@ -300,6 +303,8 @@
     "prop_due_date": "期限",
     "prop_project": "プロジェクト",
     "prop_labels": "ラベル",
+    "prop_issue_type": "タイプ",
+    "prop_milestone": "マイルストーン",
     "add_property_action": "プロパティを追加",
     "prop_created_by": "作成者",
     "prop_created": "作成日",

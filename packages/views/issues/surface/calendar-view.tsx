@@ -10,6 +10,7 @@ import {
 import withDragAndDrop from "react-big-calendar/lib/addons/dragAndDrop";
 import moment from "moment";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import "react-big-calendar/lib/css/react-big-calendar.css";
 import "react-big-calendar/lib/addons/dragAndDrop/styles.css";
 import "./calendar-view.css";
 import type { Issue } from "@multica/core/types";
@@ -39,7 +40,7 @@ function CalendarToolbar({ label, view, onNavigate, onView }: ToolbarProps<Issue
   };
 
   return (
-    <div className="flex min-h-10 flex-wrap items-center gap-2 border-b px-3 py-1.5">
+    <div className="flex min-h-10 flex-wrap items-center gap-2 border-b px-2 py-1.5 md:px-3">
       <div className="inline-flex items-center rounded-md border border-foreground/10 p-0.5">
         <Button
           variant="ghost"
@@ -69,7 +70,7 @@ function CalendarToolbar({ label, view, onNavigate, onView }: ToolbarProps<Issue
         </Button>
       </div>
 
-      <span className="min-w-36 flex-1 text-center text-body font-semibold">
+      <span className="order-first w-full text-center text-body font-semibold sm:order-none sm:min-w-36 sm:flex-1 sm:w-auto">
         {label}
       </span>
 
@@ -121,6 +122,7 @@ export interface CalendarViewProps {
 }
 
 export function CalendarView({ issues, onIssueMove, onIssueClick }: CalendarViewProps) {
+  const { t } = useT("issues");
   const events = useMemo(() => {
     return issues
       .map(issueToCalendarEvent)
@@ -148,20 +150,29 @@ export function CalendarView({ issues, onIssueMove, onIssueClick }: CalendarView
   };
 
   return (
-    <div className="h-full w-full p-4 bg-background">
-      <DnDCalendar
-        localizer={localizer}
-        events={events}
-        onEventDrop={handleEventDrop}
-        onSelectEvent={handleSelectEvent}
-        resizable={true}
-        onEventResize={handleEventResize}
-        defaultView={Views.MONTH}
-        views={[...CALENDAR_VIEWS]}
-        components={{ toolbar: CalendarToolbar, event: CalendarEvent }}
-        style={{ height: "100%", width: "100%" }}
-        className="shadcn-big-calendar"
-      />
+    <div className="h-full w-full overflow-auto bg-background p-2 md:p-4">
+      <div className="relative h-full min-h-[32rem] min-w-[42rem] overflow-hidden rounded-lg border bg-background max-sm:min-w-[36rem]">
+        <DnDCalendar
+          localizer={localizer}
+          events={events}
+          onEventDrop={handleEventDrop}
+          onSelectEvent={handleSelectEvent}
+          resizable={true}
+          onEventResize={handleEventResize}
+          defaultView={Views.MONTH}
+          views={[...CALENDAR_VIEWS]}
+          components={{ toolbar: CalendarToolbar, event: CalendarEvent }}
+          style={{ height: "100%", width: "100%" }}
+          className="shadcn-big-calendar"
+          popup
+        />
+        {events.length === 0 && (
+          <div className="pointer-events-none absolute inset-x-0 top-1/2 z-10 mx-auto w-fit -translate-y-1/2 rounded-lg border bg-background/95 px-5 py-4 text-center shadow-sm backdrop-blur">
+            <p className="text-body font-medium">{t(($) => $.calendar_view.empty_title)}</p>
+            <p className="mt-1 text-caption text-muted-foreground">{t(($) => $.calendar_view.empty_hint)}</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

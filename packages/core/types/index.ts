@@ -131,6 +131,8 @@ export type {
   ListProjectResourcesResponse,
   ProjectMember,
   ProjectMemberRole,
+  MemberAssignments,
+  ReconcileMemberAssignmentsRequest,
   Milestone,
   MilestoneStatus,
   ProjectDocument,

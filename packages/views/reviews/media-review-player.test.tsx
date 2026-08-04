@@ -40,6 +40,25 @@ describe("MediaReviewPlayer", () => {
     expect(container.querySelector("video")).toBeInTheDocument();
   });
 
+  it("renders native audio playback controls for audio assets", () => {
+    const asset = {
+      id: "audio-1",
+      name: "review.mp3",
+      src_url: "https://cdn.example.com/review.mp3",
+      asset_type: "audio",
+      issue_id: "issue-1",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      duration: 10,
+    } as ReviewAsset;
+
+    const { container } = render(<MediaReviewPlayer asset={asset} />);
+    const audio = container.querySelector("audio");
+    expect(audio).toBeInTheDocument();
+    expect(audio).toHaveAttribute("controls");
+    expect(audio).toHaveAttribute("src", asset.src_url);
+  });
+
 
   it("renders an image element for image assets", () => {
     const asset: ReviewAsset = {

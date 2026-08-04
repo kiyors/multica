@@ -65,6 +65,8 @@ Multica manages the full agent lifecycle: from task assignment to execution moni
 
 Multica natively supports the Model Context Protocol (MCP), allowing external AI tools (like Cursor, Claude Desktop, or custom cloud agents) to interact with your workspace directly.
 
+The authoritative authentication, workspace-binding, tool-input, and error contract is documented in [docs/mcp.md](docs/mcp.md).
+
 ### 1. Local AI Apps (Cursor / Claude Desktop)
 Local AI coding tools use the standard `stdio` command-line version of MCP. You can configure them to spawn the Multica CLI.
 
@@ -100,20 +102,16 @@ For external web apps, custom AI agents, or online platforms (like LangChain) th
     X-Workspace-ID: <YOUR_WORKSPACE_ID>
     ```
 
-### 3. Google Gemini Web & Custom Connected Apps (OAuth2)
-Gemini Web strictly requires an OAuth2 flow for custom connected apps. Multica provides a built-in proxy to seamlessly bridge this without requiring a real OAuth2 application.
+### 3. OAuth-only clients
+Multica's supported default is direct Bearer PAT authentication. It does not currently implement a full OAuth authorization server.
 
-When setting up the Gemini Custom Connected App:
+For legacy clients that cannot send a Bearer PAT, operators may opt in to the PAT-as-client-secret compatibility bridge with `ENABLE_MCP_OAUTH_PAT_BRIDGE=true`. When explicitly enabled:
 *   **Client ID**: `multica-gemini` (or any value)
 *   **Client Secret**: `<YOUR_API_TOKEN>` *(Paste your Multica Personal Access Token here)*
 *   **Authorization URI**: `https://api.your-multica-domain.com/api/mcp/oauth/authorize`
 *   **Token URI**: `https://api.your-multica-domain.com/api/mcp/oauth/token`
 
-**How it works securely:**
-1. Gemini redirects you to the Authorization URI.
-2. The Multica server displays a safe "Authorize Connection" screen and redirects you back.
-3. Gemini securely contacts the Token URI with the Client Secret you pasted.
-4. Multica validates and echoes that secret back as an OAuth Bearer token, connecting Gemini instantly to your MCP.
+This compatibility mode asks the third-party client to store your PAT as a secret and is disabled by default. See [the MCP contract](docs/mcp.md#oauth-compatibility-bridge) before enabling it.
 
 *Note: You can generate an API Token in your Account Settings. You can get your Workspace ID via `multica workspace list` or by checking your workspace URL.*
 
@@ -290,15 +288,3 @@ An iOS mobile client lives in [`apps/mobile/`](apps/mobile/) — see its [README
 - Unless the producer has granted a written branding waiver, the Multica LOGO, product name, and copyright information may not be removed or modified in a Multica user interface. The user interface is defined by derivation — including `apps/web/`, `apps/desktop/`, `apps/mobile/`, `packages/views/`, and `packages/ui/` — and covers raw source, the frontend container image, and compiled desktop and mobile binaries (condition 1b).
 - Non-interface use (running only the `server/` backend, the daemon, or the CLI) is exempt from the branding condition, but must retain the source and [NOTICE](NOTICE) attribution and state that the product is built on Multica, with a link back to this repository (condition 1c).
 - A branding waiver and a commercial license are separate grants; neither implies the other (condition 1d).
-
-## Gemini Web Connection
-
-To connect Gemini with the Multica MCP, you need to set up a custom connected app inside your Gemini extensions settings.
-
-Add a custom app link: `https://tasks-api.indiefluence.in/mcp`
-
-Under **Advanced Settings**, configure:
-- **Client ID**: (Your OAuth Client ID)
-- **Client secret**: (Your OAuth client secret)
-
-> **Note on Custom Connected Apps**: By adding this link, you're allowing Gemini to send info to a custom connected app that hasn't been reviewed by Google. Make sure you trust this service before connecting. Learn more about connecting custom apps in Gemini's documentation.

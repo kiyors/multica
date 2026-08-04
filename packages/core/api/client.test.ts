@@ -631,6 +631,61 @@ describe("ApiClient", () => {
     );
   });
 
+  it("loads and atomically reconciles a member's project and squad assignments", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ project_ids: ["project-1"], squad_ids: ["squad-1"] }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ project_ids: ["project-2"], squad_ids: [] }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = new ApiClient("https://api.example.test");
+    await expect(
+      client.getMemberAssignments("workspace-1", "member-1"),
+    ).resolves.toEqual({ project_ids: ["project-1"], squad_ids: ["squad-1"] });
+    await expect(
+      client.reconcileMemberAssignments("workspace-1", "member-1", {
+        project_ids: ["project-2"],
+        squad_ids: [],
+      }),
+    ).resolves.toEqual({ project_ids: ["project-2"], squad_ids: [] });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "https://api.example.test/api/workspaces/workspace-1/members/member-1/assignments",
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify({ project_ids: ["project-2"], squad_ids: [] }),
+      }),
+    );
+  });
+
+  it("falls back to empty member assignments for malformed responses", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ project_ids: "not-an-array" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+    );
+
+    const client = new ApiClient("https://api.example.test");
+    await expect(
+      client.getMemberAssignments("workspace-1", "member-1"),
+    ).resolves.toEqual({ project_ids: [], squad_ids: [] });
+  });
+
   it("preserves HTTP status on failed requests", async () => {
     vi.stubGlobal(
       "fetch",
@@ -1666,5 +1721,78 @@ describe("ApiClient model discovery response schema", () => {
 
     expect(result.supported).toBe(true);
     expect(result.status).toBe("completed");
+  });
+});
+
+describe("ApiClient review asset byte uploads", () => {
+  class FakeXHR {
+    static instances: FakeXHR[] = [];
+    headers: Record<string, string> = {};
+    upload: { onprogress: ((event: ProgressEvent) => void) | null } = { onprogress: null };
+    onload: (() => void) | null = null;
+    onerror: (() => void) | null = null;
+    status = 204;
+    statusText = "No Content";
+    withCredentials = false;
+    url = "";
+
+    constructor() {
+      FakeXHR.instances.push(this);
+    }
+
+    open(_method: string, url: string) {
+      this.url = url;
+    }
+
+    setRequestHeader(name: string, value: string) {
+      this.headers[name] = value;
+    }
+
+    send() {
+      this.onload?.();
+    }
+  }
+
+  it("authenticates API direct uploads without leaking auth to presigned storage", async () => {
+    FakeXHR.instances = [];
+    vi.stubGlobal("XMLHttpRequest", FakeXHR);
+    vi.stubGlobal("window", { location: { href: "https://desktop-renderer.invalid/" } });
+    const file = { type: "audio/mpeg" } as File;
+    const client = new ApiClient("https://api.example.test");
+    client.setToken("secret-token");
+
+    await client.uploadReviewAssetBytes(
+      "https://api.example.test/api/issues/i1/reviews/assets/direct-upload?asset_id=a1",
+      "ws-1",
+      file,
+    );
+    await client.uploadReviewAssetBytes("https://storage.example.test/signed", "ws-1", file);
+
+    expect(FakeXHR.instances[0]).toMatchObject({
+      withCredentials: true,
+      headers: {
+        "Content-Type": "audio/mpeg",
+        "X-Workspace-ID": "ws-1",
+        Authorization: "Bearer secret-token",
+      },
+    });
+    expect(FakeXHR.instances[1]?.headers).toEqual({ "Content-Type": "audio/mpeg" });
+  });
+
+  it("rejects non-success upload responses", async () => {
+    class FailingXHR extends FakeXHR {
+      status = 503;
+      statusText = "Unavailable";
+    }
+    vi.stubGlobal("XMLHttpRequest", FailingXHR);
+    vi.stubGlobal("window", { location: { href: "https://app.example/" } });
+
+    await expect(
+      new ApiClient("").uploadReviewAssetBytes(
+        "https://storage.example.test/signed",
+        "ws-1",
+        { type: "image/png" } as File,
+      ),
+    ).rejects.toThrow("503 Unavailable");
   });
 });

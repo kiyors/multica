@@ -219,7 +219,9 @@
       "labels": "레이블",
       "project": "프로젝트",
       "due_date": "마감일",
-      "start_date": "시작일"
+      "start_date": "시작일",
+      "issue_type": "이슈 유형",
+      "milestone": "마일스톤"
     }
   },
   "page": {

@@ -138,6 +138,20 @@
     "local_invalid_dir": "このディレクトリは使用できません。別のものを選択してください。",
     "local_hint": "他のマシンのエージェントはこのパスを参照できず、起動に失敗します。共有作業にはリポジトリを使用してください。"
   },
+  "member_bulk_assign": {
+    "title": "{{name}} の割り当てを管理",
+    "projects": "プロジェクト",
+    "squads": "スクワッド",
+    "no_projects": "プロジェクトがありません。",
+    "no_squads": "スクワッドがありません。",
+    "load_failed": "現在の割り当てを読み込めませんでした。",
+    "retry": "再試行",
+    "cancel": "キャンセル",
+    "save": "割り当てを保存",
+    "saving": "保存中…",
+    "success": "割り当てを更新しました",
+    "failed": "割り当てを更新できませんでした"
+  },
   "create_issue": {
     "sr_manual": "新規イシュー",
     "sr_agent": "イシューをクイック作成",
@@ -177,6 +191,8 @@
     "set_assignee": "担当者を設定...",
     "set_labels": "ラベルを設定...",
     "set_project": "プロジェクトを設定...",
+    "set_issue_type": "イシュータイプを設定...",
+    "set_milestone": "マイルストーンを設定...",
     "customize_fields": "フィールドをカスタマイズ...",
     "custom_properties": "カスタムプロパティ",
     "remove_parent": "親を削除",

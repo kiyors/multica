@@ -1,11 +1,19 @@
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ProjectDetail } from "@multica/views/projects/components";
+import {
+  ProjectBoardTab,
+  ProjectDetail,
+  ProjectDocsTab,
+  ProjectMilestonesTab,
+  ProjectSettingsTab,
+} from "@multica/views/projects/components";
 import { useWorkspaceId } from "@multica/core/hooks";
 import { projectDetailOptions } from "@multica/core/projects/queries";
 import { useDocumentTitle } from "@/hooks/use-document-title";
 
-export function ProjectDetailPage() {
+type ProjectTab = "board" | "docs" | "milestones" | "settings";
+
+export function ProjectDetailPage({ activeTab = "board" }: { activeTab?: ProjectTab }) {
   const { id } = useParams<{ id: string }>();
   const wsId = useWorkspaceId();
   const { data: project } = useQuery(projectDetailOptions(wsId, id!));
@@ -15,5 +23,18 @@ export function ProjectDetailPage() {
   useDocumentTitle(project ? project.title : "Project");
 
   if (!id) return null;
-  return <ProjectDetail projectId={id} />;
+  const content = {
+    board: <ProjectBoardTab projectId={id} />,
+    docs: <ProjectDocsTab projectId={id} />,
+    milestones: <ProjectMilestonesTab projectId={id} />,
+    settings: <ProjectSettingsTab projectId={id} />,
+  }[activeTab];
+
+  return (
+    <ProjectDetail projectId={id} activeTab={activeTab}>
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        {content}
+      </div>
+    </ProjectDetail>
+  );
 }

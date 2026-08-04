@@ -783,6 +783,8 @@ describe("CreateIssueModal", () => {
       assigneeType: undefined,
       assigneeId: undefined,
       startDate: null,
+      issueTypeId: null,
+      milestoneId: null,
       labelIds: [],
       propertyValues: {},
     });

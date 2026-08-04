@@ -35,6 +35,7 @@
     "agents_description": "Tasks assigned to AI agents"
   },
   "schedule_period": {
+    "label": "Schedule period",
     "all": "All Time",
     "today": "Today",
     "week": "Weekly",
@@ -53,7 +54,7 @@
     "section_creator": "Creator",
     "section_project": "Project",
     "section_label": "Label",
-    "section_date": "Date",
+    "section_date": "Activity date",
     "date_field": "Field",
     "date_field_created": "Created",
     "date_field_updated": "Updated",
@@ -193,6 +194,8 @@
     "inverted_dates_warning": "Start date is after due date — bar shown from min to max."
   },
   "calendar_view": {
+    "empty_title": "No scheduled tasks",
+    "empty_hint": "Add a start date or due date to place tasks on the calendar.",
     "previous": "Previous period",
     "next": "Next period"
   },

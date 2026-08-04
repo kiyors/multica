@@ -10,6 +10,12 @@ vi.mock("@multica/core/workspace", () => ({
   useWorkspaceSlug: () => "test-ws"
 }));
 
+vi.mock("../navigation", () => ({
+  useNavigation: () => ({
+    getShareableUrl: (path: string) => `https://app.example.test${path}`,
+  }),
+}));
+
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 vi.mock("@multica/core/reviews", () => ({

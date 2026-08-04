@@ -138,6 +138,20 @@
     "local_invalid_dir": "该目录不可用，请重新选择。",
     "local_hint": "其他机器上的 agent 看不到这个路径，会启动失败。需要协作请用仓库模式。"
   },
+  "member_bulk_assign": {
+    "title": "管理 {{name}} 的分配",
+    "projects": "项目",
+    "squads": "小队",
+    "no_projects": "没有项目。",
+    "no_squads": "没有小队。",
+    "load_failed": "无法加载当前分配。",
+    "retry": "重试",
+    "cancel": "取消",
+    "save": "保存分配",
+    "saving": "正在保存…",
+    "success": "分配已更新",
+    "failed": "无法更新分配"
+  },
   "create_issue": {
     "sr_manual": "新建 issue",
     "sr_agent": "快速创建 issue",
@@ -177,6 +191,8 @@
     "set_assignee": "设置负责人...",
     "set_labels": "设置标签...",
     "set_project": "设置项目...",
+    "set_issue_type": "设置任务类型...",
+    "set_milestone": "设置里程碑...",
     "customize_fields": "自定义字段...",
     "custom_properties": "自定义属性",
     "remove_parent": "移除父级",

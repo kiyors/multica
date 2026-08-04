@@ -138,6 +138,20 @@
     "local_invalid_dir": "이 디렉터리는 사용할 수 없습니다. 다른 디렉터리를 선택하세요.",
     "local_hint": "다른 기기의 에이전트는 이 경로를 볼 수 없어 시작에 실패합니다. 공유 작업에는 저장소를 사용하세요."
   },
+  "member_bulk_assign": {
+    "title": "{{name}}님의 할당 관리",
+    "projects": "프로젝트",
+    "squads": "스쿼드",
+    "no_projects": "프로젝트가 없습니다.",
+    "no_squads": "스쿼드가 없습니다.",
+    "load_failed": "현재 할당을 불러오지 못했습니다.",
+    "retry": "다시 시도",
+    "cancel": "취소",
+    "save": "할당 저장",
+    "saving": "저장 중…",
+    "success": "할당이 업데이트되었습니다",
+    "failed": "할당을 업데이트하지 못했습니다"
+  },
   "create_issue": {
     "sr_manual": "새 이슈",
     "sr_agent": "빠른 이슈 생성",
@@ -177,6 +191,8 @@
     "set_assignee": "담당자 설정...",
     "set_labels": "레이블 설정...",
     "set_project": "프로젝트 설정...",
+    "set_issue_type": "이슈 유형 설정...",
+    "set_milestone": "마일스톤 설정...",
     "customize_fields": "필드 사용자 지정...",
     "custom_properties": "사용자 지정 속성",
     "remove_parent": "상위 이슈 제거",

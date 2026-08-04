@@ -17,6 +17,9 @@ var mcpCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		if client.WorkspaceID == "" {
+			return fmt.Errorf("workspace context is required: pass --workspace-id or configure a default workspace")
+		}
 
 		// Usually Cursor or Claude will pass these explicitly if not in config,
 		// but newAPIClient handles resolving token via config or --token flag.
@@ -24,7 +27,7 @@ var mcpCmd = &cobra.Command{
 		// Ensure we can authenticate
 		ctx := context.Background()
 		var meResp map[string]any
-		if err := client.GetJSON(ctx, "/api/auth/me", &meResp); err != nil {
+		if err := client.GetJSON(ctx, "/api/me", &meResp); err != nil {
 			return fmt.Errorf("authentication failed: %w", err)
 		}
 

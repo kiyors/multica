@@ -29,6 +29,8 @@ import { UploadShowcase } from "./upload-showcase";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@multica/ui/components/ui/resizable";
 import type { UploadPhase } from "./upload-showcase";
 import { DragStrip } from "../platform";
+import { useNavigation } from "../navigation";
+import { reviewShareURL } from "./review-share-url";
 
 interface MediaReviewLayoutProps {
   workspaceId: string;
@@ -41,6 +43,7 @@ interface MediaReviewLayoutProps {
 }
 
 export function MediaReviewLayout({ workspaceId, asset, onAssetChange, onClose, initialCommentId, initialPageIndex = 0, initialTime }: MediaReviewLayoutProps) {
+  const navigation = useNavigation();
   const playerRef = useRef<MediaReviewPlayerRef>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [selectedCommentId, setSelectedCommentId] = useState<string | undefined>(initialCommentId);
@@ -226,7 +229,9 @@ export function MediaReviewLayout({ workspaceId, asset, onAssetChange, onClose, 
                   { workspaceId, issueId: asset.issue_id, assetId: asset.id },
                   {
                     onSuccess: async ({ token }) => {
-                      await navigator.clipboard.writeText(`${window.location.origin}/guest/review/${token}`);
+                      await navigator.clipboard.writeText(
+                        reviewShareURL(navigation.getShareableUrl, token),
+                      );
                       toast.success("Guest share link copied to clipboard");
                     },
                     onError: () => toast.error("Failed to create guest share link"),

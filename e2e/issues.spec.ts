@@ -87,7 +87,7 @@ test.describe("Issues", () => {
     await expect(page.getByText(updatedTodayTitle)).toBeVisible();
 
     await page.getByRole("button", { name: /filter/i }).click();
-    await page.getByRole("menuitem", { name: /^Date\b/ }).hover();
+    await page.getByRole("menuitem", { name: /^Activity date\b/ }).hover();
     await page.getByRole("menuitem", { name: "Today" }).click();
 
     await expect(page.getByRole("button", { name: /1 filter/i })).toBeVisible();
@@ -96,7 +96,7 @@ test.describe("Issues", () => {
     await expect(page.getByText(updatedTodayTitle)).toBeHidden({ timeout: 10000 });
 
     await page.getByRole("button", { name: /1 filter/i }).click();
-    const dateFilterItem = page.getByRole("menuitem", { name: /^Date\b/ });
+    const dateFilterItem = page.getByRole("menuitem", { name: /^Activity date\b/ });
     await dateFilterItem.focus();
     await page.keyboard.press("ArrowRight");
     const updatedDateField = page.getByRole("menuitemradio", { name: "Updated" });
@@ -122,7 +122,7 @@ test.describe("Issues", () => {
     await expect(page.getByText(oldTitle)).toBeVisible();
 
     await page.getByRole("button", { name: /filter/i }).click();
-    await page.getByRole("menuitem", { name: /^Date\b/ }).hover();
+    await page.getByRole("menuitem", { name: /^Activity date\b/ }).hover();
     const customDateButton = page.getByRole("button", { name: "Custom date or range" });
     await expect(customDateButton).toBeVisible();
     await customDateButton.click();

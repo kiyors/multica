@@ -219,7 +219,9 @@
       "labels": "标签",
       "project": "项目",
       "due_date": "截止日期",
-      "start_date": "开始日期"
+      "start_date": "开始日期",
+      "issue_type": "任务类型",
+      "milestone": "里程碑"
     }
   },
   "page": {

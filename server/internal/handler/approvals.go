@@ -86,24 +86,8 @@ func pendingApprovalRowToResponse(row db.ListPendingApprovalsByApproverRow) Appr
 }
 
 func (h *Handler) ListApprovalsByIssue(w http.ResponseWriter, r *http.Request) {
-	wsIDStr := h.resolveWorkspaceID(r)
-	wsID, ok := parseUUIDOrBadRequest(w, wsIDStr, "workspace_id")
+	issue, ok := h.loadIssueForUser(w, r, chi.URLParam(r, "id"))
 	if !ok {
-		return
-	}
-
-	issueID, ok := parseUUIDOrBadRequest(w, chi.URLParam(r, "id"), "issueId")
-	if !ok {
-		return
-	}
-
-	// Verify issue exists in workspace
-	issue, err := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{
-		ID:          issueID,
-		WorkspaceID: wsID,
-	})
-	if err != nil {
-		writeError(w, http.StatusNotFound, "issue not found")
 		return
 	}
 
@@ -185,10 +169,11 @@ func (h *Handler) CreateApproval(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	issueID, ok := parseUUIDOrBadRequest(w, chi.URLParam(r, "id"), "issueId")
+	issue, ok := h.loadIssueForUser(w, r, chi.URLParam(r, "id"))
 	if !ok {
 		return
 	}
+	issueID := issue.ID
 
 	var body struct {
 		ApproverType string `json:"approver_type"`
@@ -211,16 +196,6 @@ func (h *Handler) CreateApproval(w http.ResponseWriter, r *http.Request) {
 	actorType, actorIDStr := h.resolveActor(r, requestUserID(r), wsIDStr)
 	actorID, ok := parseUUIDOrBadRequest(w, actorIDStr, "actor_id")
 	if !ok {
-		return
-	}
-
-	// Verify issue exists in workspace
-	_, err := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{
-		ID:          issueID,
-		WorkspaceID: wsID,
-	})
-	if err != nil {
-		writeError(w, http.StatusNotFound, "issue not found")
 		return
 	}
 
@@ -270,7 +245,9 @@ func (h *Handler) CreateApproval(w http.ResponseWriter, r *http.Request) {
 
 	// Dispatch email
 	if h.EmailService != nil && body.ApproverType == "member" {
-		if member, err := h.Queries.GetMember(r.Context(), approverID); err == nil {
+		if member, err := h.Queries.GetMemberByUserAndWorkspace(r.Context(), db.GetMemberByUserAndWorkspaceParams{
+			UserID: approverID, WorkspaceID: wsID,
+		}); err == nil {
 			if user, err := h.Queries.GetUser(r.Context(), member.UserID); err == nil && user.Email != "" {
 				if issue, err := h.Queries.GetIssue(r.Context(), issueID); err == nil {
 					issueUrl := fmt.Sprintf("/%s/issues/%s", wsIDStr, uuidToString(issue.ID))
@@ -397,7 +374,9 @@ func (h *Handler) handleApprovalDecision(w http.ResponseWriter, r *http.Request,
 
 	// Dispatch email
 	if h.EmailService != nil && a.RequesterType == "member" {
-		if member, err := h.Queries.GetMember(r.Context(), a.RequesterID); err == nil {
+		if member, err := h.Queries.GetMemberByUserAndWorkspace(r.Context(), db.GetMemberByUserAndWorkspaceParams{
+			UserID: a.RequesterID, WorkspaceID: wsID,
+		}); err == nil {
 			if user, err := h.Queries.GetUser(r.Context(), member.UserID); err == nil && user.Email != "" {
 				if issue, err := h.Queries.GetIssue(r.Context(), a.IssueID); err == nil {
 					issueUrl := fmt.Sprintf("/%s/issues/%s", wsIDStr, uuidToString(issue.ID))

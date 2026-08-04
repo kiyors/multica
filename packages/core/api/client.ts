@@ -179,6 +179,8 @@ import type {
   BillingCheckoutSessionStatus,
   CreateBillingPortalSessionResponse,
   ProjectMember,
+  MemberAssignments,
+  ReconcileMemberAssignmentsRequest,
   Milestone,
   ProjectDocument,
   Channel,
@@ -302,6 +304,8 @@ import {
   ProjectMemberSchema,
   ProjectMemberListSchema,
   EMPTY_PROJECT_MEMBER,
+  MemberAssignmentsSchema,
+  EMPTY_MEMBER_ASSIGNMENTS,
   MilestoneSchema,
   MilestoneListSchema,
   EMPTY_MILESTONE,
@@ -3311,6 +3315,7 @@ export class ApiClient {
     const apiPayload = {
       filename: payload.filename,
       content_type: payload.content_type,
+      size: payload.size,
       previous_asset_id: payload.previous_asset_id,
     };
     return this.fetch(`/api/issues/${issueId}/reviews/assets/presign`, {
@@ -3325,6 +3330,41 @@ export class ApiClient {
       method: "POST",
       headers: { "X-Workspace-ID": workspaceId },
       body: JSON.stringify({ asset_id: assetId }),
+    });
+  }
+
+  uploadReviewAssetBytes(
+    uploadUrl: string,
+    workspaceId: string,
+    file: File,
+    onProgress?: (progress: number) => void,
+  ): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("PUT", uploadUrl, true);
+      xhr.setRequestHeader("Content-Type", file.type);
+
+      const directUpload = new URL(uploadUrl, window.location.href).pathname.includes(
+        "/reviews/assets/direct-upload",
+      );
+      if (directUpload) {
+        xhr.withCredentials = true;
+        xhr.setRequestHeader("X-Workspace-ID", workspaceId);
+        if (this.token) xhr.setRequestHeader("Authorization", `Bearer ${this.token}`);
+      }
+
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) onProgress?.((event.loaded / event.total) * 100);
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve();
+        } else {
+          reject(new Error(`Failed to upload file to storage: ${xhr.status} ${xhr.statusText}`));
+        }
+      };
+      xhr.onerror = () => reject(new Error("Network error during upload"));
+      xhr.send(file);
     });
   }
 
@@ -3576,6 +3616,32 @@ export class ApiClient {
   async removeProjectMember(projectId: string, memberId: string): Promise<void> {
     return this.fetch(`/api/projects/${projectId}/members/${memberId}`, {
       method: "DELETE",
+    });
+  }
+
+  async getMemberAssignments(workspaceId: string, memberId: string): Promise<MemberAssignments> {
+    const raw = await this.fetch<unknown>(
+      `/api/workspaces/${workspaceId}/members/${memberId}/assignments`,
+    );
+    return parseWithFallback(raw, MemberAssignmentsSchema, EMPTY_MEMBER_ASSIGNMENTS, {
+      endpoint: "GET /api/workspaces/:workspaceId/members/:memberId/assignments",
+    });
+  }
+
+  async reconcileMemberAssignments(
+    workspaceId: string,
+    memberId: string,
+    data: ReconcileMemberAssignmentsRequest,
+  ): Promise<MemberAssignments> {
+    const raw = await this.fetch<unknown>(
+      `/api/workspaces/${workspaceId}/members/${memberId}/assignments`,
+      {
+        method: "PUT",
+        body: JSON.stringify(data),
+      },
+    );
+    return parseWithFallback(raw, MemberAssignmentsSchema, EMPTY_MEMBER_ASSIGNMENTS, {
+      endpoint: "PUT /api/workspaces/:workspaceId/members/:memberId/assignments",
     });
   }
 

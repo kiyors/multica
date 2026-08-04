@@ -155,31 +155,31 @@ type DaemonPendingWorkNotifier interface {
 }
 
 type Handler struct {
-	Queries               *db.Queries
-	DB                    dbExecutor
-	TxStarter             txStarter
-	Hub                   *realtime.Hub
+	Queries                *db.Queries
+	DB                     dbExecutor
+	TxStarter              txStarter
+	Hub                    *realtime.Hub
 	DaemonHub              *daemonws.Hub
 	DaemonProfileRefresh   RuntimeProfileRefreshNotifier
 	DaemonWorkspaceRefresh WorkspaceSetRefreshNotifier
 	Bus                    *events.Bus
-	TaskService           *service.TaskService
-	IssueService          *service.IssueService
-	AutopilotService      *service.AutopilotService
-	EmailService          *service.EmailService
-	PushService           *service.PushService
-	UpdateStore           UpdateStore
-	ModelListStore        ModelListStore
-	LocalSkillListStore   LocalSkillListStore
-	LocalSkillImportStore LocalSkillImportStore
-	FeatureFlags          *featureflag.Service
-	DaemonPendingWork     DaemonPendingWorkNotifier
-	ModelCatalogCache     ModelCatalogCache
-	LivenessStore         LivenessStore
-	HeartbeatScheduler    HeartbeatScheduler
-	Storage               storage.Storage
-	CFSigner              *auth.CloudFrontSigner
-	Analytics             analytics.Client
+	TaskService            *service.TaskService
+	IssueService           *service.IssueService
+	AutopilotService       *service.AutopilotService
+	EmailService           *service.EmailService
+	PushService            *service.PushService
+	UpdateStore            UpdateStore
+	ModelListStore         ModelListStore
+	LocalSkillListStore    LocalSkillListStore
+	LocalSkillImportStore  LocalSkillImportStore
+	FeatureFlags           *featureflag.Service
+	DaemonPendingWork      DaemonPendingWorkNotifier
+	ModelCatalogCache      ModelCatalogCache
+	LivenessStore          LivenessStore
+	HeartbeatScheduler     HeartbeatScheduler
+	Storage                storage.Storage
+	CFSigner               *auth.CloudFrontSigner
+	Analytics              analytics.Client
 	// Metrics is the shared business-metrics collector built by main.go.
 	// May be nil in tests / self-hosted with the metrics listener disabled;
 	// every Record* method is nil-safe and obsmetrics.RecordEvent treats a
@@ -840,16 +840,18 @@ func (h *Handler) loadIssueForUser(w http.ResponseWriter, r *http.Request, issue
 					UserID:   member.ID,
 				})
 				if !isCreator && !isAssignee && !isSubscribed {
-					var inCommentOrAsset bool
+					var accessibleByParticipation bool
 					memIDStr := util.UUIDToString(member.ID)
 					_ = h.DB.QueryRow(r.Context(), `
 						SELECT EXISTS (
 							SELECT 1 FROM comment WHERE issue_id = $1 AND (author_id = $2 OR content LIKE '%' || $3 || '%')
 							UNION ALL
 							SELECT 1 FROM review_assets WHERE issue_id = $1 AND uploaded_by = $2
+							UNION ALL
+							SELECT 1 FROM approvals WHERE issue_id = $1 AND approver_type = 'member' AND approver_id = $4
 						)
-					`, issue.ID, member.ID, memIDStr).Scan(&inCommentOrAsset)
-					if !inCommentOrAsset {
+					`, issue.ID, member.ID, memIDStr, member.UserID).Scan(&accessibleByParticipation)
+					if !accessibleByParticipation {
 						// Do not leak existence if not accessible
 						writeError(w, http.StatusNotFound, "issue not found")
 						return db.Issue{}, false

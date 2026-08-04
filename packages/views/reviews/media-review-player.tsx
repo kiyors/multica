@@ -49,7 +49,7 @@ export function isReviewCommentVisible(
 export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPlayerProps>(
   ({ asset, onTimeUpdate, comments, selectedCommentId, onSelectComment, onDrawingShapeChange, pageIndex = 0 }, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const mediaRef = useRef<HTMLVideoElement | HTMLImageElement>(null);
+  const mediaRef = useRef<HTMLVideoElement | HTMLAudioElement | HTMLImageElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
 
   const [layout, setLayout] = useState({ x: 0, y: 0, width: 0, height: 0 });
@@ -61,6 +61,7 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
   const [playbackRate, setPlaybackRate] = useState(1);
   const [timeFormat, setTimeFormat] = useState<"standard" | "frames" | "timecode">("standard");
   const [localDuration, setLocalDuration] = useState<number>(asset.duration || 0);
+  const isTimedMedia = asset.asset_type === "video" || asset.asset_type === "audio";
 
   useEffect(() => {
     setLocalDuration(asset.duration || 0);
@@ -77,6 +78,9 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
       const video = mediaRef.current as HTMLVideoElement;
       mediaWidth = video.videoWidth;
       mediaHeight = video.videoHeight;
+    } else if (asset.asset_type === "audio") {
+      setLayout({ x: 0, y: 0, width: 0, height: 0 });
+      return;
     } else {
       const img = mediaRef.current as HTMLImageElement;
       mediaWidth = img.naturalWidth;
@@ -142,12 +146,12 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
 
   useImperativeHandle(ref, () => ({
     seek: (time: number) => {
-      if ((asset.asset_type === "video") && mediaRef.current) {
+      if (isTimedMedia && mediaRef.current) {
         (mediaRef.current as HTMLMediaElement).currentTime = time;
       }
     },
     pause: () => {
-      if ((asset.asset_type === "video") && mediaRef.current) {
+      if (isTimedMedia && mediaRef.current) {
         (mediaRef.current as HTMLMediaElement).pause();
       }
     },
@@ -167,7 +171,7 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
   }));
 
   const handleTimeUpdate = () => {
-    if ((asset.asset_type === "video") && mediaRef.current) {
+    if (isTimedMedia && mediaRef.current) {
       const time = (mediaRef.current as HTMLMediaElement).currentTime;
       setCurrentTime(time);
       if (onTimeUpdate) onTimeUpdate(time);
@@ -225,7 +229,7 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
   );
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if ((asset.asset_type !== "video") || !mediaRef.current) return;
+    if (!isTimedMedia || !mediaRef.current) return;
     const media = mediaRef.current as HTMLMediaElement;
     
     // Ignore keyboard events if we're focused in an input/textarea
@@ -252,19 +256,19 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
         break;
       case 'ArrowLeft':
         e.preventDefault();
-        media.currentTime = Math.max(0, media.currentTime - (1/30));
+        media.currentTime = Math.max(0, media.currentTime - (asset.asset_type === "audio" ? 5 : 1 / 30));
         break;
       case 'ArrowRight':
         e.preventDefault();
         if (localDuration > 0) {
-          media.currentTime = Math.min(localDuration, media.currentTime + (1/30));
+          media.currentTime = Math.min(localDuration, media.currentTime + (asset.asset_type === "audio" ? 5 : 1 / 30));
         }
         break;
     }
   };
 
   const handlePlayPause = () => {
-    if (!mediaRef.current || (asset.asset_type !== "video")) return;
+    if (!mediaRef.current || !isTimedMedia) return;
     const media = mediaRef.current as HTMLMediaElement;
     if (media.paused) media.play();
     else media.pause();
@@ -281,10 +285,10 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
   };
 
   const stepFrame = (frames: number) => {
-    if (!mediaRef.current || (asset.asset_type !== "video")) return;
+    if (!mediaRef.current || !isTimedMedia) return;
     const media = mediaRef.current as HTMLMediaElement;
-    // Assume 30fps for stepping
-    media.currentTime = Math.max(0, Math.min(localDuration || 0, media.currentTime + (frames * (1/30))));
+    const delta = asset.asset_type === "audio" ? frames * 5 : frames * (1 / 30);
+    media.currentTime = Math.max(0, Math.min(localDuration || 0, media.currentTime + delta));
   };
 
   return (
@@ -315,6 +319,20 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
             onPlay={() => setIsPlaying(true)}
             onPause={() => setIsPlaying(false)}
             onClick={handlePlayPause}
+            loop={isLooping}
+          />
+        ) : asset.asset_type === "audio" ? (
+          <audio
+            ref={mediaRef as React.RefObject<HTMLAudioElement>}
+            src={asset.src_url}
+            controls
+            className="relative z-10 w-[min(720px,90%)]"
+            aria-label={asset.name}
+            onLoadedMetadata={(e) => setLocalDuration((e.target as HTMLAudioElement).duration)}
+            onDurationChange={(e) => setLocalDuration((e.target as HTMLAudioElement).duration)}
+            onTimeUpdate={handleTimeUpdate}
+            onPlay={() => setIsPlaying(true)}
+            onPause={() => setIsPlaying(false)}
             loop={isLooping}
           />
         ) : (
@@ -385,7 +403,7 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
         </div>
       )}
 
-      {(asset.asset_type === "video") && localDuration > 0 && (
+      {isTimedMedia && localDuration > 0 && (
         <div className="absolute bottom-16 left-0 right-0 z-10 px-4">
           <MediaScrubber 
             currentTime={currentTime} 
@@ -402,7 +420,7 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
       )}
 
       {/* Glassmorphism Custom Controls (only for video/audio) */}
-      {(asset.asset_type === "video") && (
+      {isTimedMedia && (
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-md bg-background/80 border border-border/50 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-30">
           
           <div className="flex items-center gap-1.5 mr-2">
@@ -446,7 +464,7 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
             >
               <SkipBack className="w-4 h-4" />
             </TooltipTrigger>
-            <TooltipContent side="top">Frame Back</TooltipContent>
+            <TooltipContent side="top">{asset.asset_type === "audio" ? "Back 5 seconds" : "Frame Back"}</TooltipContent>
           </Tooltip>
 
           <Tooltip>
@@ -466,7 +484,7 @@ export const MediaReviewPlayer = forwardRef<MediaReviewPlayerRef, MediaReviewPla
             >
               <SkipForward className="w-4 h-4" />
             </TooltipTrigger>
-            <TooltipContent side="top">Frame Forward</TooltipContent>
+            <TooltipContent side="top">{asset.asset_type === "audio" ? "Forward 5 seconds" : "Frame Forward"}</TooltipContent>
           </Tooltip>
 
           <div className="w-px h-4 bg-border mx-1" />

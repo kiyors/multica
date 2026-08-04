@@ -35,6 +35,7 @@
     "agents_description": "AI 에이전트에게 할당된 이슈"
   },
   "schedule_period": {
+    "label": "일정 기간",
     "all": "전체 기간",
     "today": "오늘",
     "week": "이번 주",
@@ -53,7 +54,7 @@
     "section_creator": "생성자",
     "section_project": "프로젝트",
     "section_label": "라벨",
-    "section_date": "날짜",
+    "section_date": "활동 날짜",
     "date_field": "필드",
     "date_field_created": "생성",
     "date_field_updated": "수정",
@@ -191,6 +192,8 @@
     "inverted_dates_warning": "시작일이 마감일보다 늦습니다. 막대는 더 이른 날짜부터 더 늦은 날짜까지 표시됩니다."
   },
   "calendar_view": {
+    "empty_title": "예약된 작업이 없습니다",
+    "empty_hint": "시작일 또는 마감일을 추가하면 캘린더에 표시됩니다.",
     "previous": "이전 기간",
     "next": "다음 기간"
   },
@@ -300,6 +303,8 @@
     "prop_due_date": "마감일",
     "prop_project": "프로젝트",
     "prop_labels": "라벨",
+    "prop_issue_type": "유형",
+    "prop_milestone": "마일스톤",
     "add_property_action": "속성 추가",
     "prop_created_by": "생성자",
     "prop_created": "생성일",

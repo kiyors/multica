@@ -27,9 +27,9 @@ describe("IssueTab", () => {
   it("renders a switch per field with the persisted selection", () => {
     renderWithI18n(<IssueTab />);
 
-    // 3 quick create fields + 7 manual create fields.
+    // 3 quick create fields + 9 manual create fields.
     const switches = screen.getAllByRole("switch");
-    expect(switches).toHaveLength(10);
+    expect(switches).toHaveLength(12);
 
     // Quick create defaults to project only.
     const [quickProject, quickPriority, quickDueDate] = switches;
@@ -42,6 +42,8 @@ describe("IssueTab", () => {
     for (const s of manual.slice(0, 5)) expect(s).toBeChecked();
     expect(manual[5]).not.toBeChecked();
     expect(manual[6]).not.toBeChecked();
+    expect(manual[7]).toBeChecked();
+    expect(manual[8]).toBeChecked();
   });
 
   it("persists enabling a quick create field", async () => {
@@ -70,6 +72,8 @@ describe("IssueTab", () => {
       "priority",
       "assignee",
       "project",
+      "issue_type",
+      "milestone",
     ]);
     expect(useIssueCreateSettingsStore.getState().quickCreateFields).toEqual(["project"]);
   });

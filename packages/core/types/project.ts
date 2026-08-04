@@ -126,6 +126,16 @@ export interface ProjectMember {
   invited_by: string | null;
 }
 
+export interface MemberAssignments {
+  project_ids: string[];
+  squad_ids: string[];
+}
+
+export interface ReconcileMemberAssignmentsRequest {
+  project_ids: string[];
+  squad_ids: string[];
+}
+
 export type MilestoneStatus = "active" | "completed" | "cancelled";
 
 export interface Milestone {

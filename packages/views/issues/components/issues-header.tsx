@@ -1761,8 +1761,15 @@ export function IssueDisplayControls({
           </PopoverContent>
         </Popover>
 
-        <div className="hidden shrink-0 items-center md:flex mr-1">
-          <Tabs value={timeQuickFilter} onValueChange={(v) => setTimeQuickFilter(v as TimeQuickFilter)}>
+        <div className="hidden shrink-0 items-center gap-2 md:flex mr-1">
+          <span className="hidden text-caption text-muted-foreground 2xl:inline">
+            {t(($) => $.schedule_period.label)}
+          </span>
+          <Tabs
+            value={timeQuickFilter}
+            onValueChange={(v) => setTimeQuickFilter(v as TimeQuickFilter)}
+            aria-label={t(($) => $.schedule_period.label)}
+          >
             <TabsList className="h-8">
               <TabsTrigger value="all" className="text-xs h-6 px-3">{t(($) => $.schedule_period.all)}</TabsTrigger>
               <TabsTrigger value="today" className="text-xs h-6 px-3">{t(($) => $.schedule_period.today)}</TabsTrigger>

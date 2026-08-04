@@ -1,5 +1,5 @@
 export type ReviewAssetStatus = "pending" | "approved" | "changes_requested";
-export type ReviewAssetType = "video" | "image" | "pdf";
+export type ReviewAssetType = "video" | "audio" | "image" | "pdf";
 
 export interface ReviewAsset {
   id: string;

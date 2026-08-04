@@ -51,6 +51,7 @@ export class TestApiClient {
   private workspaceId: string | null = null;
   private email: string | null = null;
   private createdIssueIds: string[] = [];
+  private createdProjectIds: string[] = [];
   private seededIssueIds: string[] = [];
 
   async login(email: string, name: string) {
@@ -192,6 +193,19 @@ export class TestApiClient {
     const issue = await res.json();
     this.createdIssueIds.push(issue.id);
     return issue;
+  }
+
+  async createProject(title: string, opts?: Record<string, unknown>) {
+    const res = await this.authedFetch("/api/projects", {
+      method: "POST",
+      body: JSON.stringify({ title, status: "in_progress", priority: "none", ...opts }),
+    });
+    if (!res.ok) {
+      throw new Error(`create project failed: ${res.status} ${await res.text()}`);
+    }
+    const project = await res.json();
+    this.createdProjectIds.push(project.id);
+    return project;
   }
 
   /**
@@ -339,6 +353,14 @@ export class TestApiClient {
       }
     }
     this.createdIssueIds = [];
+    for (const id of this.createdProjectIds) {
+      try {
+        await this.authedFetch(`/api/projects/${id}`, { method: "DELETE" });
+      } catch {
+        /* ignore — may already be deleted */
+      }
+    }
+    this.createdProjectIds = [];
   }
 
   getToken() {

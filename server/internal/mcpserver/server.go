@@ -2,7 +2,9 @@ package mcpserver
 
 import (
 	"context"
+	"fmt"
 	"net/url"
+	"strings"
 
 	"github.com/kiyors/multica/server/internal/cli"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -34,6 +36,10 @@ func registerCreateTask(srv *mcp.Server, client *cli.APIClient) {
 		Name:        "create_task",
 		Description: "Create a new task (issue) in Multica.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input CreateTaskParams) (*mcp.CallToolResult, any, error) {
+		input.Title = strings.TrimSpace(input.Title)
+		if input.Title == "" {
+			return nil, nil, fmt.Errorf("title is required")
+		}
 		var out any
 		err := client.PostJSON(ctx, "/api/issues", input, &out)
 		return nil, out, err
@@ -41,7 +47,7 @@ func registerCreateTask(srv *mcp.Server, client *cli.APIClient) {
 }
 
 type ListTasksParams struct {
-	Query  string `json:"query,omitempty" jsonschema:"description=Search term to filter tasks"`
+	Query string `json:"query,omitempty" jsonschema:"description=Search term to filter tasks"`
 }
 
 func registerListTasks(srv *mcp.Server, client *cli.APIClient) {
@@ -69,7 +75,11 @@ func registerGetTaskDetails(srv *mcp.Server, client *cli.APIClient) {
 		Description: "Get the full details of a specific task by its UUID or identifier (e.g., ENG-123).",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input GetTaskDetailsParams) (*mcp.CallToolResult, any, error) {
 		var out any
-		err := client.GetJSON(ctx, "/api/issues/"+input.ID, &out)
+		id := strings.TrimSpace(input.ID)
+		if id == "" {
+			return nil, nil, fmt.Errorf("id is required")
+		}
+		err := client.GetJSON(ctx, "/api/issues/"+url.PathEscape(id), &out)
 		return nil, out, err
 	})
 }
@@ -88,7 +98,11 @@ func registerUpdateTask(srv *mcp.Server, client *cli.APIClient) {
 		Description: "Update properties of an existing task.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input UpdateTaskParams) (*mcp.CallToolResult, any, error) {
 		var out any
-		
+		id := strings.TrimSpace(input.ID)
+		if id == "" {
+			return nil, nil, fmt.Errorf("id is required")
+		}
+
 		payload := make(map[string]any)
 		if input.Title != nil {
 			payload["title"] = *input.Title
@@ -102,8 +116,11 @@ func registerUpdateTask(srv *mcp.Server, client *cli.APIClient) {
 		if input.Priority != nil {
 			payload["priority"] = *input.Priority
 		}
+		if len(payload) == 0 {
+			return nil, nil, fmt.Errorf("at least one update field is required")
+		}
 
-		err := client.PutJSON(ctx, "/api/issues/"+input.ID, payload, &out)
+		err := client.PutJSON(ctx, "/api/issues/"+url.PathEscape(id), payload, &out)
 		return nil, out, err
 	})
 }

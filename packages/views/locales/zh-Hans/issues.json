@@ -35,6 +35,7 @@
     "agents_description": "分配给智能体的 issue"
   },
   "schedule_period": {
+    "label": "计划周期",
     "all": "不限时间",
     "today": "今天",
     "week": "本周",
@@ -53,7 +54,7 @@
     "section_creator": "创建者",
     "section_project": "项目",
     "section_label": "标签",
-    "section_date": "日期",
+    "section_date": "活动日期",
     "date_field": "字段",
     "date_field_created": "创建时间",
     "date_field_updated": "更新时间",
@@ -191,6 +192,8 @@
     "inverted_dates_warning": "开始日期晚于截止日期 — 已按区间最小/最大端绘制。"
   },
   "calendar_view": {
+    "empty_title": "没有已计划的任务",
+    "empty_hint": "添加开始日期或截止日期后，任务会显示在日历中。",
     "previous": "上一时段",
     "next": "下一时段"
   },
@@ -300,6 +303,8 @@
     "prop_due_date": "截止日期",
     "prop_project": "项目",
     "prop_labels": "标签",
+    "prop_issue_type": "类型",
+    "prop_milestone": "里程碑",
     "add_property_action": "添加字段",
     "prop_created_by": "创建者",
     "prop_created": "创建时间",

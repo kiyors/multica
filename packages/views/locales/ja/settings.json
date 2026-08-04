@@ -219,7 +219,9 @@
       "labels": "ラベル",
       "project": "プロジェクト",
       "due_date": "期限",
-      "start_date": "開始日"
+      "start_date": "開始日",
+      "issue_type": "イシュータイプ",
+      "milestone": "マイルストーン"
     }
   },
   "page": {

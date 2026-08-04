@@ -140,6 +140,20 @@
     "local_invalid_dir": "This directory can't be used. Pick another.",
     "local_hint": "Agents on other machines won't see this path — they'll fail to start. Use repos for shared work."
   },
+  "member_bulk_assign": {
+    "title": "Manage assignments for {{name}}",
+    "projects": "Projects",
+    "squads": "Squads",
+    "no_projects": "No projects found.",
+    "no_squads": "No squads found.",
+    "load_failed": "Couldn't load the member's current assignments.",
+    "retry": "Try again",
+    "cancel": "Cancel",
+    "save": "Save assignments",
+    "saving": "Saving…",
+    "success": "Assignments updated",
+    "failed": "Couldn't update assignments"
+  },
   "create_issue": {
     "sr_manual": "New Task",
     "sr_agent": "Quick create task",

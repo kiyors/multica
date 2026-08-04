@@ -13,7 +13,7 @@ describe("issue create settings store", () => {
     });
   });
 
-  it("defaults to project-only quick create and the classic manual toolbar", () => {
+  it("defaults to project-only quick create and persists issue type and milestone controls", () => {
     expect(useIssueCreateSettingsStore.getState().quickCreateFields).toEqual(["project"]);
     expect(useIssueCreateSettingsStore.getState().manualCreateFields).toEqual([
       "status",
@@ -21,6 +21,8 @@ describe("issue create settings store", () => {
       "assignee",
       "labels",
       "project",
+      "issue_type",
+      "milestone",
     ]);
   });
 
@@ -55,6 +57,8 @@ describe("issue create settings store", () => {
       "assignee",
       "project",
       "due_date",
+      "issue_type",
+      "milestone",
     ]);
     expect(useIssueCreateSettingsStore.getState().quickCreateFields).toEqual(["project"]);
   });
@@ -63,6 +67,19 @@ describe("issue create settings store", () => {
     const { setManualCreateFieldVisible } = useIssueCreateSettingsStore.getState();
 
     setManualCreateFieldVisible("status", true);
+
+    expect(useIssueCreateSettingsStore.getState().manualCreateFields).toEqual(
+      DEFAULT_MANUAL_CREATE_FIELDS,
+    );
+  });
+
+  it("toggles issue type and milestone in canonical persisted order", () => {
+    const { setManualCreateFieldVisible } = useIssueCreateSettingsStore.getState();
+
+    setManualCreateFieldVisible("issue_type", false);
+    setManualCreateFieldVisible("milestone", false);
+    setManualCreateFieldVisible("milestone", true);
+    setManualCreateFieldVisible("issue_type", true);
 
     expect(useIssueCreateSettingsStore.getState().manualCreateFields).toEqual(
       DEFAULT_MANUAL_CREATE_FIELDS,
